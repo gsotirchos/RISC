@@ -1,0 +1,87 @@
+name: ResetFreeRunner
+kwargs:
+  experiment_manager:
+    name: Experiment
+    kwargs:
+      name: 4r-gc_fb_dqn_gs_fb-rf_et
+      save_dir: experiment
+      saving_schedule:
+        name: PeriodicSchedule
+        kwargs:
+          off_value: false
+          on_value: true
+          period: 1000000
+  train_steps: 100000
+  test_frequency: 1000
+  test_episodes: 10
+  test_max_steps: 100
+  seed: 0
+  stack_size: 1
+  eval_every: false
+  early_terminal: true
+  send_truncation: false
+  env_fn:
+    name: minigrid_envs
+    kwargs:
+      agent_pos: [1, 1]
+      env_name: MiniGrid-FourRooms-v1
+      eval_max_steps: 100
+      goal_pos: [17,17]
+      local_vis_period: 2000
+      reset_free: true
+      symbolic: true
+      train_max_steps: 100000
+      video_period: 1000
+      vis_frequency: 2000
+  agent:
+    name: GCResetFree
+    kwargs:
+      base_agent:
+        kwargs:
+          batch_size: 128
+          device: cuda
+          discount_rate: 0.95
+          epsilon_schedule:
+            name: LinearSchedule
+            kwargs:
+              end_value: 0.1
+              init_value: 1.0
+              steps: 10000
+          loss_fn:
+            name: MSELoss
+          min_replay_history: 512
+          replay_buffer:
+            name: CircularReplayBuffer
+            kwargs:
+              capacity: 100000
+          representation_net:
+            name: ConvNetwork
+            kwargs:
+              channels: [16, 16, 16]
+              kernel_sizes: 3
+              mlp_layers: [16]
+          target_net_update_schedule:
+            name: PeriodicSchedule
+            kwargs:
+              off_value: false
+              on_value: true
+              period: 500
+        name: GoalConditionedDQNAgent
+      goal_generator:
+        name: FBGoalGenerator
+      goal_switcher:
+        name: SuccessProbabilityGoalSwitcher
+      phase_step_limit: 100
+      replay_buffer:
+        name: CircularReplayBuffer
+        kwargs:
+          capacity: 100000
+      separate_agents: true
+  loggers:
+  - name: WandbLogger
+    kwargs:
+      name: 4rooms_risc
+      project: RF-IS
+      resume: allow
+      start_method: fork
+  

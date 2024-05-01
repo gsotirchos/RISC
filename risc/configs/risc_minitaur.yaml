@@ -1,0 +1,124 @@
+name: ResetFreeRunner
+kwargs:
+  experiment_manager:
+    name: Experiment
+    kwargs:
+      name: minitaur_risc
+      save_dir: experiment
+      saving_schedule:
+        name: PeriodicSchedule
+        kwargs:
+          off_value: false
+          on_value: true
+          period: 1000000
+  train_steps: 5000000
+  test_frequency: 10000
+  test_episodes: 10
+  test_max_steps: 1000
+  seed: 0
+  stack_size: 1
+  eval_every: false
+  early_terminal: true
+  send_truncation: false
+  env_fn:
+    name: earl_envs
+    kwargs:
+      env_name: minitaur
+      reward_type: dense
+      reset_train_env_at_goal: false
+      setup_as_lifelong_learning: false
+      distance_type: l2_cluster
+      reset_free: true
+  agent:
+    name: GCResetFree
+    kwargs:
+      base_agent:
+        name: GoalConditionedSACAgent
+        kwargs:
+          actor_trunk_net:
+            name: Sequential
+            kwargs:
+              modules:
+              - name: Linear
+                kwargs:
+                  out_features: 50
+              - name: LayerNorm
+                kwargs:
+                  normalized_shape: 50
+              - name: Tanh
+          critic_trunk_net:
+            name: Sequential
+            kwargs:
+              modules:
+              - name: Linear
+                kwargs:
+                  out_features: 50
+              - name: LayerNorm
+                kwargs:
+                  normalized_shape: 50
+              - name: Tanh
+          actor_net:
+            name: MLPNetwork
+            kwargs:
+              hidden_units:
+              - 256
+              - 256
+          critic_net:
+            name: MLPNetwork
+            kwargs:
+              hidden_units:
+              - 256
+              - 256
+          actor_optimizer_fn:
+            name: Adam
+            kwargs:
+              lr: 0.0003
+          critic_optimizer_fn:
+            name: Adam
+            kwargs:
+              lr: 0.0003
+          alpha_optimizer_fn:
+            name: Adam
+            kwargs:
+              lr: 0.0003
+          init_fn:
+            name: xavier_uniform
+          target_entropy_scale: 0.5
+          reward_scale_factor: 10.0
+          critic_loss_weight: 0.5
+          soft_update_fraction: 0.005
+          policy_update_frequency: 1
+          discount_rate: 0.99
+          batch_size: 256
+          min_replay_history: 10000
+          replay_buffer:
+            name: CircularReplayBuffer
+            kwargs:
+              capacity: 10000000
+          device: cuda
+          compute_success_probability: true
+          trunc_as_terminal: true
+      goal_generator:
+        name: FBGoalGenerator
+      phase_step_limit: 1000
+      replay_buffer:
+        name: CircularReplayBuffer
+        kwargs:
+          capacity: 10000000
+      goal_switcher:
+        name: SuccessProbabilityGoalSwitcher
+        kwargs:
+          switching_probability: 0.002
+          start: 100
+          end: 1000
+          num_steps: 1000000
+          conservative_factor: 0.95
+          minimum_steps: 250
+          trajectory_proportion: 0.25
+  loggers:
+  - name: WandbLogger
+    kwargs:
+      project: RF-IS
+      name: minitaur_risc
+      resume: allow
+      start_method: fork

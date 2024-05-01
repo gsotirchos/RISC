@@ -1,0 +1,11 @@
+earl_benchmark @ git+https://github.com/dapatil211/earl_benchmark.git@fa4a75cb1baf0d05a091b53f624391eea87b4110
+gymnasium-robotics==1.2.2
+gymnasium==0.28.1
+metaworld @ git+https://github.com/rlworkgroup/metaworld.git@04be337a12305e393c0caf0cbf5ec7755c7c8feb
+Minigrid==2.1.0
+rlhive @ git+https://github.com/chandar-lab/RLHive.git@de8f0a20a4e4760b532f244a84761e8609e34fea
+rliable==1.0.8
+Shimmy==0.2.1
+wandb-osh==1.0.4
+matplotlib
+tqdm
