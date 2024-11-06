@@ -25,6 +25,9 @@ from collections import defaultdict
 import pickle
 import os
 
+import matplotlib
+matplotlib.use("TkAgg")
+
 
 class ReseedWrapper(_ReseedWrapper):
     def reset(self, seed=None, **kwargs):
@@ -123,11 +126,12 @@ class MiniGridEnv(GymEnv):
         self._eval = eval
         self._eval_every = eval_every
         kwargs = {k: tuple(v) if isinstance(v, list) else v for k, v in kwargs.items()}
-        if self._eval:
-            render_mode = "rgb_array_list" if not eval_every else None
-        else:
-            render_mode = "rgb_array_list" if train_video else None
-        render_mode = None
+        # if self._eval:
+        #     render_mode = "rgb_array_list" if not eval_every else None
+        # else:
+        #     render_mode = "rgb_array_list" if train_video else None
+        # render_mode = None
+        render_mode = "human"
         self._train_video = (not self._eval) and train_video
         self._video_reset_schedule = PeriodicSchedule(False, True, video_length)
         self._video_write_schedule = PeriodicSchedule(False, True, train_video_period)
@@ -231,19 +235,21 @@ class MiniGridEnv(GymEnv):
             if self._vis_period.update():
                 self.visualize(self._id)
 
-        if self._train_video and self._video_reset_schedule.update():
-            frames = np.array(self._env.render())
-            if self._video_write_schedule.update():
-                frames = frames.transpose(0, 3, 1, 2)
-                self._logger.log_scalar("video", wandb.Video(frames), self._id)
+        self._env.render()
+        plt.pause(0.3)
+        # if self._train_video and self._video_reset_schedule.update():
+        #     frames = np.array(self._env.render())
+        #     if self._video_write_schedule.update():
+        #         frames = frames.transpose(0, 3, 1, 2)
+        #         self._logger.log_scalar("video", wandb.Video(frames), self._id)
         return observation, reward, terminated, truncated, self._turn, info
 
     def reset(self):
         self._has_reset = True
-        if not self._eval_every and self._video_schedule.update():
-            frames = np.array(self._env.render())
-            frames = frames.transpose(0, 3, 1, 2)
-            self._logger.log_scalar("video", wandb.Video(frames), self._id)
+        # if not self._eval_every and self._video_schedule.update():
+        #     frames = np.array(self._env.render())
+        #     frames = frames.transpose(0, 3, 1, 2)
+        #     self._logger.log_scalar("video", wandb.Video(frames), self._id)
         return super().reset()
 
 
