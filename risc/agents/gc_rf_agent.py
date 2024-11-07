@@ -217,6 +217,9 @@ class GCResetFree(Agent):
         if agent_traj_state.current_goal is None:
             agent_traj_state = self.get_new_goal(observation, agent_traj_state)
 
+        if hasattr(self._goal_generator, "update_novelty"):
+            self._goal_generator.update_novelty(observation)
+
         observation = self._replace_goal_fn(observation, agent_traj_state.current_goal)
         agent = (
             self._forward_agent if agent_traj_state.forward else self._backward_agent

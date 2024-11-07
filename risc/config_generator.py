@@ -514,6 +514,12 @@ def generate_goal_generator_fn(
         return {
             "name": "StableFBGoalGenerator",
         }, run_info
+    elif generator_name == "fl":
+        run_info = replace(run_info, agent=run_info.agent + "_fl")
+        return {
+            "name": "FLGoalGenerator",
+        }, run_info
+
     elif generator_name == "vaprl":
         run_info = replace(run_info, agent=run_info.agent + "_vaprl")
         return {

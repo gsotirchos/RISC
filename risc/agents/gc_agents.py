@@ -160,18 +160,8 @@ class GoalConditionedMixin:
     def compute_success_prob(self, observation, goals):
         """Takes in an observation (np.ndarray) and a goal (np.ndarray) and
         returns the probability that the agent succeeds at the task."""
-        if (len(observation.shape) == len(self._observation_space.shape)
-                and len(goals.shape) == len(self._goal_space.shape)):
-            state = np.concatenate([observation, goals], axis=0)
-            return super().compute_success_prob(state)
-        else:
-            if len(observation.shape) == len(self._observation_space.shape):
-                observation = np.expand_dims(observation, axis=0)
-            if len(goals.shape) == len(self._goal_space.shape):
-                goals = np.expand_dims(goals, axis=0)
-            observation, goals = np.broadcast_arrays(observation, goals)
-            states = np.concatenate([observation, goals], axis=1)
-            return np.array([super().compute_success_prob(state) for state in states])
+        state = np.concatenate([observation, goals], axis=0)
+        return super().compute_success_prob(state)
 
 
 class GoalConditionedDQNAgent(GoalConditionedMixin, DQNAgent):

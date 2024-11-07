@@ -48,6 +48,7 @@ class FBGoalGenerator(GoalGenerator):
         self._initial_states = initial_states
         self._goal_states = goal_states
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_generator"))
+        print("======= using FBGoalGernerator")
 
     def generate_goal(self, observation, agent_traj_state):
         if agent_traj_state.forward:
@@ -66,28 +67,48 @@ class FLGoalGenerator(GoalGenerator):
         lateral_agent,
         logger,
         goal_states,
-        get_explored_states_fn,
-        get_novelty_fn,
         **kwargs,
     ):
         super().__init__(logger, **kwargs)
         self._forward_agent = forward_agent
         self._lateral_agent = lateral_agent
         self._goal_states = goal_states
-        self._get_explored_states_fn = get_explored_states_fn
-        self._get_novelty_fn = get_novelty_fn
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_generator"))
+        self._visitation_counts = {}
+        print("======= using FLGoalGernerator")
+
+    def get_visited_states(self):
+        return np.array([key for key in self._visitation_counts.keys()])
+
+    def update_novelty(self, observation):
+        state = tuple(observation["observation"])  # TODO: is it np.array?
+        self._visitation_counts = self._visitation_counts.get(state, 0) + 1
+        pass
+
+    def _get_novelty(self, states):
+        if len(states.shape) == len(self.agent._observation_space.shape):
+            states = np.expand_dims(states, axis=0)
+        return np.array([1 / (1 + self._visitation_counts.get(state, 0)) for state in states])
+
+    def _confidence(self, observations, goals, agent):
+        if len(observations.shape) == len(self.agent._observation_space.shape):
+            observations = np.expand_dims(observations, axis=0)
+        if len(goals.shape) == len(self.agent._goal_space.shape):
+            goals = np.expand_dims(goals, axis=0)
+        observations, goals = np.broadcast_arrays(observations, goals)
+        states = np.concatenate([observations, goals], axis=1)
+        return np.array([agent.compute_success_prob(state) for state in states])
 
     def generate_goal(self, observation, agent_traj_state):
         main_goal = self._goal_states[self._rng.integers(len(self._goal_states))]
         if agent_traj_state.forward:
             goal = main_goal
         else:
-            frontier_states = self._get_explored_states_fn()
+            frontier_states = self.get_visited_states()
             promisingness = (
                 self._get_novelty_fn(frontier_states)
-                * self._lateral_agent.compute_success_prob(observation["observation"], frontier_states)
-                * self._forward_agent.compute_success_prob(frontier_states, main_goal)
+                * self._confidence(observation["observation"], frontier_states, self._lateral_agent)
+                * self._confidence(frontier_states, main_goal, self._forward_agent)
             )
             goal = np.random.choice(self._explored_states_fn(), p=promisingness)
         return goal, agent_traj_state
