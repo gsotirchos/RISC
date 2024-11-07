@@ -57,7 +57,49 @@ class FBGoalGenerator(GoalGenerator):
         return goal, agent_traj_state
 
 
-registry.register_all(GoalGenerator, {"FBGoalGenerator": FBGoalGenerator})
+class FLGoalGenerator(GoalGenerator):
+    """Generates goals from a fixed set of expored (frontier) and goal states."""
+
+    def __init__(
+        self,
+        forward_agent,
+        lateral_agent,
+        logger,
+        goal_states,
+        get_explored_states_fn,
+        get_novelty_fn,
+        **kwargs,
+    ):
+        super().__init__(logger, **kwargs)
+        self._forward_agent = forward_agent
+        self._lateral_agent = lateral_agent
+        self._goal_states = goal_states
+        self._get_explored_states_fn = get_explored_states_fn
+        self._get_novelty_fn = get_novelty_fn
+        self._rng = np.random.default_rng(seeder.get_new_seed("goal_generator"))
+
+    def generate_goal(self, observation, agent_traj_state):
+        main_goal = self._goal_states[self._rng.integers(len(self._goal_states))]
+        if agent_traj_state.forward:
+            goal = main_goal
+        else:
+            frontier_states = self._get_explored_states_fn()
+            promisingness = (
+                self._get_novelty_fn(frontier_states)
+                * self._lateral_agent.compute_success_prob(observation["observation"], frontier_states)
+                * self._forward_agent.compute_success_prob(frontier_states, main_goal)
+            )
+            goal = np.random.choice(self._explored_states_fn(), p=promisingness)
+        return goal, agent_traj_state
+
+
+registry.register_all(
+    GoalGenerator,
+    {
+        "FBGoalGenerator": FBGoalGenerator,
+        "FLGoalGenerator": FBGoalGenerator,
+    }
+)
 
 
 class GoalSwitcher(Registrable):
