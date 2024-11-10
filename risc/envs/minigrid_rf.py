@@ -120,6 +120,7 @@ class MiniGridEnv(GymEnv):
         video_length=100,
         train_video_period=20,
         id="env",
+        render_mode=None,
         **kwargs,
     ):
         self._reset_free = reset_free
@@ -131,7 +132,8 @@ class MiniGridEnv(GymEnv):
         # else:
         #     render_mode = "rgb_array_list" if train_video else None
         # render_mode = None
-        render_mode = "human"
+        # render_mode = "human"
+        self.render_mode = render_mode
         self._train_video = (not self._eval) and train_video
         self._video_reset_schedule = PeriodicSchedule(False, True, video_length)
         self._video_write_schedule = PeriodicSchedule(False, True, train_video_period)
@@ -141,7 +143,7 @@ class MiniGridEnv(GymEnv):
             num_players=num_players,
             seed=seed,
             symbolic=symbolic,
-            render_mode=render_mode,
+            render_mode=self.render_mode,
             highlight=False,
             **kwargs,
         )
@@ -235,8 +237,8 @@ class MiniGridEnv(GymEnv):
             if self._vis_period.update():
                 self.visualize(self._id)
 
-        self._env.render()
-        plt.pause(0.3)
+        # self._env.render()
+        # plt.pause(0.3)
         # if self._train_video and self._video_reset_schedule.update():
         #     frames = np.array(self._env.render())
         #     if self._video_write_schedule.update():

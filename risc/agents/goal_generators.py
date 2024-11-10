@@ -6,6 +6,7 @@ from hive.utils.loggers import Logger, NullLogger
 from hive.utils.registry import Registrable
 from hive.utils.schedule import PeriodicSchedule
 from hive.utils.utils import seeder
+from scipy.special import softmax
 
 
 class GoalGenerator(Registrable):
@@ -48,7 +49,6 @@ class FBGoalGenerator(GoalGenerator):
         self._initial_states = initial_states
         self._goal_states = goal_states
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_generator"))
-        print("======= using FBGoalGernerator")
 
     def generate_goal(self, observation, agent_traj_state):
         if agent_traj_state.forward:
@@ -63,54 +63,82 @@ class FLGoalGenerator(GoalGenerator):
 
     def __init__(
         self,
-        forward_agent,
-        lateral_agent,
+        agent,
+        backward_agent,
         logger,
         goal_states,
         **kwargs,
     ):
         super().__init__(logger, **kwargs)
-        self._forward_agent = forward_agent
-        self._lateral_agent = lateral_agent
+        self._forward_agent = agent
+        self._lateral_agent = backward_agent
         self._goal_states = goal_states
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_generator"))
         self._visitation_counts = {}
-        print("======= using FLGoalGernerator")
 
-    def get_visited_states(self):
-        return np.array([key for key in self._visitation_counts.keys()])
+    def totuple(self, arr):
+        if isinstance(arr, np.ndarray):
+            return tuple(self.totuple(sub_arr) for sub_arr in arr)
+        else:
+            return arr
 
     def update_novelty(self, observation):
-        state = tuple(observation["observation"])  # TODO: is it np.array?
-        self._visitation_counts = self._visitation_counts.get(state, 0) + 1
-        pass
+        state = self.totuple(observation["observation"])
+        self._visitation_counts[state] = self._visitation_counts.get(state, 0) + 1
+        # print(f'=== Visiting: {self._debug_fmt_states(observation["observation"][0])}'
+        #       + f" now visited {self._visitation_counts[state]} times")
 
-    def _get_novelty(self, states):
-        if len(states.shape) == len(self.agent._observation_space.shape):
+    def _novelty(self, states):
+        if len(states.shape) == len(self._forward_agent._observation_space.shape):
             states = np.expand_dims(states, axis=0)
-        return np.array([1 / (1 + self._visitation_counts.get(state, 0)) for state in states])
+        return np.array([1 / (1 + self._visitation_counts.get(self.totuple(state), 0))
+                         for state in states])
 
     def _confidence(self, observations, goals, agent):
-        if len(observations.shape) == len(self.agent._observation_space.shape):
+        if len(observations.shape) == len(agent._observation_space.shape):
             observations = np.expand_dims(observations, axis=0)
-        if len(goals.shape) == len(self.agent._goal_space.shape):
-            goals = np.expand_dims(goals, axis=0)
-        observations, goals = np.broadcast_arrays(observations, goals)
-        states = np.concatenate([observations, goals], axis=1)
-        return np.array([agent.compute_success_prob(state) for state in states])
+        if len(goals.shape) == len(agent._goal_space.shape):
+            goals = np.expand_dims(goals, axis=1)
+        observations, goals = \
+            np.repeat(observations, goals.shape[0], axis=0), \
+            np.tile(goals, (observations.shape[0], 1, 1, 1))
+        return np.array([agent.compute_success_prob(observation, goal)
+                         for observation, goal in zip(observations, goals, strict=True)])
+
+    def _visited_states(self):
+        return np.array([key for key in self._visitation_counts.keys()])
+
+    def _debug_fmt_states(self, states: np.ndarray, value: int=255):
+        return np.argwhere(states == value)[..., -2:].squeeze().tolist()
 
     def generate_goal(self, observation, agent_traj_state):
+        print("=== Generating goal")
         main_goal = self._goal_states[self._rng.integers(len(self._goal_states))]
         if agent_traj_state.forward:
             goal = main_goal
+            print("    main goal")
         else:
-            frontier_states = self.get_visited_states()
-            promisingness = (
-                self._get_novelty_fn(frontier_states)
-                * self._confidence(observation["observation"], frontier_states, self._lateral_agent)
-                * self._confidence(frontier_states, main_goal, self._forward_agent)
+            frontier_states = self._visited_states()
+            print("    observation:")
+            print(f'       {self._debug_fmt_states(observation["observation"][0])}')
+            print("    frontier states:")
+            for state in frontier_states:
+                print(f"       {self._debug_fmt_states(state[0])}: "
+                      + f"{self._visitation_counts.get(self.totuple(state))}")
+            promisingness = softmax(
+                self._novelty(frontier_states)
+                * self._confidence(observation["observation"],
+                                   frontier_states[:, 0],
+                                   self._lateral_agent)
+                * self._confidence(frontier_states,
+                                   main_goal,
+                                   self._forward_agent)
             )
-            goal = np.random.choice(self._explored_states_fn(), p=promisingness)
+            goal_idx = np.random.choice(len(promisingness), p=promisingness)
+            goal = frontier_states[goal_idx, 0]
+            goal = np.expand_dims(goal, axis=0)
+            print("    frontier goal:")
+            print(f"       {self._debug_fmt_states(goal)}")
         return goal, agent_traj_state
 
 
@@ -118,7 +146,7 @@ registry.register_all(
     GoalGenerator,
     {
         "FBGoalGenerator": FBGoalGenerator,
-        "FLGoalGenerator": FBGoalGenerator,
+        "FLGoalGenerator": FLGoalGenerator,
     }
 )
 
@@ -254,13 +282,13 @@ class ReverseCurriculumGoalSwitcher(GoalSwitcher):
         if should_switch:
             self._logger.log_metrics(
                 {
-                    f"reset/traj_length": agent_traj_state.phase_steps,
+                    "reset/traj_length": agent_traj_state.phase_steps,
                 },
                 "goal_switcher",
             )
         if self._log_schedule.update():
             self._logger.log_metrics(
-                {f"forward/success_probability": success_prob}, "goal_switcher"
+                {"forward/success_probability": success_prob}, "goal_switcher"
             )
         return should_switch
 

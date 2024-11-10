@@ -13,7 +13,7 @@ from hive.agents.agent import Agent
 from hive.runners import SingleAgentRunner as _SingleAgentRunner
 from hive.runners.utils import Metrics, TransitionInfo
 from hive.utils.experiment import Experiment
-from hive.utils.loggers import ScheduledLogger
+from hive.utils.loggers import ScheduledLogger, NullLogger
 from wandb_osh.hooks import TriggerWandbSyncHook
 
 
@@ -85,8 +85,10 @@ class SingleAgentRunner(_SingleAgentRunner):
             max_steps_per_episode,
             seed,
         )
-        self._logger = self._logger._logger_list[0]
-        self._logger.register_timescale("train", log_timescale=True)
+        if not isinstance(self._logger, NullLogger):
+            self._logger = self._logger._logger_list[0]
+        if not isinstance(self._logger, NullLogger):
+            self._logger.register_timescale("train", log_timescale=True)
         self._eval_every = eval_every
         self._vis_fn = reset_free_env.vis_fn
         self._train_environment.register_logger(self._logger)
