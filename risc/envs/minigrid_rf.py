@@ -26,7 +26,10 @@ import pickle
 import os
 
 import matplotlib
-matplotlib.use("TkAgg")
+try:
+    matplotlib.use("TkAgg")
+except:
+    matplotlib.use("Agg")
 
 
 class ReseedWrapper(_ReseedWrapper):
