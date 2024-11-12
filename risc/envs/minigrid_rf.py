@@ -135,7 +135,6 @@ class MiniGridEnv(GymEnv):
         # else:
         #     render_mode = "rgb_array_list" if train_video else None
         # render_mode = None
-        # render_mode = "human"
         self.render_mode = render_mode
         self._train_video = (not self._eval) and train_video
         self._video_reset_schedule = PeriodicSchedule(False, True, video_length)
@@ -240,21 +239,27 @@ class MiniGridEnv(GymEnv):
             if self._vis_period.update():
                 self.visualize(self._id)
 
-        # self._env.render()
-        # plt.pause(0.3)
-        # if self._train_video and self._video_reset_schedule.update():
-        #     frames = np.array(self._env.render())
-        #     if self._video_write_schedule.update():
-        #         frames = frames.transpose(0, 3, 1, 2)
-        #         self._logger.log_scalar("video", wandb.Video(frames), self._id)
+        #self._env.render()
+        #plt.pause(0.3)
+        if self._train_video and self._video_reset_schedule.update():
+            if self.render_mode != "rgb_array_list":
+                print('passing')
+                pass
+            frames = np.array(self._env.render())
+            if self._video_write_schedule.update():
+                frames = frames.transpose(0, 3, 1, 2)
+                self._logger.log_scalar("video", wandb.Video(frames), self._id)
         return observation, reward, terminated, truncated, self._turn, info
 
     def reset(self):
         self._has_reset = True
-        # if not self._eval_every and self._video_schedule.update():
-        #     frames = np.array(self._env.render())
-        #     frames = frames.transpose(0, 3, 1, 2)
-        #     self._logger.log_scalar("video", wandb.Video(frames), self._id)
+        if not self._eval_every and self._video_schedule.update():
+            if self.render_mode != "rgb_array_list":
+                print('passing')
+                pass
+            frames = np.array(self._env.render())
+            frames = frames.transpose(0, 3, 1, 2)
+            self._logger.log_scalar("video", wandb.Video(frames), self._id)
         return super().reset()
 
 
