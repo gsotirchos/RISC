@@ -242,24 +242,20 @@ class MiniGridEnv(GymEnv):
         #self._env.render()
         #plt.pause(0.3)
         if self._train_video and self._video_reset_schedule.update():
-            if self.render_mode != "rgb_array_list":
-                print('passing')
-                pass
-            frames = np.array(self._env.render())
-            if self._video_write_schedule.update():
-                frames = frames.transpose(0, 3, 1, 2)
-                self._logger.log_scalar("video", wandb.Video(frames), self._id)
+            if self.render_mode == "rgb_array_list":
+                frames = np.array(self._env.render())
+                if self._video_write_schedule.update():
+                    frames = frames.transpose(0, 3, 1, 2)
+                    self._logger.log_scalar("video", wandb.Video(frames), self._id)
         return observation, reward, terminated, truncated, self._turn, info
 
     def reset(self):
         self._has_reset = True
         if not self._eval_every and self._video_schedule.update():
-            if self.render_mode != "rgb_array_list":
-                print('passing')
-                pass
-            frames = np.array(self._env.render())
-            frames = frames.transpose(0, 3, 1, 2)
-            self._logger.log_scalar("video", wandb.Video(frames), self._id)
+            if self.render_mode == "rgb_array_list":
+                frames = np.array(self._env.render())
+                frames = frames.transpose(0, 3, 1, 2)
+                self._logger.log_scalar("video", wandb.Video(frames), self._id)
         return super().reset()
 
 
