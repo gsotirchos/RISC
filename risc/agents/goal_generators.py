@@ -66,12 +66,14 @@ class FLGoalGenerator(GoalGenerator):
         agent,
         backward_agent,
         logger,
+        initial_states,
         goal_states,
         **kwargs,
     ):
         super().__init__(logger, **kwargs)
         self._forward_agent = agent
         self._lateral_agent = backward_agent
+        self._initial_states = initial_states
         self._goal_states = goal_states
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_generator"))
         self._visitation_counts = {}
@@ -112,33 +114,42 @@ class FLGoalGenerator(GoalGenerator):
         return np.argwhere(states == value)[..., -2:].squeeze().tolist()
 
     def generate_goal(self, observation, agent_traj_state):
-        #print("=== Generating goal")
-        main_goal = self._goal_states[self._rng.integers(len(self._goal_states))]
+        print("=== Generating goal")
+        initial_state = self._initial_states[self._rng.integers(len(self._initial_states))]
+        start_state = self._goal_states[self._rng.integers(len(self._goal_states))]
         if agent_traj_state.forward:
-            goal = main_goal
-            #print("    main goal")
+            goal = start_state
+            print("    main goal")
         else:
             frontier_states = self._visited_states()
-            #print("    observation:")
-            #print(f'       {self._debug_fmt_states(observation["observation"][0])}')
+            #print("    observation:\n"
+            #      + f'       {self._debug_fmt_states(observation["observation"][0])}')
             #print("    frontier states:")
             #for state in frontier_states:
             #    print(f"       {self._debug_fmt_states(state[0])}: "
             #          + f"{self._visitation_counts.get(self.totuple(state))}")
+            novelty = self._novelty(frontier_states)
+            conf_to_reach = self._confidence(observation["observation"],
+                                             frontier_states[:, 0],
+                                             self._lateral_agent)
+            conf_to_come = self._confidence(initial_state,
+                                            frontier_states,
+                                            self._forward_agent)
+            conf_to_go = self._confidence(frontier_states,
+                                          start_state,
+                                          self._forward_agent)
             promisingness = softmax(
-                self._novelty(frontier_states)
-                * self._confidence(observation["observation"],
-                                   frontier_states[:, 0],
-                                   self._lateral_agent)
-                * self._confidence(frontier_states,
-                                   main_goal,
-                                   self._forward_agent)
+                np.power(novelty, 0)
+                * np.power(conf_to_reach, 0)
+                * np.power(conf_to_come, 1)
+                * np.power(conf_to_go, 0)
             )
             goal_idx = np.random.choice(len(promisingness), p=promisingness)
+            #goal_idx = np.argmax(promisingness)
             goal = frontier_states[goal_idx, 0]
             goal = np.expand_dims(goal, axis=0)
-            #print("    frontier goal:")
-            #print(f"       {self._debug_fmt_states(goal)}")
+            print("    frontier goal:\n"
+                 + f"       {self._debug_fmt_states(goal)}")
         return goal, agent_traj_state
 
 
