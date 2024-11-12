@@ -25,11 +25,11 @@ from collections import defaultdict
 import pickle
 import os
 
-import matplotlib
 try:
+    import matplotlib
     matplotlib.use("TkAgg")
 except:
-    matplotlib.use("Agg")
+    pass
 
 
 class ReseedWrapper(_ReseedWrapper):
