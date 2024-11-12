@@ -402,13 +402,14 @@ class GCResetFree(Agent):
 
     def save(self, dname):
         agent_path = os.path.join(dname, "gc_agent")
-        goal_generator_path = os.path.join(dname, "goal_generator")
         create_folder(agent_path)
-        create_folder(goal_generator_path)
         self._forward_agent.save(agent_path)
         if self._separate_agents:
             backward_agent_path = os.path.join(dname, "gc_agent_backward")
+            create_folder(backward_agent_path)
             self._backward_agent.save(backward_agent_path)
+        goal_generator_path = os.path.join(dname, "goal_generator")
+        create_folder(goal_generator_path)
         self._goal_generator.save(goal_generator_path)
         if self._log_success:
             with open(os.path.join(dname, "success_table.pkl"), "wb") as f:
