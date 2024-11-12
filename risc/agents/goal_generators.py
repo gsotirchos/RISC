@@ -85,8 +85,8 @@ class FLGoalGenerator(GoalGenerator):
     def update_novelty(self, observation):
         state = self.totuple(observation["observation"])
         self._visitation_counts[state] = self._visitation_counts.get(state, 0) + 1
-        # print(f'=== Visiting: {self._debug_fmt_states(observation["observation"][0])}'
-        #       + f" now visited {self._visitation_counts[state]} times")
+        #print(f'=== Visiting: {self._debug_fmt_states(observation["observation"][0])}'
+        #      + f" now visited {self._visitation_counts[state]} times")
 
     def _novelty(self, states):
         if len(states.shape) == len(self._forward_agent._observation_space.shape):
@@ -112,19 +112,19 @@ class FLGoalGenerator(GoalGenerator):
         return np.argwhere(states == value)[..., -2:].squeeze().tolist()
 
     def generate_goal(self, observation, agent_traj_state):
-        print("=== Generating goal")
+        #print("=== Generating goal")
         main_goal = self._goal_states[self._rng.integers(len(self._goal_states))]
         if agent_traj_state.forward:
             goal = main_goal
-            print("    main goal")
+            #print("    main goal")
         else:
             frontier_states = self._visited_states()
-            print("    observation:")
-            print(f'       {self._debug_fmt_states(observation["observation"][0])}')
-            print("    frontier states:")
-            for state in frontier_states:
-                print(f"       {self._debug_fmt_states(state[0])}: "
-                      + f"{self._visitation_counts.get(self.totuple(state))}")
+            #print("    observation:")
+            #print(f'       {self._debug_fmt_states(observation["observation"][0])}')
+            #print("    frontier states:")
+            #for state in frontier_states:
+            #    print(f"       {self._debug_fmt_states(state[0])}: "
+            #          + f"{self._visitation_counts.get(self.totuple(state))}")
             promisingness = softmax(
                 self._novelty(frontier_states)
                 * self._confidence(observation["observation"],
@@ -137,8 +137,8 @@ class FLGoalGenerator(GoalGenerator):
             goal_idx = np.random.choice(len(promisingness), p=promisingness)
             goal = frontier_states[goal_idx, 0]
             goal = np.expand_dims(goal, axis=0)
-            print("    frontier goal:")
-            print(f"       {self._debug_fmt_states(goal)}")
+            #print("    frontier goal:")
+            #print(f"       {self._debug_fmt_states(goal)}")
         return goal, agent_traj_state
 
 
