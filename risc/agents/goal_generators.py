@@ -68,6 +68,7 @@ class FLGoalGenerator(GoalGenerator):
         logger,
         initial_states,
         goal_states,
+        exponents,
         **kwargs,
     ):
         super().__init__(logger, **kwargs)
@@ -75,6 +76,7 @@ class FLGoalGenerator(GoalGenerator):
         self._lateral_agent = backward_agent
         self._initial_states = initial_states
         self._goal_states = goal_states
+        self._exponents = exponents
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_generator"))
         self._visitation_counts = {}
 
@@ -138,11 +140,12 @@ class FLGoalGenerator(GoalGenerator):
             conf_to_go = self._confidence(frontier_states,
                                           start_state,
                                           self._forward_agent)
+            print(f"self._exponents: {self._exponents}")
             promisingness = softmax(
-                np.power(novelty, 0)
-                * np.power(conf_to_reach, 0)
-                * np.power(conf_to_come, 1)
-                * np.power(conf_to_go, 0)
+                np.power(novelty, self._exponents[0])
+                * np.power(conf_to_reach, self._exponents[1])
+                * np.power(conf_to_come, self._exponents[2])
+                * np.power(conf_to_go, self._exponents[3])
             )
             goal_idx = np.random.choice(len(promisingness), p=promisingness)
             #goal_idx = np.argmax(promisingness)

@@ -11,7 +11,7 @@ kwargs:
           off_value: false
           on_value: true
           period: 1000000
-  train_steps: 500000
+  train_steps: 100000
   test_frequency: 1000
   test_episodes: 10
   test_max_steps: 100
@@ -78,10 +78,11 @@ kwargs:
         kwargs:
           capacity: 100000
       separate_agents: true
+      exponents: [1, 0, 0, 1]
   loggers:
   - name: WandbLogger
     kwargs:
-      name: 4rooms_custom
+      name: 4rooms_gbfs
       project: Thesis
       resume: allow
       start_method: fork
