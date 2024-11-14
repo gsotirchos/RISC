@@ -149,7 +149,7 @@ class FLGoalGenerator(GoalGenerator):
             goal = frontier_states[goal_idx, 0]
             goal = np.expand_dims(goal, axis=0)
             print("    frontier goal:\n"
-                 + f"       {self._debug_fmt_states(goal)}")
+                  + f"       {self._debug_fmt_states(goal)}")
         return goal, agent_traj_state
 
 

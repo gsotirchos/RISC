@@ -11,7 +11,7 @@ kwargs:
           off_value: false
           on_value: true
           period: 1000000
-  train_steps: 100000
+  train_steps: 500000
   test_frequency: 1000
   test_episodes: 10
   test_max_steps: 100
