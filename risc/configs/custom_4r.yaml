@@ -54,7 +54,7 @@ kwargs:
           replay_buffer:
             name: CircularReplayBuffer
             kwargs:
-              capacity: 100000
+             capacity: 100000
           representation_net:
             name: ConvNetwork
             kwargs:
@@ -74,15 +74,19 @@ kwargs:
         name: SuccessProbabilityGoalSwitcher
       phase_step_limit: 100
       replay_buffer:
-        name: CircularReplayBuffer
+        name: HERReplayBuffer
         kwargs:
           capacity: 100000
+          her_batch_size: 64
+        #name: CircularReplayBuffer
+        #kwargs:
+        #  capacity: 100000
       separate_agents: true
       exponents: [1, 0, 1, 1]
   loggers:
   - name: WandbLogger
     kwargs:
-      name: 4rooms_astar
+      name: 4rooms_astar_HER
       project: Thesis
       resume: allow
       start_method: fork

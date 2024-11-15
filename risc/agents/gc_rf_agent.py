@@ -9,7 +9,7 @@ from hive.agents import Agent
 from hive.utils.loggers import Logger, NullLogger
 from hive.utils.schedule import PeriodicSchedule
 from hive.utils.utils import create_folder
-from replays.circular_replay import CircularReplayBuffer
+from hive.replays.replay_buffer import BaseReplayBuffer
 
 from agents.goal_generators import GoalGenerator, GoalSwitcher
 from collections import deque
@@ -51,7 +51,7 @@ class GCResetFree(Agent):
         backward_demos,
         replace_goal_fn,
         logger: Logger,
-        replay_buffer: CircularReplayBuffer,
+        replay_buffer: BaseReplayBuffer,
         distance_type: str = "l2_cluster",
         phase_step_limit: int = 300,
         id=0,
