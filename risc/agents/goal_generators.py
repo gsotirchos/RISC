@@ -140,7 +140,7 @@ class FLGoalGenerator(GoalGenerator):
             conf_to_go = self._confidence(frontier_states,
                                           start_state,
                                           self._forward_agent)
-            print(f"self._exponents: {self._exponents}")
+            #print(f"    self._exponents: {self._exponents}")
             promisingness = softmax(
                 np.power(novelty, self._exponents[0])
                 * np.power(conf_to_reach, self._exponents[1])
