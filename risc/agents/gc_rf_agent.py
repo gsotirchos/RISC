@@ -148,7 +148,7 @@ class GCResetFree(Agent):
             forward_demos=forward_demos,
             backward_demos=backward_demos,
             initial_states=initial_states,
-            exponents=kwargs["exponents"],
+            exponents=kwargs.get("exponents", [1, 1, 1, 1]),
             goal_states=goal_states,
             distance_fn=distance_fn,
             all_states_fn=all_states_fn,
