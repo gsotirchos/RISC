@@ -74,13 +74,11 @@ kwargs:
         name: SuccessProbabilityGoalSwitcher
       phase_step_limit: 100
       replay_buffer:
+        #name: CircularReplayBuffer
         name: HERReplayBuffer
         kwargs:
           capacity: 100000
           her_batch_size: 64
-        #name: CircularReplayBuffer
-        #kwargs:
-        #  capacity: 100000
       separate_agents: true
       exponents: [1, 0, 1, 1]
   loggers:
