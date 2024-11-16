@@ -258,6 +258,9 @@ class MiniGridEnv(GymEnv):
                 self._logger.log_scalar("video", wandb.Video(frames), self._id)
         return super().reset()
 
+    def save(self, folder_name):
+        pass
+
 
 def create_vis_fn(env_name):
     if env_name == "MiniGrid-Empty-16x16-v1":

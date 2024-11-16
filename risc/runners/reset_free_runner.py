@@ -100,12 +100,12 @@ class ResetFreeRunner(SingleAgentRunner):
 
             # Save experiment state
             if self._save_experiment:
-                #self._experiment_manager.save()
+                self._experiment_manager.save()
                 self._save_experiment = False
 
         # Run a final test episode and save the experiment.
         self.run_testing()
-        #self._experiment_manager.save()
+        self._experiment_manager.save()
         self._trigger_sync()
 
     def run_train_period(
