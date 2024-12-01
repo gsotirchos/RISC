@@ -81,11 +81,11 @@ kwargs:
           her_batch_size: 64
       separate_agents: true
       weights: [1, 0, 1, 1]
-      directions: [forward, backward, lateral]
+      directions: [forward, lateral]
   loggers:
-  # - name: WandbLogger
-  #   kwargs:
-  #     name: 4rooms_astar_HER
-  #     project: Thesis
-  #     resume: allow
-  #     start_method: fork
+  - name: WandbLogger
+    kwargs:
+      name: 4rooms_astar_HER
+      project: Thesis
+      resume: allow
+      start_method: fork
