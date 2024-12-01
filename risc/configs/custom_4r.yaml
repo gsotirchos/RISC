@@ -33,7 +33,7 @@ kwargs:
       train_max_steps: 100000
       video_period: 1000
       vis_frequency: 2000
-      render_mode: human
+      #render_mode: human
   agent:
     name: GCResetFree
     kwargs:
@@ -86,6 +86,6 @@ kwargs:
   - name: WandbLogger
     kwargs:
       name: 4rooms_astar_HER
-      project: Thesis
+      project: Experiments
       resume: allow
       start_method: fork
