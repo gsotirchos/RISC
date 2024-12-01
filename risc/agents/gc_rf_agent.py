@@ -17,14 +17,6 @@ from collections import deque
 import pickle
 
 
-def next_item(current_item):
-    enum = type(current_item)
-    current_idx = list(enum).index(current_item)
-    next_idx = (current_idx + 1) % len(enum)
-    next_item = list(enum)[next_idx]
-    return next_item
-
-
 @dataclass(frozen=True)
 class GCAgentState:
     subagent_traj_state: Any = None
@@ -115,13 +107,7 @@ class GCResetFree(Agent):
             never_truncate: Whether to truncate trajectories on phase_step_limit.
             use_demo: Whether to use the demo.
         """
-        self._directions = Enum(
-            'Direction', {
-                name: index for index, name in enumerate(
-                    kwargs.get("directions", ["forward", "backward"])
-                )
-            }
-        )
+        self._directions = kwargs.get("directions", ["forward", "backward"])
         self._separate_agents = separate_agents
         distance_fn = get_distance_fn(distance_type=distance_type)
         super().__init__(observation_space, action_space, id)
@@ -171,7 +157,6 @@ class GCResetFree(Agent):
             replace_goal_fn=replace_goal_fn,
             candidates=np.copy(candidates),
             device=self._forward_agent._device,
-            directions=self._directions,
             weights=kwargs.get("weights", [1, 1, 1, 1]),
         )
         self._goal_switcher = goal_switcher(
@@ -411,12 +396,14 @@ class GCResetFree(Agent):
 
     def get_new_direction(self, agent_traj_state):
         if agent_traj_state.current_direction is None:
-            direction = list(self._directions)[0]
+            direction = self._directions[0]
         else:
-            direction = next_item(agent_traj_state.current_direction)
+            current_idx = self._directions.index(agent_traj_state.current_direction)
+            next_idx = (current_idx + 1) % len(self._directions)
+            direction = list(self._directions)[next_idx]
         return replace(agent_traj_state,
                        current_direction=direction,
-                       forward=(direction == self._directions.forward))
+                       forward=(direction == "forward"))
 
     def train(self):
         super().train()

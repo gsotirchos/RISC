@@ -71,7 +71,6 @@ class FLGoalGenerator(GoalGenerator):
         logger,
         initial_states,
         goal_states,
-        directions,
         weights,
         **kwargs,
     ):
@@ -80,7 +79,6 @@ class FLGoalGenerator(GoalGenerator):
         self._lateral_agent = backward_agent
         self._initial_states = initial_states
         self._goal_states = goal_states
-        self._directions = directions
         self._weights = weights
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_generator"))
         self._visitation_counts = {}
@@ -125,13 +123,13 @@ class FLGoalGenerator(GoalGenerator):
         initial_state = self._initial_states[self._rng.integers(len(self._initial_states))]
         main_goal_state = self._goal_states[self._rng.integers(len(self._goal_states))]
         match agent_traj_state.current_direction:
-            case self._directions.forward:
+            case "forward":
                 goal = main_goal_state
-                #print("    main goal state:\n")
-            case self._directions.backward:
+                #print("    main goal\n")
+            case "backward":
                 goal = initial_state
-                #print("    initial state:\n")
-            case self._directions.lateral:
+                #print("    initial state\n")
+            case "lateral":
                 frontier_states = self._visited_states()
                 #print("    observation:\n"
                 #      + f'       {self._debug_fmt_states(observation["observation"][0])}')
