@@ -2,6 +2,7 @@ import os
 from dataclasses import dataclass, replace
 from functools import partial
 from typing import Any
+from enum import Enum
 
 import numpy as np
 from envs.types import UpdateInfo
@@ -16,10 +17,19 @@ from collections import deque
 import pickle
 
 
+def next_item(current_item):
+    enum = type(current_item)
+    current_idx = list(enum).index(current_item)
+    next_idx = (current_idx + 1) % len(enum)
+    next_item = list(enum)[next_idx]
+    return next_item
+
+
 @dataclass(frozen=True)
 class GCAgentState:
     subagent_traj_state: Any = None
     current_goal: Any = None
+    current_direction: Any = None
     forward: bool = True
     phase_steps: int = 0
     phase_return: int = 0
@@ -105,6 +115,13 @@ class GCResetFree(Agent):
             never_truncate: Whether to truncate trajectories on phase_step_limit.
             use_demo: Whether to use the demo.
         """
+        self._directions = Enum(
+            'Direction', {
+                name: index for index, name in enumerate(
+                    kwargs.get("directions", ["forward", "backward"])
+                )
+            }
+        )
         self._separate_agents = separate_agents
         distance_fn = get_distance_fn(distance_type=distance_type)
         super().__init__(observation_space, action_space, id)
@@ -142,19 +159,20 @@ class GCResetFree(Agent):
             )
             self._backward_agent = self._forward_agent
         self._goal_generator = goal_generator(
-            agent=self._forward_agent,
+            forward_agent=self._forward_agent,
             backward_agent=self._backward_agent,
             logger=logger,
             forward_demos=forward_demos,
             backward_demos=backward_demos,
             initial_states=initial_states,
-            exponents=kwargs.get("exponents", [1, 1, 1, 1]),
             goal_states=goal_states,
             distance_fn=distance_fn,
             all_states_fn=all_states_fn,
             replace_goal_fn=replace_goal_fn,
             candidates=np.copy(candidates),
             device=self._forward_agent._device,
+            directions=self._directions,
+            weights=kwargs.get("weights", [1, 1, 1, 1]),
         )
         self._goal_switcher = goal_switcher(
             forward_agent=self._forward_agent,
@@ -215,6 +233,7 @@ class GCResetFree(Agent):
             return self._forward_agent.act(observation, agent_traj_state)
         if agent_traj_state is None:
             agent_traj_state = GCAgentState()
+            agent_traj_state = self.get_new_direction(agent_traj_state)
         if agent_traj_state.current_goal is None:
             agent_traj_state = self.get_new_goal(observation, agent_traj_state)
 
@@ -296,12 +315,13 @@ class GCResetFree(Agent):
                 )
 
             agent_traj_state = GCAgentState(
-                forward=not agent_traj_state.forward,
+                current_direction=agent_traj_state.current_direction,
                 forward_success=agent_traj_state.forward_success,
                 forward_goal_idx=agent_traj_state.forward_goal_idx,
                 reset_success=agent_traj_state.reset_success,
                 reset_goal_idx=agent_traj_state.reset_goal_idx,
             )
+            agent_traj_state = self.get_new_direction(agent_traj_state)
         return agent_traj_state
 
     def _log_visualizations(self):
@@ -386,10 +406,17 @@ class GCResetFree(Agent):
         return terminated, truncated, success
 
     def get_new_goal(self, observation, agent_traj_state):
-        goal, agent_traj_state = self._goal_generator.generate_goal(
-            observation, agent_traj_state
-        )
+        goal = self._goal_generator.generate_goal(observation, agent_traj_state)
         return replace(agent_traj_state, current_goal=goal)
+
+    def get_new_direction(self, agent_traj_state):
+        if agent_traj_state.current_direction is None:
+            direction = list(self._directions)[0]
+        else:
+            direction = next_item(agent_traj_state.current_direction)
+        return replace(agent_traj_state,
+                       current_direction=direction,
+                       forward=(direction == self._directions.forward))
 
     def train(self):
         super().train()
@@ -418,9 +445,9 @@ class GCResetFree(Agent):
 
     def load(self, dname):
         agent_path = os.path.join(dname, "gc_agent")
-        goal_generator_path = os.path.join(dname, "goal_generator")
         self._forward_agent.load(agent_path)
         if self._separate_agents:
             backward_agent_path = os.path.join(dname, "gc_agent_backward")
             self._backward_agent.load(backward_agent_path)
+        goal_generator_path = os.path.join(dname, "goal_generator")
         self._goal_generator.load(goal_generator_path)

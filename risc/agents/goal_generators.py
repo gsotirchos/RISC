@@ -9,6 +9,9 @@ from hive.utils.utils import seeder
 from scipy.special import softmax
 
 
+def softmin(x): return softmax(-x)
+
+
 class GoalGenerator(Registrable):
     """Base class for Goal generators. Each subclass should implement
     generate_goaln which takes in arbitrary arguments and returns a goal.
@@ -55,7 +58,7 @@ class FBGoalGenerator(GoalGenerator):
             goal = self._goal_states[self._rng.integers(len(self._goal_states))]
         else:
             goal = self._initial_states[self._rng.integers(len(self._initial_states))]
-        return goal, agent_traj_state
+        return goal
 
 
 class FLGoalGenerator(GoalGenerator):
@@ -63,31 +66,33 @@ class FLGoalGenerator(GoalGenerator):
 
     def __init__(
         self,
-        agent,
+        forward_agent,
         backward_agent,
         logger,
         initial_states,
         goal_states,
-        exponents,
+        directions,
+        weights,
         **kwargs,
     ):
         super().__init__(logger, **kwargs)
-        self._forward_agent = agent
+        self._forward_agent = forward_agent
         self._lateral_agent = backward_agent
         self._initial_states = initial_states
         self._goal_states = goal_states
-        self._exponents = exponents
+        self._directions = directions
+        self._weights = weights
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_generator"))
         self._visitation_counts = {}
 
-    def totuple(self, arr):
+    def _totuple(self, arr):
         if isinstance(arr, np.ndarray):
-            return tuple(self.totuple(sub_arr) for sub_arr in arr)
+            return tuple(self._totuple(sub_arr) for sub_arr in arr)
         else:
             return arr
 
     def update_novelty(self, observation):
-        state = self.totuple(observation["observation"])
+        state = self._totuple(observation["observation"])
         self._visitation_counts[state] = self._visitation_counts.get(state, 0) + 1
         #print(f'=== Visiting: {self._debug_fmt_states(observation["observation"][0])}'
         #      + f" now visited {self._visitation_counts[state]} times")
@@ -95,7 +100,7 @@ class FLGoalGenerator(GoalGenerator):
     def _novelty(self, states):
         if len(states.shape) == len(self._forward_agent._observation_space.shape):
             states = np.expand_dims(states, axis=0)
-        return np.array([1 / (1 + self._visitation_counts.get(self.totuple(state), 0))
+        return np.array([1 / (1 + self._visitation_counts.get(self._totuple(state), 0))
                          for state in states])
 
     def _confidence(self, observations, goals, agent):
@@ -116,44 +121,49 @@ class FLGoalGenerator(GoalGenerator):
         return np.argwhere(states == value)[..., -2:].squeeze().tolist()
 
     def generate_goal(self, observation, agent_traj_state):
-        print("=== Generating goal")
+        #print("=== Generating goal")
         initial_state = self._initial_states[self._rng.integers(len(self._initial_states))]
-        start_state = self._goal_states[self._rng.integers(len(self._goal_states))]
-        if agent_traj_state.forward:
-            goal = start_state
-            print("    main goal")
-        else:
-            frontier_states = self._visited_states()
-            #print("    observation:\n"
-            #      + f'       {self._debug_fmt_states(observation["observation"][0])}')
-            #print("    frontier states:")
-            #for state in frontier_states:
-            #    print(f"       {self._debug_fmt_states(state[0])}: "
-            #          + f"{self._visitation_counts.get(self.totuple(state))}")
-            novelty = self._novelty(frontier_states)
-            conf_to_reach = self._confidence(observation["observation"],
-                                             frontier_states[:, 0],
-                                             self._lateral_agent)
-            conf_to_come = self._confidence(initial_state,
-                                            frontier_states,
-                                            self._forward_agent)
-            conf_to_go = self._confidence(frontier_states,
-                                          start_state,
-                                          self._forward_agent)
-            #print(f"    self._exponents: {self._exponents}")
-            promisingness = softmax(
-                np.power(novelty, self._exponents[0])
-                * np.power(conf_to_reach, self._exponents[1])
-                * np.power(conf_to_come, self._exponents[2])
-                * np.power(conf_to_go, self._exponents[3])
-            )
-            goal_idx = np.random.choice(len(promisingness), p=promisingness)
-            #goal_idx = np.argmax(promisingness)
-            goal = frontier_states[goal_idx, 0]
-            goal = np.expand_dims(goal, axis=0)
-            print("    frontier goal:\n"
-                  + f"       {self._debug_fmt_states(goal)}")
-        return goal, agent_traj_state
+        main_goal_state = self._goal_states[self._rng.integers(len(self._goal_states))]
+        match agent_traj_state.current_direction:
+            case self._directions.forward:
+                goal = main_goal_state
+                #print("    main goal state:\n")
+            case self._directions.backward:
+                goal = initial_state
+                #print("    initial state:\n")
+            case self._directions.lateral:
+                frontier_states = self._visited_states()
+                #print("    observation:\n"
+                #      + f'       {self._debug_fmt_states(observation["observation"][0])}')
+                #print("    frontier states:")
+                #for state in frontier_states:
+                #    print(f"       {self._debug_fmt_states(state[0])}: "
+                #          + f"{self._visitation_counts.get(self._totuple(state))}")
+                novelty_cost = 1 / self._novelty(frontier_states)
+                cost_to_reach = 1 / self._confidence(observation["observation"],
+                                                     frontier_states[:, 0],
+                                                     self._lateral_agent)
+                cost_to_come = 1 / self._confidence(initial_state,
+                                                    frontier_states,
+                                                    self._forward_agent)
+                cost_to_go = 1 / self._confidence(frontier_states,
+                                                  main_goal_state,
+                                                  self._forward_agent)
+                #print(f"    self._weights: {self._weights}")
+                priority = softmin(
+                    novelty_cost * self._weights[0]
+                    + cost_to_reach * self._weights[1]
+                    + cost_to_come * self._weights[2]
+                    + cost_to_go * self._weights[3]
+                )
+                #print(f"    priority: {priority}")
+                goal_idx = np.random.choice(len(priority), p=priority)
+                #goal_idx = np.argmax(priority)
+                goal = frontier_states[goal_idx, 0]
+                goal = np.expand_dims(goal, axis=0)
+                #print("    frontier goal:\n"
+                #      + f"       {self._debug_fmt_states(goal)}")
+        return goal
 
 
 registry.register_all(

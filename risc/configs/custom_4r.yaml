@@ -33,7 +33,7 @@ kwargs:
       train_max_steps: 100000
       video_period: 1000
       vis_frequency: 2000
-      #render_mode: human
+      render_mode: human
   agent:
     name: GCResetFree
     kwargs:
@@ -80,11 +80,12 @@ kwargs:
           capacity: 100000
           her_batch_size: 64
       separate_agents: true
-      exponents: [1, 0, 1, 1]
+      weights: [1, 0, 1, 1]
+      directions: [forward, backward, lateral]
   loggers:
-  - name: WandbLogger
-    kwargs:
-      name: 4rooms_astar_HER
-      project: Thesis
-      resume: allow
-      start_method: fork
+  # - name: WandbLogger
+  #   kwargs:
+  #     name: 4rooms_astar_HER
+  #     project: Thesis
+  #     resume: allow
+  #     start_method: fork
