@@ -61,8 +61,8 @@ class FBGoalGenerator(GoalGenerator):
         return goal
 
 
-class FLGoalGenerator(GoalGenerator):
-    """Generates goals from a fixed set of expored (frontier) and goal states."""
+class OmniGoalGenerator(GoalGenerator):
+    """Generates goals from the set of expored states (frontier) or start/goal states."""
 
     def __init__(
         self,
@@ -72,15 +72,18 @@ class FLGoalGenerator(GoalGenerator):
         initial_states,
         goal_states,
         weights,
+        log_frequency: int = 1,
         **kwargs,
     ):
         super().__init__(logger, **kwargs)
         self._forward_agent = forward_agent
-        self._lateral_agent = backward_agent
+        self._reset_agent = backward_agent
+        self._logger = logger
+        self._rng = np.random.default_rng(seeder.get_new_seed("goal_switcher"))
+        self._log_schedule = PeriodicSchedule(False, True, log_frequency)
         self._initial_states = initial_states
         self._goal_states = goal_states
         self._weights = weights
-        self._rng = np.random.default_rng(seeder.get_new_seed("goal_generator"))
         self._visitation_counts = {}
 
     def _totuple(self, arr):
@@ -98,7 +101,7 @@ class FLGoalGenerator(GoalGenerator):
     def _novelty(self, states):
         if len(states.shape) == len(self._forward_agent._observation_space.shape):
             states = np.expand_dims(states, axis=0)
-        return np.array([1 / (1 + self._visitation_counts.get(self._totuple(state), 0))
+        return np.array([1 / self._visitation_counts.get(self._totuple(state))
                          for state in states])
 
     def _confidence(self, observations, goals, agent):
@@ -140,7 +143,7 @@ class FLGoalGenerator(GoalGenerator):
                 novelty_cost = 1 / self._novelty(frontier_states)
                 cost_to_reach = 1 / self._confidence(observation["observation"],
                                                      frontier_states[:, 0],
-                                                     self._lateral_agent)
+                                                     self._reset_agent)
                 cost_to_come = 1 / self._confidence(initial_state,
                                                     frontier_states,
                                                     self._forward_agent)
@@ -161,6 +164,20 @@ class FLGoalGenerator(GoalGenerator):
                 goal = np.expand_dims(goal, axis=0)
                 #print("    frontier goal:\n"
                 #      + f"       {self._debug_fmt_states(goal)}")
+                if self._log_schedule.update():
+                    self._logger.log_metrics(
+                        {
+                            f"{agent_traj_state.current_direction}/novelty_cost":
+                                novelty_cost[goal_idx],
+                            f"{agent_traj_state.current_direction}/cost_to_reach":
+                                cost_to_reach[goal_idx],
+                            f"{agent_traj_state.current_direction}/cost_to_come":
+                                cost_to_come[goal_idx],
+                            f"{agent_traj_state.current_direction}/cost_to_go":
+                                cost_to_go[goal_idx],
+                        },
+                        "goal_generator",
+                    )
         return goal
 
 
@@ -168,7 +185,7 @@ registry.register_all(
     GoalGenerator,
     {
         "FBGoalGenerator": FBGoalGenerator,
-        "FLGoalGenerator": FLGoalGenerator,
+        "OmniGoalGenerator": OmniGoalGenerator,
     }
 )
 

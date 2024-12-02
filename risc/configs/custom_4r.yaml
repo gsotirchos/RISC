@@ -3,7 +3,7 @@ kwargs:
   experiment_manager:
     name: Experiment
     kwargs:
-      name: 4r-gc_fl_dqn_gs_fl-rf_et
+      name: 4r_FL_1.0_1.0_1.0_1.0
       save_dir: experiment
       saving_schedule:
         name: PeriodicSchedule
@@ -69,7 +69,7 @@ kwargs:
               period: 500
         name: GoalConditionedDQNAgent
       goal_generator:
-        name: FLGoalGenerator
+        name: OmniGoalGenerator
       goal_switcher:
         name: SuccessProbabilityGoalSwitcher
       phase_step_limit: 100
@@ -80,12 +80,12 @@ kwargs:
           capacity: 100000
           her_batch_size: 64
       separate_agents: true
-      weights: [1, 0, 1, 1]
+      weights: [1, 1, 1, 1]
       directions: [forward, lateral]
   loggers:
   - name: WandbLogger
     kwargs:
-      name: 4rooms_astar_HER
-      project: Experiments
+      name: 4r_FL_1.0_1.0_1.0_1.0
+      project: Debug
       resume: allow
       start_method: fork
