@@ -21,7 +21,7 @@ import pickle
 class GCAgentState:
     subagent_traj_state: Any = None
     current_goal: Any = None
-    current_direction: Any = None
+    current_direction: str = None
     forward: bool = True
     phase_steps: int = 0
     phase_return: int = 0
@@ -218,13 +218,11 @@ class GCResetFree(Agent):
             return self._forward_agent.act(observation, agent_traj_state)
         if agent_traj_state is None:
             agent_traj_state = GCAgentState()
-            agent_traj_state = self.get_new_direction(agent_traj_state)
         if agent_traj_state.current_goal is None:
+            agent_traj_state = self.get_new_direction(agent_traj_state)
             agent_traj_state = self.get_new_goal(observation, agent_traj_state)
-
         if hasattr(self._goal_generator, "update_novelty"):
             self._goal_generator.update_novelty(observation)
-
         observation = self._replace_goal_fn(observation, agent_traj_state.current_goal)
         agent = (
             self._forward_agent if agent_traj_state.forward else self._backward_agent
@@ -300,13 +298,13 @@ class GCResetFree(Agent):
                 )
 
             agent_traj_state = GCAgentState(
+                current_goal=None,
                 current_direction=agent_traj_state.current_direction,
                 forward_success=agent_traj_state.forward_success,
                 forward_goal_idx=agent_traj_state.forward_goal_idx,
                 reset_success=agent_traj_state.reset_success,
                 reset_goal_idx=agent_traj_state.reset_goal_idx,
             )
-            agent_traj_state = self.get_new_direction(agent_traj_state)
         return agent_traj_state
 
     def _log_visualizations(self):

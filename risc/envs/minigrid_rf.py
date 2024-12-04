@@ -239,8 +239,6 @@ class MiniGridEnv(GymEnv):
             if self._vis_period.update():
                 self.visualize(self._id)
 
-        #self._env.render()
-        #plt.pause(0.3)
         if self._train_video and self._video_reset_schedule.update():
             if self.render_mode == "rgb_array_list":
                 frames = np.array(self._env.render())
