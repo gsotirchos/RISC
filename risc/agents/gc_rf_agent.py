@@ -298,13 +298,14 @@ class GCResetFree(Agent):
                 )
 
             agent_traj_state = GCAgentState(
-                current_goal=None,
                 current_direction=agent_traj_state.current_direction,
                 forward_success=agent_traj_state.forward_success,
                 forward_goal_idx=agent_traj_state.forward_goal_idx,
                 reset_success=agent_traj_state.reset_success,
                 reset_goal_idx=agent_traj_state.reset_goal_idx,
             )
+            agent_traj_state = self.get_new_direction(agent_traj_state)
+            agent_traj_state = self.get_new_goal(update_info.next_observation, agent_traj_state)
         return agent_traj_state
 
     def _log_visualizations(self):

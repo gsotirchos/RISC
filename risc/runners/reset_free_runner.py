@@ -1,5 +1,6 @@
 import logging
 from typing import List
+from dataclasses import replace
 
 from envs.reset_free_envs import ResetFreeEnv
 from hive.agents.agent import Agent
@@ -92,7 +93,10 @@ class ResetFreeRunner(SingleAgentRunner):
                 transition_info,
                 agent_traj_state,
             ) = self.run_train_period(
-                self._train_environment, observation, transition_info, agent_traj_state
+                self._train_environment,
+                observation,
+                transition_info,
+                agent_traj_state
             )
             if self._logger.should_log("train"):
                 episode_metrics = episode_metrics.get_flat_dict()
@@ -120,13 +124,23 @@ class ResetFreeRunner(SingleAgentRunner):
 
         # Run the loop until the episode ends or times out
         while self._train_phase_schedule.update() and self._train_schedule.get_value():
-            terminated, truncated, observation, agent_traj_state, _ = self.run_one_step(
+            (
+                terminated,
+                truncated,
+                observation,
+                agent_traj_state,
+                _
+            ) = self.run_one_step(
                 environment,
                 observation,
                 episode_metrics,
                 transition_info,
                 agent_traj_state,
             )
+            #if agent_traj_state.current_direction == "teleport*":  # TODO
+            #   observation, transition_info, agent_traj_state = self.teleport_to_goal(
+            #       environment, agent_traj_state
+            #   )
             if terminated or truncated:
                 observation, transition_info, agent_traj_state = self.reset_environment(
                     environment
@@ -146,4 +160,13 @@ class ResetFreeRunner(SingleAgentRunner):
         transition_info = TransitionInfo(self._agents, self._stack_size)
         transition_info.start_agent(self._agents[0])
         agent_traj_state = None
+        return observation, transition_info, agent_traj_state
+
+    def teleport_to_goal(self, environment, agent_traj_state):
+        observation = environment.teleport(agent_traj_state.current_goal)
+        transition_info = TransitionInfo(self._agents, self._stack_size)
+        agent_traj_state = replace(
+            agent_traj_state,
+            current_goal=None
+        )
         return observation, transition_info, agent_traj_state

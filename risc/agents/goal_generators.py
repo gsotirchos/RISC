@@ -126,13 +126,13 @@ class OmniGoalGenerator(GoalGenerator):
         initial_state = self._initial_states[self._rng.integers(len(self._initial_states))]
         main_goal_state = self._goal_states[self._rng.integers(len(self._goal_states))]
         match agent_traj_state.current_direction:
-            case "forward":
+            case "forward":  # TODO
                 goal = main_goal_state
                 #print("    main goal\n")
-            case "backward":
+            case "backward":  # TODO
                 goal = initial_state
                 #print("    initial state\n")
-            case "lateral":
+            case "lateral":  # TODO
                 frontier_states = self._visited_states()
                 #print("    observation:\n"
                 #      + f'       {self._debug_fmt_states(observation["observation"][0])}')

@@ -256,6 +256,10 @@ class MiniGridEnv(GymEnv):
                 self._logger.log_scalar("video", wandb.Video(frames), self._id)
         return super().reset()
 
+    def teleport(self, state):
+        #self._env.agent_pos = ...  # TODO
+        return self._env.observation()
+
     def save(self, folder_name):
         pass
 
