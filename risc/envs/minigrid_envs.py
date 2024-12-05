@@ -148,6 +148,10 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
 
         return obs, reward, terminated, truncated, {}
 
+    def teleport(self, pos):
+        self.agent_pos = pos
+        return self.gen_obs()
+
     def render(self):
         return super().render()
 

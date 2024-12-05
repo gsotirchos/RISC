@@ -109,9 +109,10 @@ class OmniGoalGenerator(GoalGenerator):
             observations = np.expand_dims(observations, axis=0)
         if len(goals.shape) == len(agent._goal_space.shape):
             goals = np.expand_dims(goals, axis=1)
-        observations, goals = \
-            np.repeat(observations, goals.shape[0], axis=0), \
+        observations, goals = (
+            np.repeat(observations, goals.shape[0], axis=0),
             np.tile(goals, (observations.shape[0], 1, 1, 1))
+        )
         return np.array([agent.compute_success_prob(observation, goal)
                          for observation, goal in zip(observations, goals, strict=True)])
 
@@ -119,20 +120,20 @@ class OmniGoalGenerator(GoalGenerator):
         return np.array([key for key in self._visitation_counts.keys()])
 
     def _debug_fmt_states(self, states: np.ndarray, value: int=255):
-        return np.argwhere(states == value)[..., -2:].squeeze().tolist()
+        return np.flip(np.argwhere(states == value)[..., -2:].squeeze()).tolist()
 
     def generate_goal(self, observation, agent_traj_state):
         #print("=== Generating goal")
         initial_state = self._initial_states[self._rng.integers(len(self._initial_states))]
         main_goal_state = self._goal_states[self._rng.integers(len(self._goal_states))]
-        match agent_traj_state.current_direction:
-            case "forward":  # TODO
+        match agent_traj_state.current_direction.removeprefix("teleport_"):
+            case "forward":
                 goal = main_goal_state
-                #print("    main goal\n")
-            case "backward":  # TODO
+                #print("    main goal:")
+            case "backward":
                 goal = initial_state
-                #print("    initial state\n")
-            case "lateral":  # TODO
+                #print("    initial state:")
+            case "lateral":
                 frontier_states = self._visited_states()
                 #print("    observation:\n"
                 #      + f'       {self._debug_fmt_states(observation["observation"][0])}')
@@ -159,11 +160,10 @@ class OmniGoalGenerator(GoalGenerator):
                 )
                 #print(f"    priority: {priority}")
                 goal_idx = np.random.choice(len(priority), p=priority)
-                #goal_idx = np.argmax(priority)
+                #goal_idx = np.argmin(priority)
                 goal = frontier_states[goal_idx, 0]
                 goal = np.expand_dims(goal, axis=0)
-                #print("    frontier goal:\n"
-                #      + f"       {self._debug_fmt_states(goal)}")
+                #print("    frontier goal:")
                 if self._log_schedule.update():
                     self._logger.log_metrics(
                         {
@@ -178,6 +178,7 @@ class OmniGoalGenerator(GoalGenerator):
                         },
                         "goal_generator",
                     )
+        #print(f"       {self._debug_fmt_states(goal)}")
         return goal
 
 

@@ -239,6 +239,8 @@ class MiniGridEnv(GymEnv):
             if self._vis_period.update():
                 self.visualize(self._id)
 
+        #print(f"=== self._env.agent_pos: {self._env.agent_pos}")
+        plt.pause(1)
         if self._train_video and self._video_reset_schedule.update():
             if self.render_mode == "rgb_array_list":
                 frames = np.array(self._env.render())
@@ -257,8 +259,9 @@ class MiniGridEnv(GymEnv):
         return super().reset()
 
     def teleport(self, state):
-        #self._env.agent_pos = ...  # TODO
-        return self._env.observation()
+        pos = np.flip(np.argwhere(state[0] == 255)[..., -2:].squeeze()).tolist()
+        #print(f"=== teleporting to: {pos}")
+        return self._env.teleport(pos)
 
     def save(self, folder_name):
         pass

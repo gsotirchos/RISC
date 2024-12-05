@@ -137,10 +137,10 @@ class ResetFreeRunner(SingleAgentRunner):
                 transition_info,
                 agent_traj_state,
             )
-            #if agent_traj_state.current_direction == "teleport*":  # TODO
-            #   observation, transition_info, agent_traj_state = self.teleport_to_goal(
-            #       environment, agent_traj_state
-            #   )
+            if agent_traj_state.current_direction.startswith("teleport"):
+                observation, transition_info, agent_traj_state = self.teleport_to_goal(
+                    environment, agent_traj_state
+                )
             if terminated or truncated:
                 observation, transition_info, agent_traj_state = self.reset_environment(
                     environment
