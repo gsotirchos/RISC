@@ -25,7 +25,7 @@ kwargs:
     kwargs:
       #agent_pos: [1, 1]
       #env_name: MiniGrid-FourRooms-v1
-      env_name: MiniGrid-Empty-8x8-v1
+      env_name: MiniGrid-Empty-18x18-v1
       eval_max_steps: 100
       #goal_pos: [17,17]
       local_vis_period: 2000
@@ -73,7 +73,7 @@ kwargs:
         name: OmniGoalGenerator
       goal_switcher:
         name: SuccessProbabilityGoalSwitcher
-      phase_step_limit: 100
+      phase_step_limit: 1000
       replay_buffer:
         #name: CircularReplayBuffer
         name: HERReplayBuffer

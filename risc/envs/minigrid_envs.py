@@ -290,10 +290,17 @@ register(
 register(
     id="MiniGrid-Empty-8x8-v1",
     entry_point="envs.minigrid_envs:EmptyEnv",
+    kwargs={"size": 8, "agent_start_pos": None},
 )
 
 register(
     id="MiniGrid-Empty-16x16-v1",
     entry_point="envs.minigrid_envs:EmptyEnv",
     kwargs={"size": 16},
+)
+
+register(
+    id="MiniGrid-Empty-18x18-v1",
+    entry_point="envs.minigrid_envs:EmptyEnv",
+    kwargs={"size": 18},
 )
