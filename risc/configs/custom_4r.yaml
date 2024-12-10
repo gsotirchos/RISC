@@ -80,7 +80,7 @@ kwargs:
         kwargs:
           capacity: 100000
           her_batch_size: 64
-      separate_agents: true
+      separate_agents: false
       weights: [0, 0, 0, 0]
       directions: [forward, teleport_backward]
   loggers:
