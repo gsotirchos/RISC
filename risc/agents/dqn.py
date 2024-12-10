@@ -124,6 +124,10 @@ def oracle_q_value(obs):
     obs = obs[0]
     [y], [x] = np.nonzero(obs[0])
     [goal_y], [goal_x] = np.nonzero(obs[2])
+    if obs[0].shape[0] < 19:
+        distance = np.abs(y - goal_y) + np.abs(x - goal_x)
+        print(f"distance: {distance}")
+        return 0.95**distance
     distances = {}
     h_doors = np.where(obs[1, 9] == 0)[0]  # x values of horizontal doors
     v_doors = np.where(obs[1, :, 9] == 0)[0]  # y values of vertical doors

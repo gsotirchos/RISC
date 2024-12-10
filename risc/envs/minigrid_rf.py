@@ -270,6 +270,8 @@ class MiniGridEnv(GymEnv):
 def create_vis_fn(env_name):
     if env_name == "MiniGrid-Empty-16x16-v1":
         width, height = 16, 16
+    elif env_name == "MiniGrid-Empty-8x8-v1":
+        width, height = 8, 8
     elif env_name == "MiniGrid-FourRooms-v1":
         width, height = 19, 19
     elif env_name == "MiniGrid-TwoRooms-v1":
@@ -325,6 +327,7 @@ def create_vis_fn(env_name):
 def get_goals(env_name, all_obs):
     goals = {
         "MiniGrid-Empty-16x16-v1": (14, 14),
+        "MiniGrid-Empty-8x8-v1": (6, 6),
         "MiniGrid-FourRooms-v1": (17, 17),
         "MiniGrid-TwoRooms-v1": (17, 8),
     }
