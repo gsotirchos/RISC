@@ -59,7 +59,8 @@ kwargs:
           representation_net:
             name: ConvNetwork
             kwargs:
-              channels: [16, 16, 16]
+              #channels: [16, 16, 16]
+              channels: [8, 8, 8, 8, 8, 8, 8]
               kernel_sizes: 3
               mlp_layers: [16]
           target_net_update_schedule:
