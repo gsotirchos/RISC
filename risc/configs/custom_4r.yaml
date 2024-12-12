@@ -29,19 +29,21 @@ kwargs:
       eval_max_steps: 100
       #goal_pos: [17,17]
       local_vis_period: 2000
-      reset_free: true
+      #reset_free: true  # reset-free
+      reset_free: false
       symbolic: true
-      train_max_steps: 100000
+      #train_max_steps: 100000  # reset-free
+      train_max_steps: 300  # episodic
       video_period: 1000
       vis_frequency: 2000
-      #render_mode: human
+      render_mode: human
   agent:
     name: GCResetFree
     kwargs:
       base_agent:
         kwargs:
           batch_size: 128
-          device: cuda
+          device: cpu
           discount_rate: 0.95
           epsilon_schedule:
             name: LinearSchedule
@@ -60,9 +62,11 @@ kwargs:
             name: ConvNetwork
             kwargs:
               #channels: [16, 16, 16]
-              channels: [8, 8, 8, 8, 8, 8, 8]
+              channels: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
+              paddings: 1
               kernel_sizes: 3
-              mlp_layers: [16]
+              #mlp_layers: [16]
+              mlp_layers: [8]
           target_net_update_schedule:
             name: PeriodicSchedule
             kwargs:
@@ -73,14 +77,15 @@ kwargs:
       goal_generator:
         name: OmniGoalGenerator
       goal_switcher:
-        name: SuccessProbabilityGoalSwitcher
+        #name: SuccessProbabilityGoalSwitcher  # reset-free
+        name: BasicGoalSwitcher  # episodic
       phase_step_limit: 1000
       replay_buffer:
         name: CircularReplayBuffer
-        #name: HERReplayBuffer
+        #name: HERReplayBuffer  # HER
         kwargs:
           capacity: 100000
-          #her_batch_size: 64
+          #her_batch_size: 64  # HER
       separate_agents: false
       weights: [0, 0, 0, 0]
       directions: [forward, teleport_backward]

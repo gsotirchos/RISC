@@ -145,11 +145,11 @@ class ResetFreeRunner(SingleAgentRunner):
                 observation, transition_info, agent_traj_state = self.reset_environment(
                     environment
                 )
-                self._logger.log_scalar(
-                    "num_interventions",
-                    self._train_environment._env.num_interventions,
-                    "train",
-                )
+                #self._logger.log_scalar(
+                #    "num_interventions",
+                #    self._train_environment._env.num_interventions,
+                #    "train",
+                #)
 
             self.update_step()
 
