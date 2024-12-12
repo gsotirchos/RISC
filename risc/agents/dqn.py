@@ -193,7 +193,7 @@ class DQNAgent(_DQNAgent):
         oracle: bool = False,
         **kwargs,
     ):
-        device = "cuda"
+        #device = "cuda"
         self._compute_success_probability = compute_success_probability
         self._only_add_low_confidence = only_add_low_confidence
         self._success_prob_threshold = success_prob_threshold
