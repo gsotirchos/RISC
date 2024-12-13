@@ -267,19 +267,20 @@ class MiniGridEnv(GymEnv):
         pass
 
 
-def create_vis_fn(env_name):
-    if env_name == "MiniGrid-Empty-8x8-v1":
-        width, height = 8, 8
-    elif env_name == "MiniGrid-Empty-16x16-v1":
-        width, height = 16, 16
-    elif env_name == "MiniGrid-Empty-18x18-v1":
-        width, height = 18, 18
-    elif env_name == "MiniGrid-FourRooms-v1":
-        width, height = 19, 19
-    elif env_name == "MiniGrid-TwoRooms-v1":
-        width, height = 19, 10
-    else:
-        raise ValueError(f"{env_name} not supported")
+def create_vis_fn(env_shape):
+    # if env_name == "MiniGrid-Empty-8x8-v1":
+    #     width, height = 8, 8
+    # elif env_name == "MiniGrid-Empty-16x16-v1":
+    #     width, height = 16, 16
+    # elif env_name == "MiniGrid-Empty-18x18-v1":
+    #     width, height = 18, 18
+    # elif env_name == "MiniGrid-FourRooms-v1":
+    #     width, height = 19, 19
+    # elif env_name == "MiniGrid-TwoRooms-v1":
+    #     width, height = 19, 10
+    # else:
+    #     raise ValueError(f"{env_name} not supported")
+    width, height = env_shape
     storage = defaultdict(list)
 
     def vis_fn(
@@ -326,15 +327,15 @@ def create_vis_fn(env_name):
     return partial(vis_fn, width=width, height=height)
 
 
-def get_goals(env_name, all_obs):
-    goals = {
-        "MiniGrid-Empty-8x8-v1": (6, 6),
-        "MiniGrid-Empty-16x16-v1": (14, 14),
-        "MiniGrid-Empty-18x18-v1": (16, 16),
-        "MiniGrid-FourRooms-v1": (17, 17),
-        "MiniGrid-TwoRooms-v1": (17, 8),
-    }
-    goal = goals[env_name]
+def get_goals(env_shape, all_obs):
+    # goals = {
+    #     "MiniGrid-Empty-8x8-v1": (6, 6),
+    #     "MiniGrid-Empty-16x16-v1": (14, 14),
+    #     "MiniGrid-Empty-18x18-v1": (16, 16),
+    #     "MiniGrid-FourRooms-v1": (17, 17),
+    #     "MiniGrid-TwoRooms-v1": (17, 8),
+    # }
+    goal = tuple([dim - 2 for dim in env_shape])
     return [g for g in all_obs["desired_goal"] if g[0, goal[0], goal[1]] == 255]
 
 
@@ -404,6 +405,7 @@ def get_minigrid_envs(
     )
     initial_obs, _ = env.reset()
     all_obs = env.gen_all_obs()
+    env_shape = env._width, env._height
 
     return ResetFreeEnv(
         train_env=partial(
@@ -436,11 +438,11 @@ def get_minigrid_envs(
         reward_fn=reward_fn,
         replace_goal_fn=replace_goal_fn,
         all_states_fn=lambda *args: all_obs,
-        vis_fn=create_vis_fn(env_name),
+        vis_fn=create_vis_fn(env_shape),
         get_distance_fn=partial(
             get_distance_calculator, initial_state=initial_obs["observation"]
         ),
-        goal_states=get_goals(env_name, all_obs),
+        goal_states=get_goals(env_shape, all_obs),
         initial_states=[initial_obs["observation"][0:1]],
         forward_demos=None,
         backward_demos=None,

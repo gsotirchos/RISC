@@ -269,38 +269,16 @@ class EmptyEnv(MiniGridEnv, _EmptyEnv):
 
 register(id="MiniGrid-TwoRooms-v1", entry_point="envs.minigrid_envs:TwoRoomsEnv")
 register(id="MiniGrid-FourRooms-v1", entry_point="envs.minigrid_envs:FourRoomsEnv")
-register(
-    id="MiniGrid-Empty-Random-5x5-v1",
-    entry_point="envs.minigrid_envs:EmptyEnv",
-    kwargs={"size": 5, "agent_start_pos": None},
-)
 
-register(
-    id="MiniGrid-Empty-6x6-v1",
-    entry_point="envs.minigrid_envs:EmptyEnv",
-    kwargs={"size": 6},
-)
+for size in range(6, 20, 2):
+    register(
+        id=f"MiniGrid-Empty-{size}x{size}-v1",
+        entry_point="envs.minigrid_envs:EmptyEnv",
+        kwargs={"size": size},
+    )
 
 register(
     id="MiniGrid-Empty-Random-6x6-v1",
     entry_point="envs.minigrid_envs:EmptyEnv",
     kwargs={"size": 6, "agent_start_pos": None},
-)
-
-register(
-    id="MiniGrid-Empty-8x8-v1",
-    entry_point="envs.minigrid_envs:EmptyEnv",
-    kwargs={"size": 8, "agent_start_pos": None},
-)
-
-register(
-    id="MiniGrid-Empty-16x16-v1",
-    entry_point="envs.minigrid_envs:EmptyEnv",
-    kwargs={"size": 16},
-)
-
-register(
-    id="MiniGrid-Empty-18x18-v1",
-    entry_point="envs.minigrid_envs:EmptyEnv",
-    kwargs={"size": 18},
 )
