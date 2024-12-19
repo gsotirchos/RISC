@@ -79,7 +79,7 @@ kwargs:
       goal_switcher:
         #name: SuccessProbabilityGoalSwitcher  # reset-free
         name: BasicGoalSwitcher  # episodic
-      phase_step_limit: 1000
+      phase_step_limit: 100
       replay_buffer:
         name: CircularReplayBuffer
         #name: HERReplayBuffer  # HER
