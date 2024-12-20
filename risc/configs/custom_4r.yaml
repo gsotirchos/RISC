@@ -29,11 +29,11 @@ kwargs:
       eval_max_steps: 100
       #goal_pos: [17,17]
       local_vis_period: 2000
-      #reset_free: true  # reset-free
-      reset_free: false
+      reset_free: true  # reset-free
+      #reset_free: false  # episodic
       symbolic: true
-      #train_max_steps: 100000  # reset-free
-      train_max_steps: 30  # episodic
+      train_max_steps: 100000  # reset-free
+      #train_max_steps: 30  # episodic
       video_period: 1000
       vis_frequency: 2000
       #render_mode: human
@@ -59,14 +59,20 @@ kwargs:
             kwargs:
              capacity: 100000
           representation_net:
-            name: ConvNetwork
+            # name: ConvNetwork  # RISC
+            # kwargs:
+            #   channels: [16, 16, 16]
+            #   kernel_sizes: 3
+            #   mlp_layers: [16]
+            # name: ConvNetwork
+            # kwargs:
+            #   channels: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
+            #   paddings: 1
+            #   kernel_sizes: 3
+            #   mlp_layers: [8]
+            name: MLPNetwork
             kwargs:
-              #channels: [16, 16, 16]
-              channels: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
-              paddings: 1
-              kernel_sizes: 3
-              #mlp_layers: [16]
-              mlp_layers: [8]
+              hidden_units: [256, 256, 64]
           target_net_update_schedule:
             name: PeriodicSchedule
             kwargs:
@@ -77,8 +83,8 @@ kwargs:
       goal_generator:
         name: OmniGoalGenerator
       goal_switcher:
-        #name: SuccessProbabilityGoalSwitcher  # reset-free
-        name: BasicGoalSwitcher  # episodic
+        name: SuccessProbabilityGoalSwitcher  # reset-free
+        #name: BasicGoalSwitcher  # episodic
       phase_step_limit: 100
       replay_buffer:
         name: CircularReplayBuffer
@@ -86,7 +92,7 @@ kwargs:
         kwargs:
           capacity: 100000
           #her_batch_size: 64  # HER
-      separate_agents: false
+      separate_agents: true
       weights: [0, 0, 0, 0]
       directions: [forward, teleport_backward]
   loggers:
