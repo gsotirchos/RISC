@@ -81,7 +81,8 @@ kwargs:
               period: 500
         name: GoalConditionedDQNAgent
       goal_generator:
-        name: OmniGoalGenerator
+        #name: OmniGoalGenerator
+        name: FBGoalGenerator  # RISC
       goal_switcher:
         name: SuccessProbabilityGoalSwitcher  # reset-free
         #name: BasicGoalSwitcher  # episodic
