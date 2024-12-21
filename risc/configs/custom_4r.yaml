@@ -23,11 +23,11 @@ kwargs:
   env_fn:
     name: minigrid_envs
     kwargs:
-      #agent_pos: [1, 1]
-      #env_name: MiniGrid-FourRooms-v1
-      env_name: MiniGrid-Empty-6x6-v1
+      agent_pos: [1, 1]
+      env_name: MiniGrid-FourRooms-v1
+      #env_name: MiniGrid-Empty-6x6-v1
       eval_max_steps: 100
-      #goal_pos: [17,17]
+      goal_pos: [17,17]
       local_vis_period: 2000
       reset_free: true  # reset-free
       #reset_free: false  # episodic
