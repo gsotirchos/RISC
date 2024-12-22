@@ -277,7 +277,7 @@ class GCResetFree(Agent):
         if self._vis_fn is not None:
             for metric in self._local_metrics[agent_traj_state.current_direction].keys():
                 self._local_metrics[agent_traj_state.current_direction][metric].append(update_info.next_observation[metric])
-            if self._vis_schedule.update():
+            if self._vis_schedule.update() and not isinstance(self._logger ,NullLogger):
                 self._log_visualizations()
 
         agent = (
@@ -321,8 +321,6 @@ class GCResetFree(Agent):
         metrics = {}
         for direction in self._local_metrics.keys():
             for metric in self._local_metrics[direction].keys():
-                print(f"DIRECTION: {direction}")
-                print(f"METRIC: {metric}")
                 if len(self._local_metrics[direction][metric]) > 0:
                     #breakpoint()
                     local_image, metric_counts = self._vis_fn(
@@ -339,21 +337,6 @@ class GCResetFree(Agent):
                         name=f"{direction}/global_{metric}",
                     )
                     metrics[f"{direction}/global_{metric}"] = global_image
-                else:
-                    print("(SKIPPING)")
-        # if len(self._backward_local) > 0:
-        #     backward_local_image, backward_counts = self._vis_fn(
-        #         self._backward_local["observation"], None, name="backward/local_visitation"
-        #     )
-        #     self._backward_global += backward_counts
-        #     backward_global_image, _ = self._vis_fn(
-        #         self._backward_global,
-        #         None,
-        #         already_counts=True,
-        #         name="backward/global_visitation",
-        #     )
-        #     metrics["backward/local_visitation"] = backward_local_image
-        #     metrics["backward/global_visitation"] = backward_global_image
         if self._all_states_fn is not None:
             all_states = self._all_states_fn()["observation"]
             forward_agent_vis = self._forward_agent.get_stats(
@@ -374,9 +357,7 @@ class GCResetFree(Agent):
                 )
                 metrics[f"backward/{key}"] = image
 
-        if not isinstance(self._logger ,NullLogger):
-        #if self._logger.should_log(self._timescale):
-            self._logger.log_metrics(metrics, prefix="")
+        self._logger.log_metrics(metrics, prefix="")
 
     def should_switch(self, update_info, agent_traj_state):
         success = self._success_fn(
