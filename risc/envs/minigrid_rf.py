@@ -268,18 +268,6 @@ class MiniGridEnv(GymEnv):
 
 
 def create_vis_fn(env_shape):
-    # if env_name == "MiniGrid-Empty-8x8-v1":
-    #     width, height = 8, 8
-    # elif env_name == "MiniGrid-Empty-16x16-v1":
-    #     width, height = 16, 16
-    # elif env_name == "MiniGrid-Empty-18x18-v1":
-    #     width, height = 18, 18
-    # elif env_name == "MiniGrid-FourRooms-v1":
-    #     width, height = 19, 19
-    # elif env_name == "MiniGrid-TwoRooms-v1":
-    #     width, height = 19, 10
-    # else:
-    #     raise ValueError(f"{env_name} not supported")
     width, height = env_shape
     storage = defaultdict(list)
 
@@ -328,13 +316,6 @@ def create_vis_fn(env_shape):
 
 
 def get_goals(env_shape, all_obs):
-    # goals = {
-    #     "MiniGrid-Empty-8x8-v1": (6, 6),
-    #     "MiniGrid-Empty-16x16-v1": (14, 14),
-    #     "MiniGrid-Empty-18x18-v1": (16, 16),
-    #     "MiniGrid-FourRooms-v1": (17, 17),
-    #     "MiniGrid-TwoRooms-v1": (17, 8),
-    # }
     goal = tuple([dim - 2 for dim in env_shape])
     return [g for g in all_obs["desired_goal"] if g[0, goal[0], goal[1]] == 255]
 

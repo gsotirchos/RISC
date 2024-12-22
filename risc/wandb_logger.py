@@ -69,7 +69,11 @@ class WandbLogger(_WandbLogger):
         wandb.log(metrics)
 
     def log_metrics(self, metrics, prefix, step=None):
-        metrics = {f"{prefix}/{name}": value for (name, value) in metrics.items()}
+        if prefix != "":
+            prefix += "/"
+        elif prefix is None:
+            prefix = ""
+        metrics = {f"{prefix}{name}": value for (name, value) in metrics.items()}
         if step is not None:
             metrics.update({f"{step}_step": self._steps[step]})
         metrics.update(

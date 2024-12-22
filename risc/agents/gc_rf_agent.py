@@ -27,9 +27,9 @@ class GCAgentState:
     phase_return: int = 0
     goal_switching_state: Any = None
     forward_success: bool = False
-    reset_success: bool = False
+    backward_success: bool = False
     forward_goal_idx: int = -1
-    reset_goal_idx: int = -1
+    backward_goal_idx: int = -1
 
 
 class GCResetFree(Agent):
@@ -179,11 +179,21 @@ class GCResetFree(Agent):
         self._all_states_fn = all_states_fn
         self._vis_fn = vis_fn
         if self._vis_fn is not None:
-            self._forward_local = deque(maxlen=local_visitation_vis_frequency)
-            self._backward_local = deque(maxlen=local_visitation_vis_frequency)
-            self._forward_global = 0
-            self._backward_global = 0
-            self._local_visitation_vis_frequency = local_visitation_vis_frequency
+            self._local_metrics = {}
+            self._global_metrics = {}
+            for direction in self._directions:
+                self._local_metrics[direction] = {}
+                self._global_metrics[direction] = {}
+                for metric in ["observation", "desired_goal"]:
+                    self._local_metrics[direction][metric] = deque(maxlen=local_visitation_vis_frequency)
+                    self._global_metrics[direction][metric] = 0
+            # self._forward_local = deque(maxlen=local_visitation_vis_frequency)
+            # self._backward_local = deque(maxlen=local_visitation_vis_frequency)
+            # self._forward_global_visitation = 0
+            # self._backward_global_visitation = 0
+            # self._forward_global_goals = 0
+            # self._backward_global_goals = 0
+            self._local_metrics_vis_frequency = local_visitation_vis_frequency
             self._vis_schedule = PeriodicSchedule(
                 False, True, local_visitation_vis_frequency
             )
@@ -239,23 +249,16 @@ class GCResetFree(Agent):
     def update(self, update_info: UpdateInfo, agent_traj_state):
         if not self._training:
             return agent_traj_state
-        if self._vis_fn is not None:
-            if agent_traj_state.forward:
-                self._forward_local.append(update_info.next_observation["observation"])
-            else:
-                self._backward_local.append(update_info.next_observation["observation"])
-            if self._vis_schedule.update():
-                self._log_visualizations()
 
         terminated, truncated, success = self.should_switch(
             update_info, agent_traj_state
         )
         forward_success = agent_traj_state.forward_success
-        reset_success = agent_traj_state.reset_success
+        backward_success = agent_traj_state.backward_success
         if agent_traj_state.forward:
             forward_success = forward_success or success
         else:
-            reset_success = reset_success or success
+            backward_success = backward_success or success
         update_info = replace(
             update_info,
             observation=self._replace_goal_fn(
@@ -271,6 +274,12 @@ class GCResetFree(Agent):
             terminated=success == 1,
             truncated=truncated,
         )
+        if self._vis_fn is not None:
+            for metric in self._local_metrics[agent_traj_state.current_direction].keys():
+                self._local_metrics[agent_traj_state.current_direction][metric].append(update_info.next_observation[metric])
+            if self._vis_schedule.update():
+                self._log_visualizations()
+
         agent = (
             self._forward_agent if agent_traj_state.forward else self._backward_agent
         )
@@ -282,7 +291,7 @@ class GCResetFree(Agent):
             phase_return=agent_traj_state.phase_return + update_info.reward,
             subagent_traj_state=subagent_traj_state,
             forward_success=forward_success,
-            reset_success=reset_success,
+            backward_success=backward_success,
         )
         if terminated or truncated:
             if self._logger.update_step(self._timescale):
@@ -294,15 +303,15 @@ class GCResetFree(Agent):
                             update_info.next_observation["observation"]
                         ),
                     },
-                    "forward" if agent_traj_state.forward else "reset",
+                    "forward" if agent_traj_state.forward else "backward",
                 )
 
             agent_traj_state = GCAgentState(
                 current_direction=agent_traj_state.current_direction,
                 forward_success=agent_traj_state.forward_success,
                 forward_goal_idx=agent_traj_state.forward_goal_idx,
-                reset_success=agent_traj_state.reset_success,
-                reset_goal_idx=agent_traj_state.reset_goal_idx,
+                backward_success=agent_traj_state.backward_success,
+                backward_goal_idx=agent_traj_state.backward_goal_idx,
             )
             agent_traj_state = self.get_new_direction(agent_traj_state)
             agent_traj_state = self.get_new_goal(update_info.next_observation, agent_traj_state)
@@ -310,54 +319,64 @@ class GCResetFree(Agent):
 
     def _log_visualizations(self):
         metrics = {}
-        if len(self._forward_local) > 0:
-            forward_local_image, forward_counts = self._vis_fn(
-                self._forward_local, None, name="forward/local_visitation"
-            )
-            self._forward_global += forward_counts
-            forward_global_image, _ = self._vis_fn(
-                self._forward_global,
-                None,
-                already_counts=True,
-                name="forward/global_visitation",
-            )
-            metrics["forward_local_visitation"] = forward_local_image
-            metrics["forward_global_visitation"] = forward_global_image
-        if len(self._backward_local) > 0:
-            backward_local_image, backward_counts = self._vis_fn(
-                self._backward_local, None, name="reset/local_visitation"
-            )
-            self._backward_global += backward_counts
-            backward_global_image, _ = self._vis_fn(
-                self._backward_global,
-                None,
-                already_counts=True,
-                name="reset/global_visitation",
-            )
-            metrics["backward_local_visitation"] = backward_local_image
-            metrics["backward_global_visitation"] = backward_global_image
+        for direction in self._local_metrics.keys():
+            for metric in self._local_metrics[direction].keys():
+                print(f"DIRECTION: {direction}")
+                print(f"METRIC: {metric}")
+                if len(self._local_metrics[direction][metric]) > 0:
+                    #breakpoint()
+                    local_image, metric_counts = self._vis_fn(
+                        self._local_metrics[direction][metric],
+                        None,
+                        name=f"{direction}/local_{metric}"
+                    )
+                    metrics[f"{direction}/local_{metric}"] = local_image
+                    self._global_metrics[direction][metric] += metric_counts
+                    global_image, _ = self._vis_fn(
+                        self._global_metrics[direction][metric],
+                        None,
+                        already_counts=True,
+                        name=f"{direction}/global_{metric}",
+                    )
+                    metrics[f"{direction}/global_{metric}"] = global_image
+                else:
+                    print("(SKIPPING)")
+        # if len(self._backward_local) > 0:
+        #     backward_local_image, backward_counts = self._vis_fn(
+        #         self._backward_local["observation"], None, name="backward/local_visitation"
+        #     )
+        #     self._backward_global += backward_counts
+        #     backward_global_image, _ = self._vis_fn(
+        #         self._backward_global,
+        #         None,
+        #         already_counts=True,
+        #         name="backward/global_visitation",
+        #     )
+        #     metrics["backward/local_visitation"] = backward_local_image
+        #     metrics["backward/global_visitation"] = backward_global_image
         if self._all_states_fn is not None:
             all_states = self._all_states_fn()["observation"]
             forward_agent_vis = self._forward_agent.get_stats(
                 all_states, self._goal_states[0]
             )
-            reset_agent_vis = self._backward_agent.get_stats(
-                all_states, self._initial_states[0]
-            )
-
             for key, value in forward_agent_vis.items():
                 image, _ = self._vis_fn(
                     all_states, None, totals=value, max_count=1, name=f"forward/{key}"
                 )
                 metrics[f"forward/{key}"] = image
 
-            for key, value in reset_agent_vis.items():
+            backward_agent_vis = self._backward_agent.get_stats(
+                all_states, self._initial_states[0]
+            )
+            for key, value in backward_agent_vis.items():
                 image, _ = self._vis_fn(
-                    all_states, None, totals=value, max_count=1, name=f"reset/{key}"
+                    all_states, None, totals=value, max_count=1, name=f"backward/{key}"
                 )
-                metrics[f"reset/{key}"] = image
+                metrics[f"backward/{key}"] = image
 
-        self._logger.log_metrics(metrics, self._timescale)
+        if not isinstance(self._logger ,NullLogger):
+        #if self._logger.should_log(self._timescale):
+            self._logger.log_metrics(metrics, prefix="")
 
     def should_switch(self, update_info, agent_traj_state):
         success = self._success_fn(
