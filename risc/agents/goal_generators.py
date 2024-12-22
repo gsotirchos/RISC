@@ -142,16 +142,20 @@ class OmniGoalGenerator(GoalGenerator):
                 #    print(f"       {self._debug_fmt_states(state[0])}: "
                 #          + f"{self._visitation_counts.get(self._totuple(state))}")
                 #print(f"    self._weights: {self._weights}")
-                novelty_cost = 0 if self._weights[0] == 0 else \
-                    1 / self._novelty(frontier_states)
-                cost_to_reach = 0 if self._weights[1] == 0 else \
-                    1 / self._confidence(observation["observation"],
-                                         frontier_states[:, 0],
-                                         self._reset_agent)
-                cost_to_come = 0 if self._weights[2] == 0 else \
-                    1 / self._confidence(initial_state, frontier_states, self._forward_agent)
-                cost_to_go = 0 if self._weights[3] == 0 else \
-                    1 / self._confidence(frontier_states, main_goal_state, self._forward_agent)
+                novelty_cost = np.zeros(len(frontier_states)) if self._weights[0] == 0 \
+                    else 1 / self._novelty(frontier_states)
+                cost_to_reach = np.zeros(len(frontier_states)) if self._weights[1] == 0 \
+                    else 1 / self._confidence(observation["observation"],
+                                              frontier_states[:, 0],
+                                              self._reset_agent)
+                cost_to_come = np.zeros(len(frontier_states)) if self._weights[2] == 0 \
+                    else 1 / self._confidence(initial_state,
+                                              frontier_states,
+                                              self._forward_agent)
+                cost_to_go = 0 if self._weights[3] == 0 \
+                    else 1 / self._confidence(frontier_states,
+                                              main_goal_state,
+                                              self._forward_agent)
                 priority = softmin(
                     novelty_cost * self._weights[0]
                     + cost_to_reach * self._weights[1]
