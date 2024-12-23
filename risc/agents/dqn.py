@@ -517,7 +517,7 @@ class DQNAgent(_DQNAgent):
             return
         if self._target_net_soft_update:
             target_params = self._target_success_net.state_dict()
-            current_params = self._target_success_net.state_dict()
+            current_params = self._success_net.state_dict()  # TODO
             for key in list(target_params.keys()):
                 target_params[key] = (
                     1 - self._target_net_update_fraction
