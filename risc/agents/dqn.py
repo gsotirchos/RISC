@@ -24,7 +24,7 @@ class SuccessNet(torch.nn.Module):
         hidden_dim: int,
         out_dim: int,
         linear_fn: torch.nn.Module = None,
-        correction=2,
+        correction=0,
     ):
         """
         Args:
