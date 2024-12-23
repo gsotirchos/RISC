@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from hive.agents import DQNAgent as _DQNAgent
 from hive.agents.qnets.base import FunctionApproximator
+from hive.agents.qnets.qnet_heads import DQNNetwork
 from hive.agents.qnets.utils import InitializationFn, calculate_output_dim
 from hive.replays.replay_buffer import BaseReplayBuffer
 from hive.utils.loggers import Logger
@@ -15,40 +16,10 @@ from hive.utils.utils import LossFn, OptimizerFn
 from enum import IntEnum
 
 
-class SuccessNet(torch.nn.Module):
+class SuccessNet(DQNNetwork):
     """Network that computes the probability of success of an action."""
-
-    def __init__(
-        self,
-        base_network: torch.nn.Module,
-        hidden_dim: int,
-        out_dim: int,
-        linear_fn: torch.nn.Module = None,
-        correction=0,
-    ):
-        """
-        Args:
-            base_network (torch.nn.Module): Backbone network that computes the
-                representations that are used to compute action values.
-            hidden_dim (int): Dimension of the output of the :obj:`network`.
-            out_dim (int): Output dimension of the DQN. Should be equal to the
-                number of actions that you are computing values for.
-            linear_fn (torch.nn.Module): Function that will create the
-                :py:class:`torch.nn.Module` that will take the output of
-                :obj:`network` and produce the final action values. If
-                :obj:`None`, a :py:class:`torch.nn.Linear` layer will be used.
-        """
-        super().__init__()
-        self.base_network = base_network
-        self._linear_fn = linear_fn if linear_fn is not None else torch.nn.Linear
-        self.output_layer = self._linear_fn(hidden_dim, out_dim)
-        self._correction = correction
-
     def forward(self, x):
-        x = self.base_network(x)
-        x = x.flatten(start_dim=1)
-        x = self.output_layer(x)
-        return torch.sigmoid(x - self._correction)
+        return torch.sigmoid(super().forward(x))
 
 
 class Actions(IntEnum):
