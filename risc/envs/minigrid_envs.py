@@ -270,7 +270,7 @@ class EmptyEnv(MiniGridEnv, _EmptyEnv):
 register(id="MiniGrid-TwoRooms-v1", entry_point="envs.minigrid_envs:TwoRoomsEnv")
 register(id="MiniGrid-FourRooms-v1", entry_point="envs.minigrid_envs:FourRoomsEnv")
 
-for size in range(6, 20, 2):
+for size in range(4, 20, 2):
     register(
         id=f"MiniGrid-Empty-{size}x{size}-v1",
         entry_point="envs.minigrid_envs:EmptyEnv",
