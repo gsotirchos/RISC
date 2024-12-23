@@ -232,6 +232,7 @@ class DQNAgent(_DQNAgent):
             log_frequency=log_frequency,
         )
         if self._compute_success_probability:
+            self._success_net_loss_fn = torch.nn.BCELoss(reduction="none")
             if optimizer_fn is None:
                 optimizer_fn = torch.optim.Adam
             self._success_net_optimizer = optimizer_fn(self._success_net.parameters())
@@ -280,7 +281,6 @@ class DQNAgent(_DQNAgent):
 
     @torch.no_grad()
     def act(self, observation, agent_traj_state=None):
-
         if self._training:
             if not self._learn_schedule.get_value():
                 epsilon = 1.0
@@ -456,6 +456,7 @@ class DQNAgent(_DQNAgent):
             self._discount_rate,
             self._qnet,
             self._target_qnet,
+            self._loss_fn,
             self._optimizer,
             True,
         )
@@ -473,6 +474,7 @@ class DQNAgent(_DQNAgent):
                 self._discount_rate,
                 self._success_net,
                 self._target_success_net,
+                self._success_net_loss_fn,
                 self._success_net_optimizer,
                 False,
             )
@@ -489,6 +491,7 @@ class DQNAgent(_DQNAgent):
         discount_rate,
         network,
         target_network,
+        loss_fn,
         optimizer,
         update_priorities=False,
     ):
@@ -502,7 +505,7 @@ class DQNAgent(_DQNAgent):
 
         q_targets = rewards + discount_rate * next_qvals * (1 - batch["terminated"])
 
-        loss = self._loss_fn(pred_qvals, q_targets)  # .mean()
+        loss = loss_fn(pred_qvals, q_targets)  # .mean()
         loss = loss.mean()
         optimizer.zero_grad()
         loss.backward()
@@ -517,7 +520,7 @@ class DQNAgent(_DQNAgent):
             return
         if self._target_net_soft_update:
             target_params = self._target_success_net.state_dict()
-            current_params = self._success_net.state_dict()  # TODO
+            current_params = self._success_net.state_dict()
             for key in list(target_params.keys()):
                 target_params[key] = (
                     1 - self._target_net_update_fraction
@@ -545,7 +548,7 @@ class DQNAgent(_DQNAgent):
             state = torch.cat([obs, goals], dim=1)
             metrics = {}
             if self._compute_success_probability:
-                success_prob = self._success_net(state).amax(dim=1) > 0.25
+                success_prob = self._success_net(state).amax(dim=1)  # > 0.25
                 metrics["success_prob"] = success_prob.cpu().numpy()
             qvals = self._qnet(state).amax(dim=1)
             metrics["qvals"] = qvals.cpu().numpy()
