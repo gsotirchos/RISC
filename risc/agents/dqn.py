@@ -17,9 +17,14 @@ from enum import IntEnum
 
 
 class SuccessNet(DQNNetwork):
+    def __init__(self, correction=2):
+        super().__init__()
+        self._correction = correction
+
     """Network that computes the probability of success of an action."""
     def forward(self, x):
-        return torch.sigmoid(super().forward(x))
+        x = super().forward(x)
+        return torch.sigmoid(x - self._correction)
 
 
 class Actions(IntEnum):
