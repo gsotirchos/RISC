@@ -39,7 +39,7 @@ kwargs:
       base_agent:
         kwargs:
           batch_size: 128
-          device: cuda
+          device: cpu
           discount_rate: 0.95
           epsilon_schedule:
             name: LinearSchedule
@@ -81,7 +81,7 @@ kwargs:
   - name: WandbLogger
     kwargs:
       name: 4rooms_risc
-      project: RF-IS
+      project: Debug
       resume: allow
       start_method: fork
   
