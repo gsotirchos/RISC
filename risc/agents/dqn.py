@@ -17,8 +17,8 @@ from enum import IntEnum
 
 
 class SuccessNet(DQNNetwork):
-    def __init__(self, correction=2):
-        super().__init__()
+    def __init__(self, *args, correction=2, **kwargs):
+        super().__init__(*args, **kwargs)
         self._correction = correction
 
     """Network that computes the probability of success of an action."""
