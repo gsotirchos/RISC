@@ -77,7 +77,7 @@ class OmniGoalGenerator(GoalGenerator):
     ):
         super().__init__(logger, **kwargs)
         self._forward_agent = forward_agent
-        self._reset_agent = backward_agent
+        self._backward_agent = backward_agent
         self._logger = logger
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_switcher"))
         self._log_schedule = PeriodicSchedule(False, True, log_frequency)
@@ -147,7 +147,7 @@ class OmniGoalGenerator(GoalGenerator):
                 cost_to_reach = np.zeros(len(frontier_states)) if self._weights[1] == 0 \
                     else 1 / self._confidence(observation["observation"],
                                               frontier_states[:, 0],
-                                              self._reset_agent)
+                                              self._backward_agent)
                 cost_to_come = np.zeros(len(frontier_states)) if self._weights[2] == 0 \
                     else 1 / self._confidence(initial_state,
                                               frontier_states,
@@ -281,7 +281,7 @@ class SuccessProbabilityGoalSwitcher(GoalSwitcher):
             1 - self._conservative_factor**agent_traj_state.phase_steps
         )
         should_switch = self._rng.random() < switching_prob
-        prefix = "forward" if agent_traj_state.forward else "reset"
+        prefix = "forward" if agent_traj_state.forward else "backward"
         if self._log_schedule.update():
             self._logger.log_metrics(
                 {
@@ -325,7 +325,7 @@ class ReverseCurriculumGoalSwitcher(GoalSwitcher):
         if should_switch:
             self._logger.log_metrics(
                 {
-                    "reset/traj_length": agent_traj_state.phase_steps,
+                    "backward/traj_length": agent_traj_state.phase_steps,
                 },
                 "goal_switcher",
             )
