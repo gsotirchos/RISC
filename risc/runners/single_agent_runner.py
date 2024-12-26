@@ -170,10 +170,8 @@ class SingleAgentRunner(_SingleAgentRunner):
                 terminated = terminated and self._early_terminal
                 truncated = truncated and self._early_terminal
         # else:
+        #     # never send termination/truncation signal in testing
         #     terminated = truncated = False
-        # if terminated or truncated:
-        #     print(f"DEBUG: terminated or truncated")
-        #     breakpoint()
         update_info = UpdateInfo(
             observation=observation,
             next_observation=next_observation,
