@@ -169,9 +169,11 @@ class SingleAgentRunner(_SingleAgentRunner):
             else:
                 terminated = terminated and self._early_terminal
                 truncated = truncated and self._early_terminal
-
-        else:
-            terminated = truncated = False
+        # else:
+        #     terminated = truncated = False
+        # if terminated or truncated:
+        #     print(f"DEBUG: terminated or truncated")
+        #     breakpoint()
         update_info = UpdateInfo(
             observation=observation,
             next_observation=next_observation,
@@ -275,6 +277,8 @@ class SingleAgentRunner(_SingleAgentRunner):
         if self._eval_environment is None:
             return
         self.train_mode(False)
+        print("DEBUG: starting testing")
+        breakpoint()
         aggregated_episode_metrics = self.create_episode_metrics().get_flat_dict()
         for _ in range(self._test_episodes):
             episode_metrics = self.run_episode(
