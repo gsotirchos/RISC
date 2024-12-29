@@ -317,11 +317,11 @@ class BugTrapEnv(MiniGridEnv):
 class LockedDoorEnv(MiniGridEnv, _RoomGrid):
     """Single locked door environment."""
 
-    def __init__(self, agent_pos=(1, 1), goal_pos=(9, 4), max_steps=50, **kwargs):
+    def __init__(self, agent_pos=(1, 1), goal_pos=(13, 6), max_steps=50, **kwargs):
         self._agent_default_pos = agent_pos
         self._goal_default_pos = goal_pos
 
-        room_size = 6
+        room_size = 8
         mission_space = MissionSpace(mission_func=self._gen_mission)
 
         _RoomGrid.__init__(
