@@ -138,6 +138,12 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
             reward = 1.0  # self._reward()
         if fwd_cell is not None and fwd_cell.type == "lava":
             terminated = True
+        if fwd_cell is not None and fwd_cell.type == "key":
+            # TODO
+            pass
+        if fwd_cell is not None and fwd_cell.type == "door":
+            # TODO
+            pass
         if self.step_count >= self.max_steps:
             truncated = True
 
@@ -159,7 +165,7 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
 class FourRoomsEnv(MiniGridEnv, _FourRoomsEnv):
     """Four rooms environment."""
 
-    def __init__(self, agent_pos=None, goal_pos=None, max_steps=100, **kwargs):
+    def __init__(self, agent_pos=(1, 1), goal_pos=(17, 17), max_steps=100, **kwargs):
         self._agent_default_pos = agent_pos
         self._goal_default_pos = goal_pos
 
@@ -180,8 +186,8 @@ class TwoRoomsEnv(MiniGridEnv):
 
     def __init__(
         self,
-        agent_pos=None,
-        goal_pos=None,
+        agent_pos=(1, 1),
+        goal_pos=(17, 8),
         max_steps=100,
         width=19,
         height=10,
@@ -238,19 +244,81 @@ class TwoRoomsEnv(MiniGridEnv):
             self.place_obj(Goal())
 
 
+class BugTrapEnv(MiniGridEnv):
+    """Two rooms environment."""
+
+    def __init__(self, agent_pos=(5, 12), goal_pos=(17, 17), max_steps=100, **kwargs):
+        self._agent_default_pos = agent_pos
+        self._goal_default_pos = goal_pos
+
+        self.width = self.height = 19
+        mission_space = MissionSpace(mission_func=self._gen_mission)
+
+        super().__init__(
+            mission_space=mission_space,
+            width=self.width,
+            height=self.height,
+            max_steps=max_steps,
+            **kwargs,
+        )
+
+    @staticmethod
+    def _gen_mission():
+        return "reach the goal"
+
+    def _gen_grid(self, width, height):
+        # Create the grid
+        self.grid = Grid(width, height)
+
+        # Generate the surrounding walls
+        self.grid.horz_wall(0, 0)
+        self.grid.horz_wall(0, height - 1)
+        self.grid.vert_wall(0, 0)
+        self.grid.vert_wall(width - 1, 0)
+
+        # top and bottom horizontal wall of the bugtrap
+        self.grid.horz_wall(3, 3, length=width - 6)
+        self.grid.horz_wall(3, height - 4, length=width - 6)
+
+        # middle entrance of the bugtrap
+        self.grid.horz_wall(3, height // 2 - 1, length=width // 2 - 3)
+        self.grid.horz_wall(3, height // 2 + 1, length=width // 2 - 3)
+
+        # left and right vertical walls of the bugtrap
+        self.grid.vert_wall(3, 3, length=height // 2 - 3)
+        self.grid.vert_wall(3, height // 2 + 1, length=height // 2 - 4)
+        self.grid.vert_wall(width - 4, 3, length=height - 6)
+
+        # Randomize the player start position and orientation
+        if self._agent_default_pos is not None:
+            self.agent_pos = self._agent_default_pos
+            self.grid.set(*self._agent_default_pos, None)
+            # assuming random start direction
+            self.agent_dir = self._rand_int(0, 4)
+        else:
+            self.place_agent()
+
+        if self._goal_default_pos is not None:
+            goal = Goal()
+            self.put_obj(goal, *self._goal_default_pos)
+            goal.init_pos, goal.cur_pos = self._goal_default_pos
+        else:
+            self.place_obj(Goal())
+
+
 class EmptyEnv(MiniGridEnv, _EmptyEnv):
     """Empty environment."""
 
     def __init__(
         self,
         size=8,
-        agent_start_pos=(1, 1),
-        agent_start_dir=0,
+        agent_pos=(1, 1),
+        agent_dir=0,
         max_steps: int | None = None,
         **kwargs,
     ):
-        self.agent_start_pos = agent_start_pos
-        self.agent_start_dir = agent_start_dir
+        self.agent_start_pos = agent_pos
+        self.agent_start_dir = agent_dir
 
         mission_space = MissionSpace(mission_func=self._gen_mission)
 
@@ -269,6 +337,7 @@ class EmptyEnv(MiniGridEnv, _EmptyEnv):
 
 register(id="MiniGrid-TwoRooms-v1", entry_point="envs.minigrid_envs:TwoRoomsEnv")
 register(id="MiniGrid-FourRooms-v1", entry_point="envs.minigrid_envs:FourRoomsEnv")
+register(id="MiniGrid-BugTrap-v1", entry_point="envs.minigrid_envs:BugTrapEnv")
 
 for size in range(4, 20, 2):
     register(
@@ -280,5 +349,5 @@ for size in range(4, 20, 2):
 register(
     id="MiniGrid-Empty-Random-6x6-v1",
     entry_point="envs.minigrid_envs:EmptyEnv",
-    kwargs={"size": 6, "agent_start_pos": None},
+    kwargs={"size": 6, "agent_pos": None},
 )

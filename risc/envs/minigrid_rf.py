@@ -88,10 +88,7 @@ def create_every_eval_env(env, env_fn):
 def create_env_fn(env_name, seed, symbolic, **kwargs):
     def create_env(starting_pos=None):
         if starting_pos is not None:
-            if "Empty" in env_name:
-                kwargs["agent_start_pos"] = starting_pos
-            else:
-                kwargs["agent_pos"] = starting_pos
+            kwargs["agent_pos"] = starting_pos
 
         env = gym.make(env_name, symbolic=symbolic, **kwargs)
         env = ReseedWrapper(env, seeds=[seed])
@@ -221,6 +218,9 @@ class MiniGridEnv(GymEnv):
         self._logger = logger
 
     def step(self, action):
+        #print(f"=== self._env.agent_pos: {self._env.agent_pos}")
+        #plt.pause(1)
+        #breakpoint()
         observation, reward, terminated, truncated, self._turn, info = super().step(
             action
         )
@@ -239,8 +239,6 @@ class MiniGridEnv(GymEnv):
             if self._vis_period.update():
                 self.visualize(self._id)
 
-        #print(f"=== self._env.agent_pos: {self._env.agent_pos}")
-        #plt.pause(1)
         if self._train_video and self._video_reset_schedule.update():
             if self.render_mode == "rgb_array_list":
                 frames = np.array(self._env.render())
