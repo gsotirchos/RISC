@@ -315,7 +315,7 @@ def create_vis_fn(env_shape):
 
 def get_goals(env_shape, all_obs):
     goal = tuple([dim - 2 for dim in env_shape])
-    return [g for g in all_obs["desired_goal"] if g[0, goal[0], goal[1]] == 255]
+    return [g for g in all_obs["desired_goal"] if g[0, goal[1], goal[0]] == 255]
 
 
 def get_distance_calculator(distance_type, initial_state):

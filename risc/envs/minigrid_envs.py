@@ -10,6 +10,7 @@ from minigrid.core.constants import DIR_TO_VEC
 from minigrid.core.grid import Grid
 from minigrid.core.mission import MissionSpace
 from minigrid.core.world_object import Goal
+from minigrid.core.roomgrid import RoomGrid as _RoomGrid
 from minigrid.envs.empty import EmptyEnv as _EmptyEnv
 from minigrid.envs.fourrooms import FourRoomsEnv as _FourRoomsEnv
 
@@ -138,12 +139,19 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
             reward = 1.0  # self._reward()
         if fwd_cell is not None and fwd_cell.type == "lava":
             terminated = True
-        if fwd_cell is not None and fwd_cell.type == "key":
-            # TODO
-            pass
+        if fwd_cell is not None and fwd_cell.can_pickup():
+            if self.carrying is None:
+                self.carrying = fwd_cell
+                self.carrying.cur_pos = np.array([-1, -1])
+                self.grid.set(fwd_pos[0], fwd_pos[1], None)
+            self.agent_pos = tuple(fwd_pos)
+            self.agent_dir = action
         if fwd_cell is not None and fwd_cell.type == "door":
-            # TODO
-            pass
+            if fwd_cell.is_locked:
+                fwd_cell.toggle(self, fwd_pos)
+            if fwd_cell.is_open:
+                self.agent_pos = tuple(fwd_pos)
+                self.agent_dir = action
         if self.step_count >= self.max_steps:
             truncated = True
 
@@ -245,7 +253,7 @@ class TwoRoomsEnv(MiniGridEnv):
 
 
 class BugTrapEnv(MiniGridEnv):
-    """Two rooms environment."""
+    """Bug trap environment."""
 
     def __init__(self, agent_pos=(5, 12), goal_pos=(17, 17), max_steps=100, **kwargs):
         self._agent_default_pos = agent_pos
@@ -306,6 +314,65 @@ class BugTrapEnv(MiniGridEnv):
             self.place_obj(Goal())
 
 
+class LockedDoorEnv(MiniGridEnv, _RoomGrid):
+    """Single locked door environment."""
+
+    def __init__(self, agent_pos=(1, 1), goal_pos=(9, 4), max_steps=50, **kwargs):
+        self._agent_default_pos = agent_pos
+        self._goal_default_pos = goal_pos
+
+        room_size = 6
+        mission_space = MissionSpace(mission_func=self._gen_mission)
+
+        _RoomGrid.__init__(
+            self,
+            mission_space=mission_space,
+            num_rows=1,
+            num_cols=2,
+            room_size=room_size,
+            max_steps=max_steps,
+        )
+
+        MiniGridEnv.__init__(
+            self,
+            mission_space=mission_space,
+            width=self.width,
+            height=self.height,
+            max_steps=max_steps,
+            **kwargs,
+        )
+
+    @staticmethod
+    def _gen_mission():
+        return "reach the goal"
+
+    def _gen_grid(self, width, height):
+        super()._gen_grid(width, height)
+
+        # Make sure the two rooms are directly connected by a locked door
+        door, _ = self.add_door(0, 0, 0, locked=True)
+        self.door = door
+
+        # Add a key to unlock the door
+        self.add_object(0, 0, "key", door.color)
+
+        # Randomize the player start position and orientation
+        if self._agent_default_pos is not None:
+            self.agent_pos = self._agent_default_pos
+            self.grid.set(*self._agent_default_pos, None)
+            # assuming random start direction
+            self.agent_dir = self._rand_int(0, 4)
+        else:
+            self.place_agent()
+
+        if self._goal_default_pos is not None:
+            goal = Goal()
+            self.put_obj(goal, *self._goal_default_pos)
+            goal.init_pos, goal.cur_pos = self._goal_default_pos
+        else:
+            self.place_obj(Goal())
+
+
 class EmptyEnv(MiniGridEnv, _EmptyEnv):
     """Empty environment."""
 
@@ -338,6 +405,7 @@ class EmptyEnv(MiniGridEnv, _EmptyEnv):
 register(id="MiniGrid-TwoRooms-v1", entry_point="envs.minigrid_envs:TwoRoomsEnv")
 register(id="MiniGrid-FourRooms-v1", entry_point="envs.minigrid_envs:FourRoomsEnv")
 register(id="MiniGrid-BugTrap-v1", entry_point="envs.minigrid_envs:BugTrapEnv")
+register(id="MiniGrid-LockedDoor-v1", entry_point="envs.minigrid_envs:LockedDoorEnv")
 
 for size in range(4, 20, 2):
     register(
