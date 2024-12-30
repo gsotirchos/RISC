@@ -147,7 +147,7 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
             self.agent_pos = tuple(fwd_pos)
             self.agent_dir = action
         if fwd_cell is not None and fwd_cell.type == "door":
-            if fwd_cell.is_locked:
+            if not fwd_cell.is_open:
                 fwd_cell.toggle(self, fwd_pos)
             if fwd_cell.is_open:
                 self.agent_pos = tuple(fwd_pos)
@@ -317,18 +317,18 @@ class BugTrapEnv(MiniGridEnv):
 class LockedDoorEnv(MiniGridEnv, _RoomGrid):
     """Single locked door environment."""
 
-    def __init__(self, agent_pos=(1, 1), goal_pos=(13, 6), max_steps=50, **kwargs):
+    def __init__(self, agent_pos=(7, 1), goal_pos=(14, 4), max_steps=50, **kwargs):
         self._agent_default_pos = agent_pos
         self._goal_default_pos = goal_pos
 
-        room_size = 8
+        room_size = 6
         mission_space = MissionSpace(mission_func=self._gen_mission)
 
         _RoomGrid.__init__(
             self,
             mission_space=mission_space,
             num_rows=1,
-            num_cols=2,
+            num_cols=3,
             room_size=room_size,
             max_steps=max_steps,
         )
@@ -349,9 +349,9 @@ class LockedDoorEnv(MiniGridEnv, _RoomGrid):
     def _gen_grid(self, width, height):
         super()._gen_grid(width, height)
 
-        # Make sure the two rooms are directly connected by a locked door
-        door, _ = self.add_door(0, 0, 0, locked=True)
-        self.door = door
+        # Make sure the rooms are directly connected by a locked door
+        door, _ = self.add_door(1, 0, 0, locked=True)
+        _, _ = self.add_door(0, 0, 0, locked=False)
 
         # Add a key to unlock the door
         self.add_object(0, 0, "key", door.color)

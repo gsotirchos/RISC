@@ -23,7 +23,7 @@ kwargs:
   env_fn:
     name: minigrid_envs
     kwargs:
-      env_name: MiniGrid-FourRooms-v1
+      env_name: MiniGrid-LockedDoor-v1
       #env_name: MiniGrid-Empty-18x18-v1
       eval_max_steps: 100
       local_vis_period: 2000
@@ -34,7 +34,7 @@ kwargs:
       #train_max_steps: 30  # episodic
       video_period: 1000
       vis_frequency: 2000
-      #render_mode: human
+      render_mode: human
   agent:
     name: GCResetFree
     kwargs:
@@ -90,9 +90,9 @@ kwargs:
       weights: [1, 1, 1, 1]
       directions: [forward, backward, lateral]
   loggers:
-  - name: WandbLogger
-    kwargs:
-      name: 4r_FBL_1.0_1.0_1.0_1.0
-      project: Debug
-      resume: allow
-      start_method: fork
+  # - name: WandbLogger
+  #   kwargs:
+  #     name: 4r_FBL_1.0_1.0_1.0_1.0
+  #     project: Debug
+  #     resume: allow
+  #     start_method: fork
