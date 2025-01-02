@@ -24,7 +24,6 @@ kwargs:
     name: minigrid_envs
     kwargs:
       env_name: MiniGrid-FourRooms-v1
-      #env_name: MiniGrid-Empty-18x18-v1
       eval_max_steps: 100
       local_vis_period: 2000
       reset_free: true  # reset-free
