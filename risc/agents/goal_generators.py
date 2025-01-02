@@ -7,9 +7,14 @@ from hive.utils.registry import Registrable
 from hive.utils.schedule import PeriodicSchedule
 from hive.utils.utils import seeder
 from scipy.special import softmax
+from scipy.special import expit as sigmoid
 
 
-def softmin(x): return softmax(-x)
+def softmin(x):
+    return softmax(-x)
+
+def normalize(x):
+    return (x - np.mean(x)) / np.std(x)
 
 
 class GoalGenerator(Registrable):
@@ -143,7 +148,7 @@ class OmniGoalGenerator(GoalGenerator):
                 #          + f"{self._visitation_counts.get(self._totuple(state))}")
                 #print(f"    self._weights: {self._weights}")
                 novelty_cost = np.zeros(len(frontier_states)) if self._weights[0] == 0 \
-                    else 1 / self._novelty(frontier_states)
+                    else sigmoid(normalize(1 / self._novelty(frontier_states)))
                 cost_to_reach = np.zeros(len(frontier_states)) if self._weights[1] == 0 \
                     else 1 / self._confidence(observation["observation"],
                                               frontier_states[:, 0],
@@ -157,11 +162,16 @@ class OmniGoalGenerator(GoalGenerator):
                                               main_goal_state,
                                               self._forward_agent)
                 priority = softmin(
-                    novelty_cost * self._weights[0]
-                    + cost_to_reach * self._weights[1]
-                    + cost_to_come * self._weights[2]
-                    + cost_to_go * self._weights[3]
+                    novelty_cost ** self._weights[0] * (
+                        + cost_to_reach * self._weights[1]
+                        + cost_to_come * self._weights[2]
+                        + cost_to_go * self._weights[3]
+                    )
                 )
+                print(f"visitations: {1 / self._novelty(frontier_states)}")
+                print(f"normalized vis.: {normalize(1 / self._novelty(frontier_states))}")
+                print(f"novelty_cost: {1 / np.round(self._novelty(frontier_states), decimals=3)}")
+                breakpoint()
                 #print(f"    priority: {priority}")
                 goal_idx = np.random.choice(len(priority), p=priority)  # np.argmin(priority)
                 goal = frontier_states[goal_idx, 0]
