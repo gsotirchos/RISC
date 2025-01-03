@@ -13,7 +13,7 @@ from scipy.special import expit as sigmoid
 def softmin(x):
     return softmax(-x)
 
-def normalize(x):
+def standardize(x):
     return (x - np.mean(x)) / np.std(x)
 
 
@@ -148,7 +148,7 @@ class OmniGoalGenerator(GoalGenerator):
                 #          + f"{self._visitation_counts.get(self._totuple(state))}")
                 #print(f"    self._weights: {self._weights}")
                 novelty_cost = np.zeros(len(frontier_states)) if self._weights[0] == 0 \
-                    else sigmoid(normalize(1 / self._novelty(frontier_states)))
+                    else sigmoid(standardize(1 / self._novelty(frontier_states)))
                 cost_to_reach = np.zeros(len(frontier_states)) if self._weights[1] == 0 \
                     else 1 / self._confidence(observation["observation"],
                                               frontier_states[:, 0],
@@ -168,9 +168,9 @@ class OmniGoalGenerator(GoalGenerator):
                         + cost_to_go * self._weights[3]
                     )
                 )
-                print(f"visitations: {1 / self._novelty(frontier_states)}")
-                print(f"normalized vis.: {normalize(1 / self._novelty(frontier_states))}")
-                print(f"novelty_cost: {1 / np.round(self._novelty(frontier_states), decimals=3)}")
+                #print(f"    visitations: {1 / self._novelty(frontier_states)}")
+                #print(f"    standardized vis.: {standardize(1 / self._novelty(frontier_states))}")
+                #print(f"    novelty_cost: {1 / np.round(self._novelty(frontier_states), decimals=3)}")
                 #print(f"    priority: {priority}")
                 goal_idx = np.random.choice(len(priority), p=priority)  # np.argmin(priority)
                 goal = frontier_states[goal_idx, 0]
@@ -190,7 +190,7 @@ class OmniGoalGenerator(GoalGenerator):
                         },
                         "goal_generator",
                     )
-        #print(f"       {self._debug_fmt_states(goal)}")
+        #print(f"    {self._debug_fmt_states(goal)}")
         return goal
 
 

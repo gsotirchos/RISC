@@ -23,9 +23,8 @@ kwargs:
   env_fn:
     name: minigrid_envs
     kwargs:
-      #agent_pos: [5, 12]
       #env_name: MiniGrid-BugTrap-v1
-      agent_pos: [1, 1]
+      #agent_pos: [1, 1]
       env_name: MiniGrid-FourRooms-v1
       eval_max_steps: 100
       goal_pos: [17,17]
