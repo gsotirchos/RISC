@@ -171,7 +171,6 @@ class OmniGoalGenerator(GoalGenerator):
                 print(f"visitations: {1 / self._novelty(frontier_states)}")
                 print(f"normalized vis.: {normalize(1 / self._novelty(frontier_states))}")
                 print(f"novelty_cost: {1 / np.round(self._novelty(frontier_states), decimals=3)}")
-                breakpoint()
                 #print(f"    priority: {priority}")
                 goal_idx = np.random.choice(len(priority), p=priority)  # np.argmin(priority)
                 goal = frontier_states[goal_idx, 0]
