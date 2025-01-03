@@ -333,11 +333,11 @@ def success_fn(observation, goal=None):
     obs = observation["observation"]
     if goal is None:
         goal = observation["desired_goal"]
-    return -1 + np.allclose(obs[0], goal[0])
+    return np.allclose(obs[0], goal[0])
 
 
 def reward_fn(observation, goal=None):
-    return float(success_fn(observation, goal))
+    return -1 + float(success_fn(observation, goal))
 
 
 def replace_goal_fn(obs, goal):
