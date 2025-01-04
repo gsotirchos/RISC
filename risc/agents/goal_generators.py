@@ -156,7 +156,7 @@ class OmniGoalGenerator(GoalGenerator):
                 cost_to_come = np.zeros(len(frontier_states)) if self._weights[2] == 0 \
                     else 1 / self._confidence(initial_state,
                                               frontier_states,
-                                              self._forward_agent)
+                                              self._backward_agent)
                 cost_to_go = np.zeros(len(frontier_states)) if self._weights[3] == 0 \
                     else 1 / self._confidence(frontier_states,
                                               main_goal_state,
