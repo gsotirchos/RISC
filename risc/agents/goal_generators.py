@@ -139,6 +139,7 @@ class OmniGoalGenerator(GoalGenerator):
                 goal = initial_state
                 #print("    initial state:")
             case "lateral":
+                epsilon = 0.00001
                 frontier_states = self._visited_states()
                 #print("    observation:\n"
                 #      + f'       {self._debug_fmt_states(observation["observation"][0])}')
@@ -150,17 +151,32 @@ class OmniGoalGenerator(GoalGenerator):
                 novelty_cost = np.zeros(len(frontier_states)) if self._weights[0] == 0 \
                     else sigmoid(standardize(1 / self._novelty(frontier_states)))
                 cost_to_reach = np.zeros(len(frontier_states)) if self._weights[1] == 0 \
-                    else 1 / self._confidence(observation["observation"],
-                                              frontier_states[:, 0],
-                                              self._backward_agent)
+                    else 1 / (
+                        self._confidence(
+                            observation["observation"],
+                            frontier_states[:, 0],
+                            self._backward_agent
+                        )
+                        + epsilon
+                    )
                 cost_to_come = np.zeros(len(frontier_states)) if self._weights[2] == 0 \
-                    else 1 / self._confidence(initial_state,
-                                              frontier_states,
-                                              self._backward_agent)
+                    else 1 / (
+                        self._confidence(
+                            initial_state,
+                            frontier_states,
+                            self._backward_agent
+                        )
+                        + epsilon
+                    )
                 cost_to_go = np.zeros(len(frontier_states)) if self._weights[3] == 0 \
-                    else 1 / self._confidence(frontier_states,
-                                              main_goal_state,
-                                              self._forward_agent)
+                    else 1 / (
+                        self._confidence(
+                            frontier_states,
+                            main_goal_state,
+                            self._forward_agent
+                        )
+                        + epsilon
+                    )
                 priority = softmin(
                     novelty_cost ** self._weights[0] * (
                         + cost_to_reach * self._weights[1]
