@@ -11,10 +11,12 @@ kwargs:
           off_value: false
           on_value: true
           period: 1000000
-  train_steps: 100000
+  #train_steps: 100000
+  train_steps: 300000
   test_frequency: 1000
   test_episodes: 10
-  test_max_steps: 100
+  #test_max_steps: 100
+  test_max_steps: 150
   seed: 0
   stack_size: 1
   eval_every: false
@@ -29,7 +31,8 @@ kwargs:
       reset_free: true  # reset-free
       #reset_free: false  # episodic
       symbolic: true
-      train_max_steps: 100000  # reset-free
+      #train_max_steps: 100000  # reset-free
+      train_max_steps: 300000  # reset-free
       #train_max_steps: 30  # episodic
       video_period: 1000
       vis_frequency: 2000
