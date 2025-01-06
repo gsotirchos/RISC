@@ -139,7 +139,7 @@ class OmniGoalGenerator(GoalGenerator):
                 goal = initial_state
                 #print("    initial state:")
             case "lateral":
-                epsilon = 0.00001
+                epsilon = 1e-8
                 frontier_states = self._visited_states()
                 #print("    observation:\n"
                 #      + f'       {self._debug_fmt_states(observation["observation"][0])}')
