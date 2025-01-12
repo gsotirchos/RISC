@@ -3,7 +3,7 @@ kwargs:
   experiment_manager:
     name: Experiment
     kwargs:
-      name: 4r_FBL_1.0_1.0_1.0_1.0
+      name: BugTrap_FBL_1.0_1.0_1.0_1.0
       save_dir: experiment
       saving_schedule:
         name: PeriodicSchedule
@@ -15,8 +15,8 @@ kwargs:
   train_steps: 300000
   test_frequency: 1000
   test_episodes: 10
-  #test_max_steps: 100
-  test_max_steps: 150
+  test_max_steps: 100
+  #test_max_steps: 150
   seed: 0
   stack_size: 1
   eval_every: false
@@ -25,7 +25,7 @@ kwargs:
   env_fn:
     name: minigrid_envs
     kwargs:
-      env_name: MiniGrid-FourRooms-v1
+      env_name: MiniGrid-BugTrap-v1
       eval_max_steps: 100
       local_vis_period: 2000
       reset_free: true  # reset-free
@@ -87,6 +87,7 @@ kwargs:
         #name: HERReplayBuffer  # HER
         kwargs:
           capacity: 100000
+          #capacity: 500000
           #her_batch_size: 64  # HER
       separate_agents: true
       weights: [1, 1, 1, 1]
@@ -94,7 +95,7 @@ kwargs:
   loggers:
   - name: WandbLogger
     kwargs:
-      name: 4r_FBL_1.0_1.0_1.0_1.0
+      name: BugTrap_FBL_1.0_1.0_1.0_1.0
       project: Debug
       resume: allow
       start_method: fork
