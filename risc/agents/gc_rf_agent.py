@@ -107,7 +107,8 @@ class GCResetFree(Agent):
             never_truncate: Whether to truncate trajectories on phase_step_limit.
             use_demo: Whether to use the demo.
         """
-        self._directions = kwargs.get("directions", ["forward", "backward"])
+        directions = kwargs.get("directions", ["forward", "backward"])
+        self._directions = deque(directions)
         self._separate_agents = separate_agents
         distance_fn = get_distance_fn(distance_type=distance_type)
         super().__init__(observation_space, action_space, id)
@@ -181,18 +182,12 @@ class GCResetFree(Agent):
         if self._vis_fn is not None:
             self._local_metrics = {}
             self._global_metrics = {}
-            for direction in self._directions:
+            for direction in directions:
                 self._local_metrics[direction] = {}
                 self._global_metrics[direction] = {}
                 for metric in ["observation", "desired_goal"]:
                     self._local_metrics[direction][metric] = deque(maxlen=local_visitation_vis_frequency)
                     self._global_metrics[direction][metric] = 0
-            # self._forward_local = deque(maxlen=local_visitation_vis_frequency)
-            # self._backward_local = deque(maxlen=local_visitation_vis_frequency)
-            # self._forward_global_visitation = 0
-            # self._backward_global_visitation = 0
-            # self._forward_global_goals = 0
-            # self._backward_global_goals = 0
             self._local_metrics_vis_frequency = local_visitation_vis_frequency
             self._vis_schedule = PeriodicSchedule(
                 False, True, local_visitation_vis_frequency
@@ -231,8 +226,8 @@ class GCResetFree(Agent):
         if agent_traj_state.current_goal is None:
             agent_traj_state = self.get_new_direction(agent_traj_state)
             agent_traj_state = self.get_new_goal(observation, agent_traj_state)
-        if hasattr(self._goal_generator, "update_novelty"):
-            self._goal_generator.update_novelty(observation)
+        #if hasattr(self._goal_generator, "update_novelty"):
+        #    self._goal_generator.update_novelty(observation)  # TODO: deprecated
         observation = self._replace_goal_fn(observation, agent_traj_state.current_goal)
         agent = (
             self._forward_agent if agent_traj_state.forward else self._backward_agent
@@ -308,6 +303,7 @@ class GCResetFree(Agent):
 
             agent_traj_state = GCAgentState(
                 current_direction=agent_traj_state.current_direction,
+                forward=agent_traj_state.forward,
                 forward_success=agent_traj_state.forward_success,
                 forward_goal_idx=agent_traj_state.forward_goal_idx,
                 backward_success=agent_traj_state.backward_success,
@@ -394,15 +390,18 @@ class GCResetFree(Agent):
         return replace(agent_traj_state, current_goal=goal)
 
     def get_new_direction(self, agent_traj_state):
-        if agent_traj_state.current_direction is None:
-            direction = self._directions[0]
-        else:
-            current_idx = self._directions.index(agent_traj_state.current_direction)
-            next_idx = (current_idx + 1) % len(self._directions)
-            direction = list(self._directions)[next_idx]
-        return replace(agent_traj_state,
-                       current_direction=direction,
-                       forward=(direction == "forward"))
+        """ Get the current direction by cycling over them.
+        If it is "lateral" then the agent is determined by the next direction. """
+        self._directions.rotate(-1)
+        current_direction = self._directions[0]
+        next_direction = self._directions[1]
+        forward = (next_direction == "forward") if current_direction == "lateral" \
+                  else (current_direction == "forward")
+        return replace(
+            agent_traj_state,
+            current_direction=current_direction,
+            forward=forward
+        )
 
     def train(self):
         super().train()
