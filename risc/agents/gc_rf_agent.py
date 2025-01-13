@@ -340,7 +340,7 @@ class GCResetFree(Agent):
             )
             for key, value in forward_agent_vis.items():
                 image, _ = self._vis_fn(
-                    all_states, None, totals=value, max_count=1, name=f"forward/{key}"
+                    all_states, None, totals=value, name=f"forward/{key}"
                 )
                 metrics[f"forward/{key}"] = image
 
@@ -349,7 +349,7 @@ class GCResetFree(Agent):
             )
             for key, value in backward_agent_vis.items():
                 image, _ = self._vis_fn(
-                    all_states, None, totals=value, max_count=1, name=f"backward/{key}"
+                    all_states, None, totals=value, name=f"backward/{key}"
                 )
                 metrics[f"backward/{key}"] = image
 
