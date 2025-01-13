@@ -104,23 +104,28 @@ class OmniGoalGenerator(GoalGenerator):
     #    state = self._totuple(observation["observation"])
     #    self._visitation_counts[state] = self._visitation_counts.get(state, 0) + 1
 
-    def _all_observations(self):
-        replay_buffer = self._lateral_agent._replay_buffer
-        num_observations = min(replay_buffer._num_added, replay_buffer._capacity)
-        return replay_buffer._storage["observation"][:num_observations]
+    # def _all_observations(self):
+    #     replay_buffer = self._lateral_agent._replay_buffer
+    #     num_observations = min(replay_buffer._num_added, replay_buffer._capacity)
+    #     return replay_buffer._storage["observation"][:num_observations]
 
     def _visited_states(self):
-        #return np.array([key for key in self._visitation_counts.keys()])
-        return np.unique(self._all_observations(), axis=0)
+        visitation_counts = self._lateral_agent._replay_buffer.counts["observation"]
+        return np.array([state for state in visitation_counts])
+        # return np.array([key for key in self._visitation_counts.keys()])
+        # return np.unique(self._all_observations(), axis=0)
 
-    def _visitation_counts(self, state):
-        return np.sum(np.all(self._all_observations() == state, axis=(1, 2, 3)))
+    # def _visitation_counts(self, state):
+    #     return np.sum(np.all(self._all_observations() == state, axis=(1, 2, 3)))
 
     def _novelty(self, states):
         if len(states.shape) == len(self._lateral_agent._observation_space.shape):
             states = np.expand_dims(states, axis=0)
-        #return np.array([1 / self._visitation_counts.get(self._totuple(state)) for state in states]
-        return np.array([1 / self._visitation_counts(state) for state in states])
+        visitation_counts = self._lateral_agent._replay_buffer.counts["observation"]
+        to_tuple = self._lateral_agent._replay_buffer._to_tuple
+        return np.array([1 / visitation_counts[to_tuple(state)] for state in states])
+        # return np.array([1 / self._visitation_counts.get(self._totuple(state)) for state in states])
+        # return np.array([1 / self._visitation_counts(state) for state in states])
 
     def _confidence(self, observations, goals):
         if len(observations.shape) == len(self._lateral_agent._observation_space.shape):
@@ -138,26 +143,25 @@ class OmniGoalGenerator(GoalGenerator):
         return np.flip(np.argwhere(states == value)[..., -2:].squeeze()).tolist()
 
     def generate_goal(self, observation, agent_traj_state):
-        #print("=== Generating goal")
+        # print("=== Generating goal")
         initial_state = self._initial_states[self._rng.integers(len(self._initial_states))]
         goal_state = self._goal_states[self._rng.integers(len(self._goal_states))]
         match agent_traj_state.current_direction.removeprefix("teleport_"):
             case "forward":
-                #print("    goal state")
+                # print("    goal state")
                 return goal_state
             case "backward":
-                #print("    initial state")
+                # print("    initial state")
                 return initial_state
             case "lateral":
                 self._lateral_agent = self._forward_agent if agent_traj_state.forward else self._backward_agent
                 frontier_states = self._visited_states()
-                #print("    observation:\n"
-                #     + f'       {self._debug_fmt_states(observation["observation"][0])}')
-                #print("    frontier states:")
+                # print("    observation:\n       {self._debug_fmt_states(observation["observation"][0])}')
+                # print(f"   {'forward' if agent_traj_state.forward else 'backward'} frontier states:")
                 if frontier_states.size == 0:
-                    #print("    initial/goal state (empty replay buffer)")
+                    # print("    initial/goal state (empty replay buffer)")
                     return goal_state if agent_traj_state.forward else initial_state
-                #_ = [print(f"       {self._debug_fmt_states(state[0])}: {self._visitation_counts(state)}") for state in frontier_states]
+                # _ = [print(f"       {self._debug_fmt_states(state[0])}: {self._lateral_agent._replay_buffer.counts['observation'][self._lateral_agent._replay_buffer._to_tuple(state)]}") for state in frontier_states]
                 novelty_cost = np.zeros(len(frontier_states)) if self._weights[0] == 0 \
                     else sigmoid(standardize(1 / self._novelty(frontier_states)))
                 cost_to_reach = np.zeros(len(frontier_states)) if self._weights[1] == 0 \
@@ -194,14 +198,14 @@ class OmniGoalGenerator(GoalGenerator):
                         + cost_to_go * self._weights[3]
                     )
                 )
-                #print(f"    visitations: {1 / self._novelty(frontier_states)}")
-                #print(f"    standardized vis.: {standardize(1 / self._novelty(frontier_states))}")
-                #print(f"    novelty_cost: {np.round(novelty_cost, decimals=3)}")
-                #print(f"    priority: {priority}")
+                # print(f"    visitations: {1 / self._novelty(frontier_states)}")
+                # print(f"    standardized vis.: {standardize(1 / self._novelty(frontier_states))}")
+                # print(f"    novelty_cost: {np.round(novelty_cost, decimals=3)}")
+                # print(f"    priority: {priority}")
                 goal_idx = np.random.choice(len(priority), p=priority)  # np.argmin(priority)
                 goal = frontier_states[goal_idx, 0]
                 goal = frontier_states[goal_idx, 0][None, ...]
-                #print("    lateral goal: {goal}")
+                # print(f"    lateral goal: {self._debug_fmt_states(goal)}")
                 if self._log_schedule.update():
                     self._logger.log_metrics(
                         {
