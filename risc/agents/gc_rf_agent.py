@@ -318,7 +318,6 @@ class GCResetFree(Agent):
         for direction in self._local_metrics.keys():
             for metric in self._local_metrics[direction].keys():
                 if len(self._local_metrics[direction][metric]) > 0:
-                    #breakpoint()
                     local_image, metric_counts = self._vis_fn(
                         self._local_metrics[direction][metric],
                         None,
