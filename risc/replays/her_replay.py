@@ -1,9 +1,9 @@
 import numpy as np
 
-from replays.circular_replay import CircularReplayBuffer
+from replays.counts_replay import CountsReplayBuffer
 
 
-class HERReplayBuffer(CircularReplayBuffer):
+class HERReplayBuffer(CountsReplayBuffer):
     """Replay buffer with Hindsight Experience Replay (HER)."""
     def __init__(self, *args, her_batch_size=5, **kwargs):
         super().__init__(*args, **kwargs)
