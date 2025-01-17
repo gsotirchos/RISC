@@ -394,8 +394,11 @@ class GCResetFree(Agent):
         self._directions.rotate(-1)
         current_direction = self._directions[0]
         next_direction = self._directions[1]
-        forward = (next_direction == "forward") if current_direction == "lateral" \
-                  else (current_direction == "forward")
+        forward = (not agent_traj_state.forward) if current_direction == "lateral" \
+                 else (current_direction == "forward")
+        #forward = (next_direction == "forward") if current_direction == "lateral" \
+        #          else (current_direction == "forward")
+        # print(f"agent: {'forward' if forward else 'backward'}-{current_direction}")
         return replace(
             agent_traj_state,
             current_direction=current_direction,
