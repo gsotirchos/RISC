@@ -139,11 +139,15 @@ class OmniGoalGenerator(GoalGenerator):
         return np.array([self._lateral_agent.compute_success_prob(observation, goal)
                          for observation, goal in zip(observations, goals, strict=True)])
 
+    def _cost(self, states, goals):
+        return 1 / (self._confidence(states, goals) + epsilon)
+
     def _debug_fmt_states(self, states: np.ndarray, value: int=255):
         return np.flip(np.argwhere(states == value)[..., -2:].squeeze()).tolist()
 
     def generate_goal(self, observation, agent_traj_state):
         # print("=== Generating goal")
+        observation = observation["observation"]
         initial_state = self._initial_states[self._rng.integers(len(self._initial_states))]
         goal_state = self._goal_states[self._rng.integers(len(self._goal_states))]
         match agent_traj_state.current_direction.removeprefix("teleport_"):
@@ -154,43 +158,36 @@ class OmniGoalGenerator(GoalGenerator):
                 # print("    initial state")
                 return initial_state
             case "lateral":
-                self._lateral_agent = self._forward_agent if agent_traj_state.forward else self._backward_agent
+                if agent_traj_state.forward:
+                    self._lateral_agent = self._forward_agent
+                    lateral_initial_state = initial_state
+                    lateral_goal_state = goal_state
+                else:
+                    self._lateral_agent = self._backward_agent
+                    lateral_initial_state = goal_state
+                    lateral_goal_state = initial_state
                 frontier_states = self._visited_states()
-                # print("    observation:\n       {self._debug_fmt_states(observation["observation"][0])}')
+                # print("    observation:\n       {self._debug_fmt_states(observation[0])}')
                 # print(f"   {'forward' if agent_traj_state.forward else 'backward'} frontier states:")
                 if frontier_states.size == 0:
                     # print("    initial/goal state (empty replay buffer)")
                     return goal_state if agent_traj_state.forward else initial_state
                 # _ = [print(f"       {self._debug_fmt_states(state[0])}: {self._lateral_agent._replay_buffer.counts['observation'][self._lateral_agent._replay_buffer._to_tuple(state)]}") for state in frontier_states]
-                novelty_cost = np.zeros(len(frontier_states)) if self._weights[0] == 0 \
-                    else sigmoid(standardize(1 / self._novelty(frontier_states)))
-                cost_to_reach = np.zeros(len(frontier_states)) if self._weights[1] == 0 \
-                    else 1 / (
-                        self._confidence(
-                            observation["observation"],
-                            frontier_states[:, 0]
-                        )
-                        + epsilon
-                    )
-                cost_to_come = np.zeros(len(frontier_states)) if self._weights[2] == 0 \
-                    else 1 / (
-                        self._confidence(
-                            np.concatenate([
-                                initial_state,
-                                observation['observation'][1][None, ...]
-                            ]),
-                            frontier_states[:, 0]
-                        )
-                        + epsilon
-                    )
-                cost_to_go = np.zeros(len(frontier_states)) if self._weights[3] == 0 \
-                    else 1 / (
-                        self._confidence(
-                            frontier_states,
-                            goal_state
-                        )
-                        + epsilon
-                    )
+                novelty_cost = np.zeros(len(frontier_states))
+                cost_to_reach = np.zeros(len(frontier_states))
+                cost_to_come = np.zeros(len(frontier_states))
+                cost_to_go = np.zeros(len(frontier_states))
+                if self._weights[0] != 0:
+                    novelty_cost = sigmoid(standardize(1 / self._novelty(frontier_states)))
+                if self._weights[1] != 0:
+                    cost_to_reach = self._cost(observation, frontier_states[:, 0])
+                if self._weights[2] != 0:
+                    lateral_initial_state = np.concatenate([lateral_initial_state,
+                        observation[1][None, ...]
+                    ])
+                    cost_to_come = self._cost(lateral_initial_state, frontier_states[:, 0])
+                if self._weights[3] != 0:
+                    cost_to_go = self._cost(frontier_states, lateral_goal_state)
                 priority = softmin(
                     novelty_cost ** self._weights[0] * (
                         + cost_to_reach * self._weights[1]
