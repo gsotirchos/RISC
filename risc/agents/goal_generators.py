@@ -203,7 +203,6 @@ class OmniGoalGenerator(GoalGenerator):
                 # print(f"    novelty_cost: {np.round(novelty_cost, decimals=3)}")
                 # print(f"    priority: {priority}")
                 goal_idx = np.random.choice(len(priority), p=priority)  # np.argmin(priority)
-                goal = frontier_states[goal_idx, 0]
                 goal = frontier_states[goal_idx, 0][None, ...]
                 # print(f"    lateral goal: {self._debug_fmt_states(goal)}")
                 if self._log_schedule.update():
