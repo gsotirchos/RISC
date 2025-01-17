@@ -18,11 +18,11 @@ class CountsReplayBuffer(CircularReplayBuffer):
 
     def _update_counts(self, key, **transition):
         """ If a transition will be overwritten decrement its item's count and if it has no counts left remove its entry. Then increment the count for the new item. """
-        overwritten_item = self._to_tuple(self._storage[key][self._cursor])
-        if not (np.array(overwritten_item) == 0).all():
-            self.counts[key][overwritten_item] -= 1
-            if self.counts[key][overwritten_item] == 0:
-                del self.counts[key][overwritten_item]
+        # overwritten_item = self._to_tuple(self._storage[key][self._cursor])
+        # if not (np.array(overwritten_item) == 0).all():
+        #     self.counts[key][overwritten_item] -= 1
+        #     if self.counts[key][overwritten_item] == 0:
+        #         del self.counts[key][overwritten_item]
         new_item = self._to_tuple(transition[key])
         if not (np.array(new_item) == 0).all():
             self.counts[key][new_item] = self.counts[key].get(new_item, 0) + 1
