@@ -35,7 +35,7 @@ kwargs:
       #train_max_steps: 500  # episodic
       video_period: 1000
       vis_frequency: 2000
-      #render_mode: human
+      # render_mode: human
   agent:
     name: GCResetFree
     kwargs:
@@ -88,6 +88,7 @@ kwargs:
         kwargs:
           capacity: 100000
           #capacity: 500000
+          limited_counts: True
           #her_batch_size: 64  # HER
       separate_agents: true
       weights: [1, 1, 1, 1]
