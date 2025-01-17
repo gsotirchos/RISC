@@ -5,7 +5,7 @@ from replays.counts_replay import CountsReplayBuffer
 
 class HERReplayBuffer(CountsReplayBuffer):
     """Replay buffer with Hindsight Experience Replay (HER)."""
-    def __init__(self, *args, her_batch_size=5, **kwargs):
+    def __init__(self, *args, her_batch_size=32, **kwargs):
         super().__init__(*args, **kwargs)
         self.her_batch_size = her_batch_size
 
