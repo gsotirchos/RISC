@@ -3,7 +3,7 @@ kwargs:
   experiment_manager:
     name: Experiment
     kwargs:
-      name: BugTrap_FL_1.0_1.0_1.0_1.0
+      name: FourRooms_FLBL_1.0_1.0_1.0_1.0
       save_dir: experiment
       saving_schedule:
         name: PeriodicSchedule
@@ -24,7 +24,7 @@ kwargs:
   env_fn:
     name: minigrid_envs
     kwargs:
-      env_name: MiniGrid-BugTrap-v1
+      env_name: MiniGrid-FourRooms-v1
       eval_max_steps: 100
       local_vis_period: 2000
       reset_free: true  # reset-free
@@ -35,7 +35,7 @@ kwargs:
       #train_max_steps: 500  # episodic
       video_period: 1000
       vis_frequency: 2000
-      # render_mode: human
+      #render_mode: human
   agent:
     name: GCResetFree
     kwargs:
@@ -92,11 +92,11 @@ kwargs:
           #her_batch_size: 64  # HER
       separate_agents: true
       weights: [1, 1, 1, 1]
-      directions: [forward, lateral]
+      directions: [forward, lateral, backward, lateral]
   loggers:
   - name: WandbLogger
     kwargs:
-      name: BugTrap_FL_1.0_1.0_1.0_1.0
+      name: FourRooms_FLBL_1.0_1.0_1.0_1.0
       project: Debug
       resume: allow
       start_method: fork
