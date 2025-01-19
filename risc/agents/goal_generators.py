@@ -92,31 +92,10 @@ class OmniGoalGenerator(GoalGenerator):
         self._initial_states = initial_states
         self._goal_states = goal_states
         self._weights = weights
-        #self._visitation_counts = {}  # TODO: deprecated
-
-    #def _totuple(self, arr):
-    #    if isinstance(arr, np.ndarray):
-    #        return tuple(self._totuple(sub_arr) for sub_arr in arr)
-    #    else:
-    #        return arr
-
-    #def update_novelty(self, observation):
-    #    state = self._totuple(observation["observation"])
-    #    self._visitation_counts[state] = self._visitation_counts.get(state, 0) + 1
-
-    # def _all_observations(self):
-    #     replay_buffer = self._lateral_agent._replay_buffer
-    #     num_observations = min(replay_buffer._num_added, replay_buffer._capacity)
-    #     return replay_buffer._storage["observation"][:num_observations]
 
     def _visited_states(self):
         visitation_counts = self._lateral_agent._replay_buffer.counts["observation"]
         return np.array([state for state in visitation_counts])
-        # return np.array([key for key in self._visitation_counts.keys()])
-        # return np.unique(self._all_observations(), axis=0)
-
-    # def _visitation_counts(self, state):
-    #     return np.sum(np.all(self._all_observations() == state, axis=(1, 2, 3)))
 
     def _novelty(self, states):
         if len(states.shape) == len(self._lateral_agent._observation_space.shape):
@@ -124,10 +103,10 @@ class OmniGoalGenerator(GoalGenerator):
         visitation_counts = self._lateral_agent._replay_buffer.counts["observation"]
         to_tuple = self._lateral_agent._replay_buffer._to_tuple
         return np.array([1 / visitation_counts[to_tuple(state)] for state in states])
-        # return np.array([1 / self._visitation_counts.get(self._totuple(state)) for state in states])
-        # return np.array([1 / self._visitation_counts(state) for state in states])
 
-    def _confidence(self, observations, goals, agent):
+    def _confidence(self, observations, goals, agent=None):
+        if agent is None:
+            agent = self._lateral_agent
         if len(observations.shape) == len(agent._observation_space.shape):
             observations = np.expand_dims(observations, axis=0)
         if len(goals.shape) == len(agent._goal_space.shape):
@@ -158,7 +137,14 @@ class OmniGoalGenerator(GoalGenerator):
                 # print("    initial state")
                 return initial_state
             case "lateral":
-                self._lateral_agent = self._forward_agent if agent_traj_state.forward else self._backward_agent
+                if agent_traj_state.forward:
+                    self._lateral_agent = self._forward_agent
+                    lateral_initial_state = initial_state
+                    lateral_goal_state = goal_state
+                else:
+                    self._lateral_agent = self._backward_agent
+                    lateral_initial_state = goal_state
+                    lateral_goal_state = initial_state
                 frontier_states = self._visited_states()
                 # print("    observation:\n       {self._debug_fmt_states(observation[0])}')
                 # print(f"   {'forward' if agent_traj_state.forward else 'backward'} frontier states:")
@@ -175,20 +161,17 @@ class OmniGoalGenerator(GoalGenerator):
                 if self._weights[1] != 0:
                     cost_to_reach = self._cost(
                         observation,
-                        frontier_states[:, 0],
-                        self._lateral_agent
+                        frontier_states[:, 0]
                     )
                 if self._weights[2] != 0:
                     cost_to_come = self._cost(
-                        np.concatenate([initial_state, observation[1][None, ...]]),
-                        frontier_states[:, 0],
-                        self._forward_agent
+                        np.concatenate([lateral_initial_state, observation[1][None, ...]]),
+                        frontier_states[:, 0]
                     )
                 if self._weights[3] != 0:
                     cost_to_go = self._cost(
                         frontier_states,
-                        goal_state,
-                        self._forward_agent
+                        lateral_goal_state
                     )
                 priority = softmin(
                     novelty_cost ** self._weights[0] * (
