@@ -53,4 +53,4 @@ class HERReplayBuffer(CountsReplayBuffer):
 
     def _compute_her_reward(self, achieved_goal, desired_goal):
         # Custom reward function based on goal achievement
-        return 1.0 if np.array_equal(achieved_goal, desired_goal) else 0.0
+        return 0.0 if np.array_equal(achieved_goal, desired_goal) else -1.0
