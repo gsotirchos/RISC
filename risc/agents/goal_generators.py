@@ -95,20 +95,23 @@ class OmniGoalGenerator(GoalGenerator):
         self._goal_states = goal_states
         self._weights = weights
 
-    def _get_knn_distances(self, counts, distances, k=4):
+    def _get_knn_distances(self, counts, distances, k, max_visitations):
         all_visited_states = np.array([state for state in counts])
-        # newly_visited_states = np.array([state for state, count in counts.items() if count == 1])
-        # if newly_visited_states.size == 0:
-        #     newly_visited_states = visited_states
-        newly_visited_states = all_visited_states
+        max_visitations = max_visitations or 0
+        newly_visited_states = np.array(
+            [state for state, count in counts.items() if count <= max_visitations]
+        )
+        if newly_visited_states.size == 0:
+            newly_visited_states = all_visited_states
         knn_distances = HashStorage()
         for state in newly_visited_states:
             neighbors_dists = [
                 distances[state, other_state] for other_state in all_visited_states
                 if not np.array_equal(other_state, state)
             ]
-            # print(f"neighbors_dists[{self._debug_fmt_states(state[0])}]: {sorted(neighbors_dists)}")
-            knn_distances[state] = np.mean(np.partition(neighbors_dists, k)[:k])
+            # print(f"neighbors_dists[{self._debug_fmt(state[0])}]: {sorted(neighbors_dists)}")
+            kk = min(len(neighbors_dists), k)
+            knn_distances[state] = np.mean(np.partition(neighbors_dists, kk)[:kk])
         return knn_distances
 
     def _get_proportion(self, dictionary, proportion):
@@ -117,16 +120,16 @@ class OmniGoalGenerator(GoalGenerator):
         selected_keys = np.array([key for key, value in sorted_items[:num_keys]])
         return selected_keys
 
-    def _frontier_states(self, k=4, proportion=0.5):
+    def _frontier_states(self, proportion=0.5, k=4, max_visitations=None):
         counts = self._lateral_agent._replay_buffer.counts
         if len(counts) == 0:
             return None
         distances = self._lateral_agent._replay_buffer.distances
-        knn_distances = self._get_knn_distances(counts, distances, k)
+        knn_distances = self._get_knn_distances(counts, distances, k, max_visitations)
         frontier_states = self._get_proportion(knn_distances, proportion)
-        # print(f"visited_states: {self._debug_fmt_states(visited_states[:, 0])}")
+        # print(f"    visited_states: {self._debug_fmt(visited_states[:, 0])}")
         # print("    knn_distances[newly_visited_states]")
-        # _ = [print(f"        {self._debug_fmt_states(state[0])}: {dist}") for state, dist in knn_distances.items()]
+        # _ = [print(f"        {self._debug_fmt(state[0])}: {dist}") for state, dist in knn_distances.items()]
         return frontier_states
 
     def _novelty(self, states):
@@ -152,7 +155,7 @@ class OmniGoalGenerator(GoalGenerator):
     def _cost(self, *args):
         return 1 / (self._confidence(*args) + epsilon)
 
-    def _debug_fmt_states(self, states: np.ndarray, value: int=255):
+    def _debug_fmt(self, states: np.ndarray, value: int=255):
         return np.flip(np.argwhere(np.array(states) == value)[..., -2:].squeeze()).tolist()
 
     def generate_goal(self, observation, agent_traj_state):
@@ -223,12 +226,12 @@ class OmniGoalGenerator(GoalGenerator):
                         },
                         "goal_generator",
                     )
-                # print(f"    frontier_states: {self._debug_fmt_states(frontier_states[:, 0])} (unordered)")
+                # print(f"    frontier_states: {self._debug_fmt(frontier_states[:, 0])} (unordered)")
                 # print(f"    visitations: {1 / self._novelty(frontier_states)}")
                 # print(f"    standardized vis.: {standardize(1 / self._novelty(frontier_states))}")
                 # print(f"    novelty_cost: {np.round(novelty_cost, decimals=3)}")
                 # print(f"    priority: {priority}")
-                # print(f"    lateral goal: {self._debug_fmt_states(goal)}")
+                # print(f"    lateral goal: {self._debug_fmt(goal)}")
                 return goal
 
 
