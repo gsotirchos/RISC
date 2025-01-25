@@ -96,13 +96,16 @@ class OmniGoalGenerator(GoalGenerator):
         self._weights = weights
 
     def _get_knn_distances(self, counts, distances, k, max_visitations):
-        all_visited_states = np.array([state for state in counts])
+        all_visited_states = np.array([*counts.keys()])
         max_visitations = max_visitations or 0
-        newly_visited_states = np.array(
-            [state for state, count in counts.items() if count <= max_visitations]
-        )
-        if newly_visited_states.size == 0:
+        if max_visitations == 0:
             newly_visited_states = all_visited_states
+        else:
+            newly_visited_states = np.array(
+                [state for state, count in counts.items() if count <= max_visitations]
+            )
+            if newly_visited_states.size == 0:
+                newly_visited_states = all_visited_states
         knn_distances = HashStorage()
         for state in newly_visited_states:
             neighbors_dists = [
@@ -111,7 +114,7 @@ class OmniGoalGenerator(GoalGenerator):
             ]
             # print(f"neighbors_dists[{self._debug_fmt(state[0])}]: {sorted(neighbors_dists)}")
             kk = min(len(neighbors_dists), k)
-            knn_distances[state] = np.mean(np.partition(neighbors_dists, kk-1)[:kk])
+            knn_distances[state] = np.mean(np.partition(neighbors_dists, kk - 1)[:kk])
         return knn_distances
 
     def _get_proportion(self, dictionary, proportion):
