@@ -245,12 +245,12 @@ class OmniGoalGenerator(GoalGenerator):
                 )
                 goal_idx = np.random.choice(len(priority), p=priority)  # np.argmin(priority)
                 goal = frontier_states[goal_idx, 0][None, ...]
-                print(f"    frontier_states: {self._debug_fmt(frontier_states[:, 0])}")
-                print(f"    visitations: {1 / self._novelty(frontier_states)}")
-                print(f"    standardized vis.: {standardize(1 / self._novelty(frontier_states))}")
-                print(f"    novelty_cost: {novelty_cost}")
-                print(f"    priority: {priority}")
-                print(f"    lateral goal: {self._debug_fmt(goal)}")
+                # print(f"    frontier_states: {self._debug_fmt(frontier_states[:, 0])}")
+                # print(f"    visitations: {1 / self._novelty(frontier_states)}")
+                # print(f"    standardized vis.: {standardize(1 / self._novelty(frontier_states))}")
+                # print(f"    novelty_cost: {novelty_cost}")
+                # print(f"    priority: {priority}")
+                # print(f"    lateral goal: {self._debug_fmt(goal)}")
                 if self._log_schedule.update() and not isinstance(self._logger, NullLogger):
                     self._logger.log_metrics(
                         {
