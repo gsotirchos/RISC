@@ -111,7 +111,7 @@ class OmniGoalGenerator(GoalGenerator):
             ]
             # print(f"neighbors_dists[{self._debug_fmt(state[0])}]: {sorted(neighbors_dists)}")
             kk = min(len(neighbors_dists), k)
-            knn_distances[state] = np.mean(np.partition(neighbors_dists, kk)[:kk])
+            knn_distances[state] = np.mean(np.partition(neighbors_dists, kk-1)[:kk])
         return knn_distances
 
     def _get_proportion(self, dictionary, proportion):
