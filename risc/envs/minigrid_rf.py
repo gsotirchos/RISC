@@ -275,6 +275,7 @@ def create_vis_fn(env_shape):
         width,
         height,
         totals=1,
+        min_count=None,
         max_count=None,
         fmt=".0f",
         already_counts=False,
@@ -302,7 +303,7 @@ def create_vis_fn(env_shape):
             mask=counts == 0,
             annot=True,
             fmt=fmt,
-            vmin=0,
+            vmin=min_count,
             vmax=max_count,
         )
         fig.tight_layout()
