@@ -6,14 +6,16 @@ from hive.utils.loggers import Logger, NullLogger
 from hive.utils.registry import Registrable
 from hive.utils.schedule import PeriodicSchedule
 from hive.utils.utils import seeder
-from scipy.special import softmax
 from scipy.special import expit as sigmoid
-
+from scipy.special import softmax
+from replays.counts_replay import HashStorage
 
 epsilon = np.finfo(float).eps
 
+
 def softmin(x):
     return softmax(-x)
+
 
 def standardize(x):
     return (x - np.mean(x)) / (np.std(x) + epsilon)
@@ -93,23 +95,50 @@ class OmniGoalGenerator(GoalGenerator):
         self._goal_states = goal_states
         self._weights = weights
 
-    def _visited_states(self):
-        visitation_counts = self._lateral_agent._replay_buffer.counts["observation"]
-        return np.array([state for state in visitation_counts])
+    def _get_knn_distances(self, states, all_states, distances, k=4):
+        knn_distances = HashStorage()
+        for state in states:
+            neighbors_dists = [
+                distances[state, other_state] for other_state in all_states
+                if not np.array_equal(other_state, state)
+            ]
+            # print(f"neighbors_dists[{self._debug_fmt_states(state[0])}]: {sorted(neighbors_dists)}")
+            knn_distances[state] = np.mean(np.partition(neighbors_dists, k)[:k])
+        return knn_distances
+
+    def _get_proportion(self, dictionary, proportion=0.1):
+        sorted_items = sorted(dictionary.items(), key=lambda x: x[1], reverse=True)
+        num_keys = np.ceil(proportion * len(sorted_items)).astype(int)
+        selected_keys = np.array([key for key, value in sorted_items[:num_keys]])
+        return selected_keys
+
+    def _frontier_states(self, k=4, proportion=0.5):
+        counts = self._lateral_agent._replay_buffer.counts
+        distances = self._lateral_agent._replay_buffer.distances
+        visited_states = np.array([state for state in counts])
+        newly_visited_states = np.array([state for state, count in counts.items() if count == 1])
+        if newly_visited_states.size == 0:
+            return visited_states
+        knn_distances = self._get_knn_distances(newly_visited_states, visited_states, distances, k)
+        frontier_states = self._get_proportion(knn_distances, proportion)
+        # print(f"visited_states: {self._debug_fmt_states(visited_states[:, 0])}")
+        # print("    knn_distances[newly_visited_states]")
+        # _ = [print(f"        {self._debug_fmt_states(state[0])}: {dist}") for state, dist in knn_distances.items()]
+        # print(f"    frontier_states: {self._debug_fmt_states(frontier_states[:, 0])}")
+        return frontier_states
 
     def _novelty(self, states):
-        if len(states.shape) == len(self._lateral_agent._observation_space.shape):
+        if states.ndim == len(self._lateral_agent._observation_space.shape):
             states = np.expand_dims(states, axis=0)
-        visitation_counts = self._lateral_agent._replay_buffer.counts["observation"]
-        to_tuple = self._lateral_agent._replay_buffer._to_tuple
-        return np.array([1 / visitation_counts[to_tuple(state)] for state in states])
+        counts = self._lateral_agent._replay_buffer.counts
+        return np.array([1 / counts[state] for state in states])
 
     def _confidence(self, observations, goals, agent=None):
         if agent is None:
             agent = self._lateral_agent
-        if len(observations.shape) == len(agent._observation_space.shape):
+        if observations.ndim == len(agent._observation_space.shape):
             observations = np.expand_dims(observations, axis=0)
-        if len(goals.shape) == len(agent._goal_space.shape):
+        if goals.ndim == len(agent._goal_space.shape):
             goals = np.expand_dims(goals, axis=1)
         observations, goals = (
             np.repeat(observations, goals.shape[0], axis=0),
@@ -122,7 +151,7 @@ class OmniGoalGenerator(GoalGenerator):
         return 1 / (self._confidence(*args) + epsilon)
 
     def _debug_fmt_states(self, states: np.ndarray, value: int=255):
-        return np.flip(np.argwhere(states == value)[..., -2:].squeeze()).tolist()
+        return np.flip(np.argwhere(np.array(states) == value)[..., -2:].squeeze()).tolist()
 
     def generate_goal(self, observation, agent_traj_state):
         # print("=== Generating goal")
@@ -145,13 +174,17 @@ class OmniGoalGenerator(GoalGenerator):
                     self._lateral_agent = self._backward_agent
                     lateral_initial_state = goal_state
                     lateral_goal_state = initial_state
-                frontier_states = self._visited_states()
+                frontier_states = self._frontier_states()
                 # print("    observation:\n       {self._debug_fmt_states(observation[0])}')
                 # print(f"   {'forward' if agent_traj_state.forward else 'backward'} frontier states:")
-                if frontier_states.size == 0:
+                if len(frontier_states) == 0:
                     # print("    initial/goal state (empty replay buffer)")
                     return goal_state if agent_traj_state.forward else initial_state
-                # _ = [print(f"       {self._debug_fmt_states(state[0])}: {self._lateral_agent._replay_buffer.counts['observation'][self._lateral_agent._replay_buffer._to_tuple(state)]}") for state in frontier_states]
+                # if len(frontier_states) == self._lateral_agent._observation_space.shape:
+                if len(frontier_states) == 1:
+                    breakpoint()
+                    return frontier_states[:, 0]
+                # _ = [print(f"        {self._debug_fmt_states(state[0])}: {self._lateral_agent._replay_buffer.counts[state]}") for state in frontier_states]
                 novelty_cost = np.zeros(len(frontier_states))
                 cost_to_reach = np.zeros(len(frontier_states))
                 cost_to_come = np.zeros(len(frontier_states))
