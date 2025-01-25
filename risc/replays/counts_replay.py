@@ -68,6 +68,7 @@ class SymmetricHashStorage(HashStorage):
 
 
 def distance(state1, state2):
+    #return np.random.randint(34)
     """Compute distance for both symbolic and continuous states."""
     state1, state2 = np.squeeze(state1), np.squeeze(state2)
     if state1.ndim == state2.ndim == 3:
@@ -83,11 +84,13 @@ class CountsReplayBuffer(CircularReplayBuffer):
         self.distances = SymmetricHashStorage()
 
     def _remove_distances(self, state):
+        pass
         for other_state in self.counts.keys():
             if (state, other_state) in self.distances:
                 del self.distances[state, other_state]
 
     def _update_distances(self, state):
+        pass
         if self.counts[state] > 1:
             return
         for other_state in self.counts.keys():
