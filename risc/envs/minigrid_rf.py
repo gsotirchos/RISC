@@ -275,9 +275,11 @@ def create_vis_fn(env_shape):
         width,
         height,
         totals=1,
+        annot=False,
+        fmt=".0f",
         min_count=None,
         max_count=None,
-        fmt=".0f",
+        logscale=False,
         already_counts=False,
         name=None,
     ):
@@ -301,10 +303,11 @@ def create_vis_fn(env_shape):
             np.arange(width),
             ax,
             mask=counts == 0,
-            annot=True,
+            annot=annot,
             fmt=fmt,
             vmin=min_count,
             vmax=max_count,
+            logscale=logscale,
         )
         fig.tight_layout()
         image = wandb.Image(fig)

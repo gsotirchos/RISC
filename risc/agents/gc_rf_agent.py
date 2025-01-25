@@ -272,7 +272,7 @@ class GCResetFree(Agent):
         if self._vis_fn is not None:
             for metric in self._local_metrics[agent_traj_state.current_direction].keys():
                 self._local_metrics[agent_traj_state.current_direction][metric].append(update_info.next_observation[metric])
-            if self._vis_schedule.update() and not isinstance(self._logger ,NullLogger):
+            if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
                 self._log_visualizations()
 
         agent = (
@@ -321,6 +321,7 @@ class GCResetFree(Agent):
                     local_image, metric_counts = self._vis_fn(
                         self._local_metrics[direction][metric],
                         None,
+                        logscale=True,
                         name=f"{direction}/local_{metric}"
                     )
                     metrics[f"{direction}/local_{metric}"] = local_image
@@ -329,6 +330,7 @@ class GCResetFree(Agent):
                         self._global_metrics[direction][metric],
                         None,
                         already_counts=True,
+                        logscale=True,
                         name=f"{direction}/global_{metric}",
                     )
                     metrics[f"{direction}/global_{metric}"] = global_image
@@ -339,7 +341,10 @@ class GCResetFree(Agent):
             )
             for key, value in forward_agent_vis.items():
                 image, _ = self._vis_fn(
-                    all_states, None, totals=value, name=f"forward/{key}"
+                    all_states,
+                    None,
+                    totals=value,
+                    name=f"forward/{key}"
                 )
                 metrics[f"forward/{key}"] = image
 
@@ -348,7 +353,10 @@ class GCResetFree(Agent):
             )
             for key, value in backward_agent_vis.items():
                 image, _ = self._vis_fn(
-                    all_states, None, totals=value, name=f"backward/{key}"
+                    all_states,
+                    None,
+                    totals=value,
+                    name=f"backward/{key}"
                 )
                 metrics[f"backward/{key}"] = image
 
