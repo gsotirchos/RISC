@@ -128,7 +128,8 @@ def oracle_q_value(obs):
         distance1 = np.abs(x - 9) + np.abs(y - v_doors[0]) + distances[(9, v_doors[0])]
         distance2 = np.abs(x - h_doors[0]) + np.abs(y - 9) + distances[(h_doors[0], 9)]
         distance = min(distance1, distance2)
-    return 0.95**distance
+    # return 0.95**distance
+    return -1 - distance
 
 
 class DQNAgent(_DQNAgent):
