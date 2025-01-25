@@ -157,7 +157,7 @@ class OmniGoalGenerator(GoalGenerator):
         counts = self._lateral_agent._replay_buffer.counts
         if len(counts) == 0:
             return None
-        #return np.array([*counts.keys()])
+        return np.array([*counts.keys()])
         distances = self._lateral_agent._replay_buffer.distances
         knn_distances = self._get_knn_distances(counts, distances, k, max_visitations)
         frontier_states = self._get_proportion(knn_distances, proportion)
