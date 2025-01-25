@@ -105,6 +105,7 @@ class OmniGoalGenerator(GoalGenerator):
         goal_states,
         weights,
         log_frequency: int = 1,
+        vis_frequency: int = 2000,
         **kwargs,
     ):
         super().__init__(logger, **kwargs)
@@ -114,6 +115,7 @@ class OmniGoalGenerator(GoalGenerator):
         self._logger = logger
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_switcher"))
         self._log_schedule = PeriodicSchedule(False, True, log_frequency)
+        self._vis_schedule = PeriodicSchedule(False, True, vis_frequency)
         self._initial_states = initial_states
         self._goal_states = goal_states
         self._weights = weights
@@ -139,7 +141,7 @@ class OmniGoalGenerator(GoalGenerator):
             ]
             kk = min(len(neighbors_dists), k)
             knn_distances[state] = np.mean(np.partition(neighbors_dists, kk - 1)[:kk])
-        if self._log_schedule.update() and not isinstance(self._logger, NullLogger):
+        if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
             self._logger.log_metrics(
                 {f"lateral/{k}-nn_mean_distance":
                  visualize(newly_visited_states, [*knn_distances.values()])},
@@ -258,6 +260,12 @@ class OmniGoalGenerator(GoalGenerator):
                             "goal/cost_to_reach": cost_to_reach[goal_idx],
                             "goal/cost_to_come": cost_to_come[goal_idx],
                             "goal/cost_to_go": cost_to_go[goal_idx],
+                        },
+                        "goal_generator",
+                    )
+                if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
+                    self._logger.log_metrics(
+                        {
                             "novelty_cost": visualize(frontier_states, novelty_cost),
                             "cost_to_reach": visualize(frontier_states, cost_to_reach),
                             "cost_to_come": visualize(frontier_states, cost_to_come),
