@@ -95,11 +95,16 @@ class OmniGoalGenerator(GoalGenerator):
         self._goal_states = goal_states
         self._weights = weights
 
-    def _get_knn_distances(self, states, all_states, distances, k=4):
+    def _get_knn_distances(self, counts, distances, k=4):
+        all_visited_states = np.array([state for state in counts])
+        # newly_visited_states = np.array([state for state, count in counts.items() if count == 1])
+        # if newly_visited_states.size == 0:
+        #     newly_visited_states = visited_states
+        newly_visited_states = all_visited_states
         knn_distances = HashStorage()
-        for state in states:
+        for state in newly_visited_states:
             neighbors_dists = [
-                distances[state, other_state] for other_state in all_states
+                distances[state, other_state] for other_state in all_visited_states
                 if not np.array_equal(other_state, state)
             ]
             # print(f"neighbors_dists[{self._debug_fmt_states(state[0])}]: {sorted(neighbors_dists)}")
@@ -114,15 +119,10 @@ class OmniGoalGenerator(GoalGenerator):
 
     def _frontier_states(self, k=4, proportion=0.5):
         counts = self._lateral_agent._replay_buffer.counts
-        distances = self._lateral_agent._replay_buffer.distances
-        visited_states = np.array([state for state in counts])
-        if visited_states.size == 0:
+        if len(counts) == 0:
             return None
-        # newly_visited_states = np.array([state for state, count in counts.items() if count == 1])
-        # if newly_visited_states.size == 0:
-        #     newly_visited_states = visited_states
-        newly_visited_states = visited_states
-        knn_distances = self._get_knn_distances(newly_visited_states, visited_states, distances, k)
+        distances = self._lateral_agent._replay_buffer.distances
+        knn_distances = self._get_knn_distances(counts, distances, k)
         frontier_states = self._get_proportion(knn_distances, proportion)
         # print(f"visited_states: {self._debug_fmt_states(visited_states[:, 0])}")
         # print("    knn_distances[newly_visited_states]")
@@ -162,10 +162,8 @@ class OmniGoalGenerator(GoalGenerator):
         goal_state = self._goal_states[self._rng.integers(len(self._goal_states))]
         match agent_traj_state.current_direction.removeprefix("teleport_"):
             case "forward":
-                # print("    goal state")
                 return goal_state
             case "backward":
-                # print("    initial state")
                 return initial_state
             case "lateral":
                 if agent_traj_state.forward:
@@ -178,7 +176,6 @@ class OmniGoalGenerator(GoalGenerator):
                     lateral_goal_state = initial_state
                 frontier_states = self._frontier_states(proportion=0.5)
                 if frontier_states is None:
-                    # print("    initial/goal state (empty replay buffer)")
                     return goal_state if agent_traj_state.forward else initial_state
                 if len(frontier_states) == 1:
                     return frontier_states[:, 0]
@@ -210,14 +207,8 @@ class OmniGoalGenerator(GoalGenerator):
                         + cost_to_go * self._weights[3]
                     )
                 )
-                # print(f"    frontier_states: {self._debug_fmt_states(frontier_states[:, 0])} (unordered)")
-                # print(f"    visitations: {1 / self._novelty(frontier_states)}")
-                # print(f"    standardized vis.: {standardize(1 / self._novelty(frontier_states))}")
-                # print(f"    novelty_cost: {np.round(novelty_cost, decimals=3)}")
-                # print(f"    priority: {priority}")
                 goal_idx = np.random.choice(len(priority), p=priority)  # np.argmin(priority)
                 goal = frontier_states[goal_idx, 0][None, ...]
-                # print(f"    lateral goal: {self._debug_fmt_states(goal)}")
                 if self._log_schedule.update():
                     self._logger.log_metrics(
                         {
@@ -232,6 +223,12 @@ class OmniGoalGenerator(GoalGenerator):
                         },
                         "goal_generator",
                     )
+                # print(f"    frontier_states: {self._debug_fmt_states(frontier_states[:, 0])} (unordered)")
+                # print(f"    visitations: {1 / self._novelty(frontier_states)}")
+                # print(f"    standardized vis.: {standardize(1 / self._novelty(frontier_states))}")
+                # print(f"    novelty_cost: {np.round(novelty_cost, decimals=3)}")
+                # print(f"    priority: {priority}")
+                # print(f"    lateral goal: {self._debug_fmt_states(goal)}")
                 return goal
 
 

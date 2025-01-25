@@ -105,8 +105,8 @@ class CountsReplayBuffer(CircularReplayBuffer):
         if not np.all(overwritten_state == 0):
             self.counts[overwritten_state] -= 1
             if self.counts[overwritten_state] == 0:
-                #for other_state in self.counts.keys():
-                #    del self.distances[overwritten_state, other_state]
+                # for other_state in self.counts.keys():
+                #     del self.distances[overwritten_state, other_state]
                 del self.counts[overwritten_state]
         if not np.all(new_state == 0):
             self.counts[new_state] = self.counts.get(new_state, 0) + 1
