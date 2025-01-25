@@ -82,27 +82,36 @@ class CountsReplayBuffer(CircularReplayBuffer):
         self.counts = HashStorage()
         self.distances = SymmetricHashStorage()
 
-    def _update_metadata(self, **transition):
+    def _update_distances(self, state):
+        # print(f"updating distances for : {np.argwhere(state[0] == 255).flatten()}")
+        if self.counts[state] > 1:
+            # print("state already there")
+            # breakpoint()
+            return
+        for other_state in self.counts.keys():
+            # print(f"key: ({np.argwhere(state[0] == 255).flatten()}, {np.argwhere(np.array(other_state)[0] == 255).flatten()})...")
+            if (state, other_state) in self.distances:
+                # print("already in self.distances")
+                # breakpoint()
+                continue
+            # print("calculating distance")
+            # breakpoint()
+            self.distances[state, other_state] = distance(state, other_state)
+
+    def _update_metadata(self, new_state):
         """ If a transition will be overwritten decrement its state's count and if it has
         no counts left remove its entry. Then increment the count for the new state. """
         overwritten_state = self._storage["observation"][self._cursor]
         if not np.all(overwritten_state == 0):
-            # decrement the overwritten state's count
             self.counts[overwritten_state] -= 1
             if self.counts[overwritten_state] == 0:
-                # delete distances for this state
-                for other_state in self.counts.keys():
-                    del self.distances[overwritten_state, other_state]
-                # delete counts for this state
+                #for other_state in self.counts.keys():
+                #    del self.distances[overwritten_state, other_state]
                 del self.counts[overwritten_state]
-        new_state = transition["observation"]
         if not np.all(new_state == 0):
-            # increment the new state's count
             self.counts[new_state] = self.counts.get(new_state, 0) + 1
-            # calculate the new state's distances with the other states
-            for other_state in self.counts.keys():
-                self.distances[new_state, other_state] = distance(new_state, other_state)
+            self._update_distances(new_state)
 
     def _add_transition(self, **transition):
-        self._update_metadata(**transition)
+        self._update_metadata(transition["observation"])
         super()._add_transition(**transition)
