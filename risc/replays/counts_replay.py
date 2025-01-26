@@ -1,3 +1,4 @@
+from collections import defaultdict
 from collections.abc import Iterable
 
 import numpy as np
@@ -5,10 +6,11 @@ import numpy as np
 from replays.circular_replay import CircularReplayBuffer
 
 
-class HashStorage(dict):
-    def __init__(self, *args, **kwargs):
-        super().__init__()
-        self.update(*args, **kwargs)
+class HashStorage(defaultdict):
+    def __init__(self, other=None, *args, **kwargs):
+        super().__init__(lambda: HashStorage(), *args, **kwargs)
+        if isinstance(other, Iterable):
+            super().update(other)
 
     @staticmethod
     def to_hashable(obj):
@@ -36,6 +38,8 @@ class HashStorage(dict):
 
     @hashable_key
     def __delitem__(self, *args, **kwargs):
+        if not self.__contains__(*args, **kwargs):
+            return  # all good
         super().__delitem__(*args, **kwargs)
 
     @hashable_key
@@ -51,15 +55,7 @@ class HashStorage(dict):
         return super().pop(*args, **kwargs)
 
     def update(self, other=None, **kwargs):
-        if other is not None:
-            if hasattr(other, 'items'):
-                for k, v in other.items():
-                    self.__setitem__(k, v)
-            else:
-                for k, v in other:
-                    self.__setitem__(k, v)
-        for k, v in kwargs.items():
-            self.__setitem__(k, v)
+        super().update(other=other, **kwargs)
 
 
 class SymmetricHashStorage(HashStorage):
@@ -67,9 +63,100 @@ class SymmetricHashStorage(HashStorage):
         return tuple(sorted(super().to_hashable(*args, **kwargs)))
 
 
+class SymmetricMatrix:
+    def __init__(self):
+        self.views = HashStorage(HashStorage)
+
+    @staticmethod
+    def process_key(method):
+        def wrapper(self, key, *args, **kwargs):
+            if isinstance(key, np.ndarray):
+                key = (key, None)
+            elif isinstance(key, tuple):
+                if len(key) != 2:
+                    raise KeyError("The keys must be a pair of NumPy arrays")
+                if (not isinstance(key[0], np.ndarray)
+                        or not (isinstance(key[1], np.ndarray) or key[1] is None)):
+                    raise KeyError("All keys nust must be NumPy arrays")
+            else:
+                raise KeyError("All keys nust must be NumPy arrays")
+            return method(self, key, *args, **kwargs)
+        return wrapper
+
+    @process_key
+    def __setitem__(self, key, value: HashStorage):
+        i, j = key
+        if j is None:
+            self.views[i] = value
+        else:
+            self.views[i][j] = value
+            self.views[j][i] = value
+
+    @process_key
+    def __getitem__(self, key):
+        i, j = key
+        if not self.__contains__(key):
+            raise KeyError(key)
+        if j is None:  # whole row access [i]
+            return HashStorage(self.views[i])
+            # return self.views[i].items()  # O(1) return a generator for lazy access
+            # return self.views[i].copy()  # O(k) return a copy for safe modifications
+        else:  # direct access: [i, j]
+            return self.views[i][j] or self.views[j][i]
+
+    @process_key
+    def __delitem__(self, key):
+        for i, j in key, reversed(key):
+            if j is None:
+                del self.views[i]
+                for k in np.array(list(self.views.keys())):
+                    del self.views[k][i]
+                    if not self.views[k]:
+                        del self.views[k]
+                break
+            del self.views[i][j]
+            if not self.views[i]:
+                del self.views[i]
+
+    @process_key
+    def __contains__(self, key):
+        i, j = key
+        if j is None:
+            return i in self.views
+        else:
+            return j in self.views[i] or i in self.views[j]
+
+    def get(self, key, default=None):
+        return self.views.get(key, default)
+
+    def pop(self, key, default=None):
+        return self.views.pop(key, default)
+
+    def update(self, other=None, **kwargs):
+        return self.views.update(other=None, **kwargs)
+
+    def keys(self):
+        return self.views.keys()
+
+    def values(self):
+        return self.views.values()
+
+    def items(self):
+        return self.views.items()
+
+    def __repr__(self):
+        return self.views.__repr__()
+
+    def __len__(self):
+        return self.views.__len__()
+
+    def __clear__(self):
+        return self.views.__clear__()
+
+
 def distance(state1, state2):
-    #return np.random.randint(34)
     """Compute distance for both symbolic and continuous states."""
+    # return np.random.randint(32)
     state1, state2 = np.squeeze(state1), np.squeeze(state2)
     if state1.ndim == state2.ndim == 3:
         state1 = np.argwhere(state1[0] == 255).flatten()
@@ -81,19 +168,17 @@ class CountsReplayBuffer(CircularReplayBuffer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.counts = HashStorage()
-        self.distances = SymmetricHashStorage()
+        self.distances = SymmetricMatrix()
 
     def _remove_distances(self, state):
-        pass
         for other_state in self.counts.keys():
             if (state, other_state) in self.distances:
                 del self.distances[state, other_state]
 
     def _update_distances(self, state):
-        pass
         if self.counts[state] > 1:
             return
-        for other_state in self.counts.keys():
+        for other_state in np.array(list(self.counts.keys())):
             if (state, other_state) not in self.distances:
                 self.distances[state, other_state] = distance(state, other_state)
 
@@ -104,7 +189,8 @@ class CountsReplayBuffer(CircularReplayBuffer):
         if not np.all(overwritten_state == 0):
             self.counts[overwritten_state] -= 1
             if self.counts[overwritten_state] == 0:
-                self._remove_distances(overwritten_state)
+                # self._remove_distances(overwritten_state)
+                del self.distances[overwritten_state]
                 del self.counts[overwritten_state]
         if not np.all(new_state == 0):
             self.counts[new_state] = self.counts.get(new_state, 0) + 1
