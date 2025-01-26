@@ -46,8 +46,10 @@ def standardize(x):
 def visualize(states, metric, **kwargs):
     if np.isnan(metric).any():
         print(f"NaN values in {metric}")
+        metric[np.isnan(metric)] = 0
     if np.isinf(metric).any():
         print(f"Inf values in {metric}")
+        metric[np.isinf(metric)] = 0
     height, width = states.shape[-2:]
     _, y, x = np.nonzero(states[:, 0])
     counts = np.zeros((height, width))
@@ -61,8 +63,9 @@ def visualize(states, metric, **kwargs):
         **kwargs
     )
     fig.tight_layout()
-
-    return wandb.Image(fig)
+    image = wandb.Image(fig)
+    plt.close("all")
+    return image
 
 
 class GoalGenerator(Registrable):
@@ -126,7 +129,7 @@ class OmniGoalGenerator(GoalGenerator):
         goal_states,
         weights,
         log_frequency: int = 10,
-        vis_frequency: int = 50,
+        vis_frequency: int = 100,
         **kwargs,
     ):
         super().__init__(logger, **kwargs)
