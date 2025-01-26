@@ -129,6 +129,8 @@ class SingleAgentRunner(_SingleAgentRunner):
                     f"{self._total_steps} environment training steps completed\n"
                     + "\n".join([f"{k}: {v}" for k, v in metrics.items()])
                 )
+                # if self._total_steps == 2000:
+                #     raise Exception
                 self._phase_steps = 0
                 self._train_timer.start()
             self._save_experiment = (
