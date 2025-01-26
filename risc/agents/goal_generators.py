@@ -44,6 +44,10 @@ def standardize(x):
 
 
 def visualize(states, metric, **kwargs):
+    if np.isnan(metric).any():
+        print(f"NaN values in {metric}")
+    if np.isinf(metric).any():
+        print(f"Inf values in {metric}")
     height, width = states.shape[-2:]
     _, y, x = np.nonzero(states[:, 0])
     counts = np.zeros((height, width))
