@@ -25,7 +25,7 @@ def standardize(x):
     return (x - np.mean(x)) / (np.std(x) + epsilon)
 
 
-def visualize(states, metric, logscale=True, **kwargs):
+def visualize(states, metric, **kwargs):
     height, width = states.shape[-2:]
     _, y, x = np.nonzero(states[:, 0])
     counts = np.zeros((height, width))
@@ -36,7 +36,6 @@ def visualize(states, metric, logscale=True, **kwargs):
         np.arange(height),
         np.arange(width),
         ax,
-        logscale=logscale,
         **kwargs
     )
     fig.tight_layout()
@@ -104,8 +103,8 @@ class OmniGoalGenerator(GoalGenerator):
         initial_states,
         goal_states,
         weights,
-        log_frequency: int = 1,
-        vis_frequency: int = 2000,
+        log_frequency: int = 10,
+        vis_frequency: int = 50,
         **kwargs,
     ):
         super().__init__(logger, **kwargs)
@@ -144,7 +143,7 @@ class OmniGoalGenerator(GoalGenerator):
         if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
             self._logger.log_metrics(
                 {f"lateral/{k}-nn_mean_distance":
-                 visualize(newly_visited_states, [*knn_distances.values()])},
+                 visualize(newly_visited_states, [*knn_distances.values()], logscale=True)},
                 "goal_generator",
             )
         return knn_distances
@@ -266,11 +265,11 @@ class OmniGoalGenerator(GoalGenerator):
                 if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
                     self._logger.log_metrics(
                         {
-                            "novelty_cost": visualize(frontier_states, novelty_cost),
+                            "novelty_cost": visualize(frontier_states, novelty_cost, logscale=True),
                             "cost_to_reach": visualize(frontier_states, cost_to_reach),
                             "cost_to_come": visualize(frontier_states, cost_to_come),
                             "cost_to_go": visualize(frontier_states, cost_to_go),
-                            "priority":visualize(frontier_states, priority),
+                            "priority":visualize(frontier_states, priority, logscale=True),
                         },
                         "goal_generator",
                     )
