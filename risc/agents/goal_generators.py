@@ -243,7 +243,7 @@ class OmniGoalGenerator(GoalGenerator):
                     self._lateral_agent = self._backward_agent
                     lateral_initial_state = goal_state
                     lateral_goal_state = initial_state
-                frontier_states = self._frontier_states(proportion=0.5)
+                frontier_states = self._frontier_states(proportion=0.2)
                 if frontier_states is None:
                     return goal_state if agent_traj_state.forward else initial_state
                 if len(frontier_states) == 1:
