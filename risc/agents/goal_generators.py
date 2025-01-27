@@ -17,7 +17,7 @@ from scipy.special import softmax
 np.set_printoptions(precision=3)
 
 epsilon = np.finfo(float).eps
-debug_mode = False
+debug_mode = True
 
 
 def debug(text, prefix="ℹ️ ", color_code="90m"):
@@ -65,6 +65,8 @@ def visualize(states, metric, **kwargs):
             **kwargs
         )
         fig.tight_layout()
+        if debug_mode:
+            breakpoint()
     except Exception:
         print("Warning: Failed to generate heatmap")
         fig = plt.figure()
@@ -163,15 +165,17 @@ class OmniGoalGenerator(GoalGenerator):
                 newly_visited_states = all_visited_states
         debug(f"newly_visited_states: {self._debug_fmt(newly_visited_states[:, 0])}")
         knn_distances = HashStorage()
+        debug("neighbors_dists:")
         for state in newly_visited_states:
-            neighbors_dists = np.array(list(distances[state].values()))
-            neighbors_dists = neighbors_dists[neighbors_dists != 0]
+            neighbors_dists = np.array([dist for dist in distances[state].values() if dist != 0])
+            debug(neighbors_dists, "    ")
             kk = min(len(neighbors_dists), k)
-            knn_distances[state] = np.mean(np.partition(neighbors_dists, -kk)[-kk:])
-        debug("knn_distances[newly_visited_states]")
+            knn_distances[state] = np.mean(np.partition(neighbors_dists, kk-1)[:kk])
+        debug("knn_distances[newly_visited_states]:")
         for state, dist in knn_distances.items():
             debug(f"{self._debug_fmt(state[0])}: {dist}", "     ")
-        if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
+        # if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
+        if debug_mode:
             self._logger.log_metrics(
                 {f"{k}-nn_mean_distance":
                  visualize(newly_visited_states,
