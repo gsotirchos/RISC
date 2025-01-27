@@ -17,7 +17,7 @@ from scipy.special import softmax
 np.set_printoptions(precision=3)
 
 epsilon = np.finfo(float).eps
-DEBUG = True
+DEBUG = False
 
 
 def debug(text, prefix="ℹ️ ", color_code="90m"):
@@ -151,7 +151,7 @@ class OmniGoalGenerator(GoalGenerator):
         self._goal_states = goal_states
         self._weights = weights
 
-    def _get_knn_distances(self, counts, distances, k, max_visitations=None):
+    def _get_knn_dist_dict(self, counts, distances, k, max_visitations=None):
         all_visited_states = np.array(list(counts.keys()))
         debug(f"all_visited_states: {self._debug_fmt(all_visited_states[:, 0])}")
         max_visitations = max_visitations or 0
@@ -164,30 +164,30 @@ class OmniGoalGenerator(GoalGenerator):
             if newly_visited_states.size == 0:
                 newly_visited_states = all_visited_states
         debug(f"newly_visited_states: {self._debug_fmt(newly_visited_states[:, 0])}")
-        knn_distances = HashableKeyDict()
+        knn_dist_dict = HashableKeyDict()
         debug("neighbors_dists:")
         for state in newly_visited_states:
             neighbors_dists = np.array([dist for dist in distances[state].values() if dist != 0])
             debug(neighbors_dists, "    ")
             kk = min(len(neighbors_dists), k)
-            knn_distances[state] = np.mean(np.partition(neighbors_dists, kk-1)[:kk])
-        debug("knn_distances[newly_visited_states]:")
-        for state, dist in knn_distances.items():
+            knn_dist_dict[state] = np.mean(np.partition(neighbors_dists, kk-1)[:kk])
+        debug("knn_dist_dict[newly_visited_states]:")
+        for state, dist in knn_dist_dict.items():
             debug(f"{self._debug_fmt(state[0])}: {dist}", "     ")
         if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
             print("visualizing knn")
             self._logger.log_metrics(
                 {f"{k}-nn_mean_distance": visualize(newly_visited_states,
-                                                    np.array(list(knn_distances.values())),
+                                                    np.array(list(knn_dist_dict.values())),
                                                     logscale=True)},
                 f"{self._lateral_agent._id.removesuffix('_agent')}_goal_generator",
             )
-        return knn_distances
+        return knn_dist_dict
 
     def _get_proportion(self, dictionary, proportion):
         num_keys = int(np.ceil(proportion * len(dictionary)))
         if num_keys == len(dictionary):
-            return dictionary
+            return np.array(list(dictionary.keys()))
         keys, values = np.array(list(dictionary.keys())), np.array(list(dictionary.values()))
         partitioned_indices = np.argpartition(values, -num_keys)[-num_keys:]
         selected_keys = keys[partitioned_indices]
@@ -198,8 +198,8 @@ class OmniGoalGenerator(GoalGenerator):
         if len(counts) == 0:
             return None
         distances = self._lateral_agent._replay_buffer.distances
-        knn_distances = self._get_knn_distances(counts, distances, k, max_visitations)
-        frontier_states = self._get_proportion(knn_distances, proportion)
+        knn_dist_dict = self._get_knn_dist_dict(counts, distances, k, max_visitations)
+        frontier_states = self._get_proportion(knn_dist_dict, proportion)
         # return np.array(list(counts.keys()))
         return frontier_states
 

@@ -35,7 +35,7 @@ kwargs:
       #train_max_steps: 500  # episodic
       video_period: 1000
       vis_frequency: 2000
-      render_mode: human
+      #render_mode: human
   agent:
     name: GCResetFree
     kwargs:
