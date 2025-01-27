@@ -21,8 +21,9 @@ debug_mode = False
 
 
 def debug(text, prefix="ℹ️ ", color_code="90m"):
-    if debug_mode:
-        print(prefix + f"\033[{color_code}{text}\033[0m")
+    if not debug_mode:
+        return
+    print(prefix + f"\033[{color_code}{text}\033[0m")
 
 
 def timer(func):
@@ -45,10 +46,10 @@ def standardize(x):
 
 def visualize(states, metric, **kwargs):
     if np.isnan(metric).any():
-        print(f"NaN values in {metric}")
+        print(f"Warning: NaN values in {metric}")
         metric[np.isnan(metric)] = 0
     if np.isinf(metric).any():
-        print(f"Inf values in {metric}")
+        print(f"Warning: Inf values in {metric}")
         metric[np.isinf(metric)] = 0
     height, width = states.shape[-2:]
     _, y, x = np.nonzero(states[:, 0])
@@ -172,7 +173,9 @@ class OmniGoalGenerator(GoalGenerator):
         if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
             self._logger.log_metrics(
                 {f"{k}-nn_mean_distance":
-                 visualize(newly_visited_states, list(knn_distances.values()), logscale=True)},
+                 visualize(newly_visited_states,
+                           np.array(list(knn_distances.values())),
+                           logscale=True)},
                 f"{self._lateral_agent._id.removesuffix('_agent')}_goal_generator",
             )
         return knn_distances
