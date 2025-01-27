@@ -174,8 +174,7 @@ class OmniGoalGenerator(GoalGenerator):
         debug("knn_distances[newly_visited_states]:")
         for state, dist in knn_distances.items():
             debug(f"{self._debug_fmt(state[0])}: {dist}", "     ")
-        # if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
-        if debug_mode:
+        if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
             self._logger.log_metrics(
                 {f"{k}-nn_mean_distance":
                  visualize(newly_visited_states,
