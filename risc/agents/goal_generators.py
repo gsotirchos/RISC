@@ -162,7 +162,7 @@ class OmniGoalGenerator(GoalGenerator):
         debug(f"newly_visited_states: {self._debug_fmt(newly_visited_states[:, 0])}")
         knn_distances = HashStorage()
         for state in newly_visited_states:
-            neighbors_dists = list(distances[state].values())
+            neighbors_dists = np.array(list(distances[state].values()))
             neighbors_dists = neighbors_dists[neighbors_dists != 0]
             kk = min(len(neighbors_dists), k)
             knn_distances[state] = np.mean(np.partition(neighbors_dists, -kk)[-kk:])
