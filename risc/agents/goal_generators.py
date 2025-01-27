@@ -55,14 +55,17 @@ def visualize(states, metric, **kwargs):
     counts = np.zeros((height, width))
     np.add.at(counts, (np.array(y), np.array(x)), metric)
     fig, ax = plt.subplots()
-    heatmap(
-        counts,
-        np.arange(height),
-        np.arange(width),
-        ax,
-        **kwargs
-    )
-    fig.tight_layout()
+    try:
+        heatmap(
+            counts,
+            np.arange(height),
+            np.arange(width),
+            ax,
+            **kwargs
+        )
+        fig.tight_layout()
+    except Exception:
+        print("Warning: Failed to generate heatmap")
     image = wandb.Image(fig)
     plt.close("all")
     return image
@@ -193,7 +196,7 @@ class OmniGoalGenerator(GoalGenerator):
         distances = self._lateral_agent._replay_buffer.distances
         knn_distances = self._get_knn_distances(counts, distances, k, max_visitations)
         frontier_states = self._get_proportion(knn_distances, proportion)
-        return np.array(list(counts.keys()))
+        # return np.array(list(counts.keys()))
         return frontier_states
 
     def _novelty(self, states):
