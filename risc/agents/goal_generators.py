@@ -17,7 +17,7 @@ from scipy.special import softmax
 np.set_printoptions(precision=3)
 
 epsilon = np.finfo(float).eps
-debug_mode = True
+debug_mode = False
 
 
 def debug(text, prefix="ℹ️ ", color_code="90m"):
