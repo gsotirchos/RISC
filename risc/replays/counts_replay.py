@@ -6,9 +6,9 @@ import numpy as np
 from replays.circular_replay import CircularReplayBuffer
 
 
-class HashStorage(defaultdict):
+class HashableKeyDict(defaultdict):
     def __init__(self, other=None, *args, **kwargs):
-        super().__init__(lambda: HashStorage(), *args, **kwargs)
+        super().__init__(lambda: HashableKeyDict(), *args, **kwargs)
         if isinstance(other, Iterable):
             super().update(other)
 
@@ -58,14 +58,14 @@ class HashStorage(defaultdict):
         super().update(other=other, **kwargs)
 
 
-class SymmetricHashStorage(HashStorage):
+class SymmetricHashableKeyDict(HashableKeyDict):
     def to_hashable(self, *args, **kwargs):
         return tuple(sorted(super().to_hashable(*args, **kwargs)))
 
 
 class SymmetricMatrix:
     def __init__(self):
-        self.views = HashStorage(HashStorage)
+        self.views = HashableKeyDict(HashableKeyDict)
 
     @staticmethod
     def process_key(method):
@@ -73,18 +73,20 @@ class SymmetricMatrix:
             if isinstance(key, np.ndarray):
                 key = (key, None)
             elif isinstance(key, tuple):
+                key_error = KeyError("All keys must be NumPy arrays")
                 if len(key) != 2:
-                    raise KeyError("The keys must be a pair of NumPy arrays")
-                if (not isinstance(key[0], np.ndarray)
-                        or not (isinstance(key[1], np.ndarray) or key[1] is None)):
-                    raise KeyError("All keys nust must be NumPy arrays")
+                    raise key_error
+                if not isinstance(key[0], np.ndarray):
+                    raise key_error
+                if not (isinstance(key[1], np.ndarray) or key[1] is None):
+                    raise key_error
             else:
-                raise KeyError("All keys nust must be NumPy arrays")
+                raise key_error
             return method(self, key, *args, **kwargs)
         return wrapper
 
     @process_key
-    def __setitem__(self, key, value: HashStorage):
+    def __setitem__(self, key, value: HashableKeyDict):
         i, j = key
         if j is None:
             self.views[i] = value
@@ -97,11 +99,11 @@ class SymmetricMatrix:
         i, j = key
         if not self.__contains__(key):
             raise KeyError(key)
-        if j is None:  # whole row access [i]
-            return HashStorage(self.views[i])
-            # return self.views[i].items()  # O(1) return a generator for lazy access
-            # return self.views[i].copy()  # O(k) return a copy for safe modifications
-        else:  # direct access: [i, j]
+        if j is None:
+            return HashableKeyDict(self.views[i])  # O(k)
+            #return self.views[i].items()  # O(1) return a generator for lazy access
+            #return self.views[i].copy()  # O(k) return a copy for safe modifications
+        else:
             return self.views[i][j] or self.views[j][i]
 
     @process_key
@@ -167,7 +169,7 @@ def distance(state1, state2):
 class CountsReplayBuffer(CircularReplayBuffer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.counts = HashStorage()
+        self.counts = HashableKeyDict()
         self.distances = SymmetricMatrix()
 
     def _remove_distances(self, state):
