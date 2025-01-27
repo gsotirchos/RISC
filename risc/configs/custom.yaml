@@ -12,7 +12,7 @@ kwargs:
           on_value: true
           period: 1000000
   #train_steps: 100000
-  train_steps: 200000
+  train_steps: 150000
   test_frequency: 1000
   test_episodes: 10
   test_max_steps: 100
@@ -31,11 +31,11 @@ kwargs:
       #reset_free: false  # episodic
       symbolic: true
       #train_max_steps: 100000  # reset-free
-      train_max_steps: 200000  # reset-free
+      train_max_steps: 150000  # reset-free
       #train_max_steps: 500  # episodic
       video_period: 1000
       vis_frequency: 2000
-      #render_mode: human
+      render_mode: human
   agent:
     name: GCResetFree
     kwargs:
@@ -56,7 +56,7 @@ kwargs:
           replay_buffer:
             name: CircularReplayBuffer
             kwargs:
-             capacity: 100000
+              capacity: 100000
           representation_net:
             name: ConvNetwork  # RISC
             kwargs:
@@ -88,11 +88,11 @@ kwargs:
         kwargs:
           capacity: 100000
           #capacity: 500000
-          limited_counts: True
           #her_batch_size: 64  # HER
       separate_agents: true
       weights: [1, 1, 1, 1]
       directions: [forward, lateral, backward, lateral]
+      # TODO: add frontier parameters
   loggers:
   - name: WandbLogger
     kwargs:
