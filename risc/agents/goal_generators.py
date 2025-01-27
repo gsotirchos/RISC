@@ -55,8 +55,8 @@ def visualize(states, metric, **kwargs):
     _, y, x = np.nonzero(states[:, 0])
     counts = np.zeros((height, width))
     np.add.at(counts, (np.array(y), np.array(x)), metric)
-    fig, ax = plt.subplots()
     try:
+        fig, ax = plt.subplots()
         heatmap(
             counts,
             np.arange(height),
@@ -67,6 +67,7 @@ def visualize(states, metric, **kwargs):
         fig.tight_layout()
     except Exception:
         print("Warning: Failed to generate heatmap")
+        fig = plt.figure()
     image = wandb.Image(fig)
     plt.close("all")
     return image
