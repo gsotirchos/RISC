@@ -10,18 +10,18 @@ from hive.utils.loggers import Logger, NullLogger
 from hive.utils.registry import Registrable
 from hive.utils.schedule import PeriodicSchedule
 from hive.utils.utils import seeder
-from replays.counts_replay import HashStorage
+from replays.counts_replay import HashableKeyDict
 from scipy.special import expit as sigmoid
 from scipy.special import softmax
 
 np.set_printoptions(precision=3)
 
 epsilon = np.finfo(float).eps
-debug_mode = False
+DEBUG = True
 
 
 def debug(text, prefix="ℹ️ ", color_code="90m"):
-    if not debug_mode:
+    if not DEBUG:
         return
     print(prefix + f"\033[{color_code}{text}\033[0m")
 
@@ -34,14 +34,6 @@ def timer(func):
         debug(f"{func.__name__} took {end_time - start_time:.6f} seconds", "⏱️")
         return result
     return wrapper
-
-
-def softmin(x):
-    return softmax(-x)
-
-
-def standardize(x):
-    return (x - np.mean(x)) / (np.std(x) + epsilon)
 
 
 def visualize(states, metric, **kwargs):
@@ -65,7 +57,7 @@ def visualize(states, metric, **kwargs):
             **kwargs
         )
         fig.tight_layout()
-        if debug_mode:
+        if DEBUG:
             breakpoint()
     except Exception:
         print("Warning: Failed to generate heatmap")
@@ -73,6 +65,14 @@ def visualize(states, metric, **kwargs):
     image = wandb.Image(fig)
     plt.close("all")
     return image
+
+
+def softmin(x):
+    return softmax(-x)
+
+
+def standardize(x):
+    return (x - np.mean(x)) / (np.std(x) + epsilon)
 
 
 class GoalGenerator(Registrable):
@@ -146,7 +146,7 @@ class OmniGoalGenerator(GoalGenerator):
         self._logger = logger
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_switcher"))
         self._log_schedule = PeriodicSchedule(False, True, log_frequency)
-        self._vis_schedule = PeriodicSchedule(False, True, vis_frequency)
+        self._vis_schedule = PeriodicSchedule(False, True, vis_frequency if not DEBUG else 1)
         self._initial_states = initial_states
         self._goal_states = goal_states
         self._weights = weights
@@ -155,7 +155,7 @@ class OmniGoalGenerator(GoalGenerator):
         all_visited_states = np.array(list(counts.keys()))
         debug(f"all_visited_states: {self._debug_fmt(all_visited_states[:, 0])}")
         max_visitations = max_visitations or 0
-        if max_visitations == 0:
+        if max_visitations == 0 or max_visitations >= max(counts.values()):
             newly_visited_states = all_visited_states
         else:
             newly_visited_states = np.array(
@@ -164,7 +164,7 @@ class OmniGoalGenerator(GoalGenerator):
             if newly_visited_states.size == 0:
                 newly_visited_states = all_visited_states
         debug(f"newly_visited_states: {self._debug_fmt(newly_visited_states[:, 0])}")
-        knn_distances = HashStorage()
+        knn_distances = HashableKeyDict()
         debug("neighbors_dists:")
         for state in newly_visited_states:
             neighbors_dists = np.array([dist for dist in distances[state].values() if dist != 0])
@@ -175,18 +175,20 @@ class OmniGoalGenerator(GoalGenerator):
         for state, dist in knn_distances.items():
             debug(f"{self._debug_fmt(state[0])}: {dist}", "     ")
         if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
+            print("visualizing knn")
             self._logger.log_metrics(
-                {f"{k}-nn_mean_distance":
-                 visualize(newly_visited_states,
-                           np.array(list(knn_distances.values())),
-                           logscale=True)},
+                {f"{k}-nn_mean_distance": visualize(newly_visited_states,
+                                                    np.array(list(knn_distances.values())),
+                                                    logscale=True)},
                 f"{self._lateral_agent._id.removesuffix('_agent')}_goal_generator",
             )
         return knn_distances
 
     def _get_proportion(self, dictionary, proportion):
+        num_keys = int(np.ceil(proportion * len(dictionary)))
+        if num_keys == len(dictionary):
+            return dictionary
         keys, values = np.array(list(dictionary.keys())), np.array(list(dictionary.values()))
-        num_keys = int(np.ceil(proportion * len(keys)))
         partitioned_indices = np.argpartition(values, -num_keys)[-num_keys:]
         selected_keys = keys[partitioned_indices]
         return selected_keys
@@ -221,8 +223,9 @@ class OmniGoalGenerator(GoalGenerator):
         return np.array([agent.compute_success_prob(observation, goal)
                          for observation, goal in zip(observations, goals, strict=True)])
 
-    def _cost(self, *args):
-        return 1 / (self._confidence(*args) + epsilon)
+    def _cost(self, *args, **kwargs):
+        # return 1 / (self._confidence(*args, **kwargs) + epsilon)
+        return self._confidence(*args, **kwargs)  # TODO
 
     def _debug_fmt(self, states: np.ndarray, value: int = 255):
         return np.flip(np.argwhere(np.array(states) == value)[..., -2:].squeeze(), axis=-1).tolist()
@@ -245,7 +248,7 @@ class OmniGoalGenerator(GoalGenerator):
                     self._lateral_agent = self._backward_agent
                     lateral_initial_state = goal_state
                     lateral_goal_state = initial_state
-                frontier_states = self._frontier_states(proportion=0.2)
+                frontier_states = self._frontier_states(proportion=0.5)  # TODO
                 if frontier_states is None:
                     return goal_state if agent_traj_state.forward else initial_state
                 if len(frontier_states) == 1:
@@ -255,7 +258,8 @@ class OmniGoalGenerator(GoalGenerator):
                 cost_to_come = np.zeros(len(frontier_states))
                 cost_to_go = np.zeros(len(frontier_states))
                 if self._weights[0] != 0:
-                    novelty_cost = sigmoid(standardize(1 / self._novelty(frontier_states)))
+                    # novelty_cost = sigmoid(standardize(1 / self._novelty(frontier_states)))
+                    novelty_cost = self._novelty(frontier_states)  # TODO
                 if self._weights[1] != 0:
                     cost_to_reach = self._cost(
                         observation,
@@ -271,13 +275,19 @@ class OmniGoalGenerator(GoalGenerator):
                         frontier_states,
                         lateral_goal_state
                     )
-                priority = softmin(
-                    novelty_cost ** self._weights[0] * (
-                        + cost_to_reach * self._weights[1]
-                        + cost_to_come * self._weights[2]
-                        + cost_to_go * self._weights[3]
-                    )
+                priority = softmax(  # TODO
+                    novelty_cost ** self._weights[0]
+                    * cost_to_reach ** self._weights[1]
+                    * cost_to_come ** self._weights[2]
+                    * cost_to_go ** self._weights[3]
                 )
+                # priority = softmin(
+                #     novelty_cost ** self._weights[0] * (
+                #         + cost_to_reach * self._weights[1]
+                #         + cost_to_come * self._weights[2]
+                #         + cost_to_go * self._weights[3]
+                #     )
+                # )
                 goal_idx = np.random.choice(len(priority), p=priority)  # np.argmin(priority)
                 goal = frontier_states[goal_idx, 0][None, ...]
                 debug(f"frontier states: {self._debug_fmt(frontier_states[:, 0])}")
@@ -307,7 +317,7 @@ class OmniGoalGenerator(GoalGenerator):
                         },
                         f"{self._lateral_agent._id.removesuffix('_agent')}_goal_generator",
                     )
-                if debug_mode:
+                if DEBUG:
                     breakpoint()
                 return goal
 

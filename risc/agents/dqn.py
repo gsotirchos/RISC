@@ -95,7 +95,7 @@ def oracle_policy(obs, rng: np.random.RandomState):
             return dirx if rng.random() < 0.5 else diry
 
 
-def oracle_q_value(obs):
+def oracle_q_value(obs, discount_rate):
     """Calculates the optimal Q value for the current observation."""
     obs = obs[0]
     [y], [x] = np.nonzero(obs[0])
@@ -129,7 +129,7 @@ def oracle_q_value(obs):
         distance2 = np.abs(x - h_doors[0]) + np.abs(y - 9) + distances[(h_doors[0], 9)]
         distance = min(distance1, distance2)
     # return 0.95**distance
-    return -1 - distance
+    return -sum(discount_rate ** (i + 1) for i in range(distance))
 
 
 class DQNAgent(_DQNAgent):
@@ -311,7 +311,7 @@ class DQNAgent(_DQNAgent):
             transition["next_observation"], device=self._device, dtype=torch.float32
         ).unsqueeze(0)
         next_observation = torch.cat((next_observation, desired_goal), dim=1)
-        optimal_qval = oracle_q_value(observation.cpu().numpy())
+        optimal_qval = oracle_q_value(observation.cpu().numpy(), self._discount_rate)
         qval = self._qnet(observation)
         next_qval = self._target_qnet(next_observation)
         error = (
