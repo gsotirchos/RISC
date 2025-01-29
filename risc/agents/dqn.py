@@ -14,123 +14,217 @@ from hive.utils.loggers import Logger
 from hive.utils.schedule import Schedule
 from hive.utils.utils import LossFn, OptimizerFn
 from enum import IntEnum
+from replays.counts_replay import SymmetricHashableKeyDict
 
 
 class SuccessNet(DQNNetwork):
+    """Network that computes the probability of success of an action."""
     def __init__(self, *args, correction=0, **kwargs):
         super().__init__(*args, **kwargs)
         self._correction = correction
 
-    """Network that computes the probability of success of an action."""
     def forward(self, x):
         x = super().forward(x)
         return torch.sigmoid(x - self._correction)
 
 
-class Actions(IntEnum):
-    # Turn left, turn right, move forward
-    right = 0
-    down = 1
-    left = 2
-    up = 3
+class FourRoomsOracle():
+    def __init__(self, discount_rate, step_cost=0, goal_reward=1, env_obs=None):
+        self._discount_rate = discount_rate
+        self._step_cost = step_cost
+        self._goal_reward = goal_reward
+        self._env_obs = None
+        self._process_env_obs(env_obs)
 
+    class Actions(IntEnum):
+        right = 0
+        down = 1
+        left = 2
+        up = 3
 
-def oracle_policy(obs, rng: np.random.RandomState):
-    """Oracle policy that computes the optimal action to take given the current
-    observation for 4rooms environment.
-    """
-    obs = obs[0]
-    [y], [x] = np.nonzero(obs[0])
-    h_doors = np.where(obs[1, 9] == 0)[0]
-    v_doors = np.where(obs[1, :, 9] == 0)[0]
-    upper_half = y < 10
-    left_half = x < 10
-    targets = {  # TODO
-        (True, True): [(1, 1)],
-        (True, False): [(9, v_doors[0])],
-        (False, True): [(h_doors[0], 9)],
-        (False, False): [(9, v_doors[1]), (h_doors[1], 9)],
-    }
-    target_locations = targets[(upper_half, left_half)]
-    if len(target_locations) == 2:
-        tx, ty = target_locations[0]
-        dist0 = np.abs(tx - x) + np.abs(ty - y)
-        tx, ty = target_locations[1]
-        dist1 = np.abs(tx - x) + np.abs(ty - y)
-        if dist0 < dist1:
-            target_locations = [target_locations[0]]
+    def _process_env_obs(self, env_obs):
+        if env_obs is None:
+            return
+        if np.array_equal(self._env_obs, env_obs):
+            return
+        self._env_obs = env_obs
+        self._h_doors = [[i, 9] for i, row in enumerate(env_obs) if row[9] == 0]
+        self._v_doors = [[9, i] for i, row in enumerate(env_obs[9]) if row == 0]
+        self._room2room_door = SymmetricHashableKeyDict({
+            ("top-left", "bottom-left"): self._h_doors[0],
+            ("top-left", "top-right"): self._v_doors[0],
+            ("bottom-right", "bottom-left"): self._v_doors[1],
+            ("bottom-right", "top-right"): self._h_doors[1]
+        })
+        self._door2door_dist = SymmetricHashableKeyDict()
+        for h_door in self._h_doors:
+            for v_door in self._v_doors:
+                self._door2door_dist[h_door, v_door] = self._distance(h_door, v_door)
+
+    def _get_room(self, x, y):
+        if y < 9:
+            return "top-left" if x < 9 else "top-right"
         else:
-            target_locations = [target_locations[1]]
-    x_target, y_target = target_locations[0]
-    if x == 9:
-        return Actions.left
-    elif y == 9:
-        return Actions.up
-    else:
-        dx = x_target - x
-        dy = y_target - y
-        valid_directions = {
-            Actions.right: True,
-            Actions.left: True,
-            Actions.up: True,
-            Actions.down: True,
-        }
-        if x == 10 and y not in v_doors:
-            valid_directions[Actions.left] = False
-        elif y == 10 and x not in h_doors:
-            valid_directions[Actions.up] = False
+            return "bottom-left" if x < 9 else "bottom-right"
 
-        dirx = Actions.right if dx > 0 else Actions.left
-        diry = Actions.down if dy > 0 else Actions.up
-        #  and rng.random() < 0.5:
-        if dx == 0:
-            return diry
-        elif dy == 0:
-            return dirx
-        elif not valid_directions[dirx]:
-            return diry
-        elif not valid_directions[diry]:
-            return dirx
+    def _distance(self, pos1, pos2):
+        return sum(abs(x1 - x2) for x1, x2 in zip(pos1, pos2))
+
+    def _direction_to_target(self, agent_pos, target_pos):
+        dx, dy = target_pos - agent_pos
+        if abs(dx) > abs(dy):
+            return self.Actions.right if dx > 0 else self.Actions.left
         else:
-            return dirx if rng.random() < 0.5 else diry
+            return self.Actions.down if dy > 0 else self.Actions.up
+
+    def action(self, observation):
+        obs = observation.squeeze()
+        self._process_env_obs(obs[1])
+        [goal_y], [goal_x] = np.nonzero(obs[2])
+        goal_room = self._get_room(goal_x, goal_y)
+        [agent_y], [agent_x] = np.nonzero(obs[0])
+        agent_room = self._get_room(agent_x, agent_y)
+
+        if (agent_x, agent_y) == (goal_x, goal_y):
+            return np.random.randint(len(self.Actions))
+
+        # If agent is standing on a door, move toward the goal's half-plane
+        if (agent_x, agent_y) in self._h_doors + self._v_doors:
+            if agent_x == 9:
+                return self._direction_to_target((agent_x, agent_y), (goal_x, agent_y))
+            else:  # agent_y == 9
+                return self._direction_to_target((agent_x, agent_y), (agent_x, goal_y))
+
+        # If both agent and goal are in the same room, move towards the goal
+        if agent_room == goal_room:
+            return self._direction_to_target((agent_x, agent_y), (goal_x, goal_y))
+
+        # If agent and goal are in adjacent rooms, move towards the door connecting them
+        if (agent_room, goal_room) in self._room2room_door[agent_room]:
+            target_door = self._room2room_door[agent_room, goal_room]
+            return self._direction_to_target((agent_x, agent_y), target_door)
+
+        # If the rooms are diagonally opposite, choose the shortest path
+        # TODO:
+        # - get the doors in the agent's room
+        # - get their successive doors
+        door1 = self._room2room_door[agent_room][0][1]  # First possible door
+        door2 = self._room2room_door[agent_room][1][1]  # Second possible door
+
+        # Calculate distances for both paths
+        dist_path1 = (self._distance((agent_x, agent_y), door1) +
+                      self._door2door_dist[door1, door3] +
+                      self._distance(door3, (goal_x, goal_y)))
+        dist_path2 = (self._distance((agent_x, agent_y), door1) +
+                      self._door2door_dist[door2, door4] +
+                      self._distance(door4, (goal_x, goal_y)))
+
+        # Choose the door with shorter total path
+        target_door = door1 if dist_path1 < dist_path2 else door2
+        return self._direction_to_target((agent_x, agent_y), target_door)
+
+    def value(self, observation):
+        # TODO
+        return 1
+        pass
 
 
-def oracle_q_value(obs, discount_rate):
-    """Calculates the optimal Q value for the current observation."""
-    obs = obs[0]
-    [y], [x] = np.nonzero(obs[0])
-    [goal_y], [goal_x] = np.nonzero(obs[2])
-    if obs[0].shape[0] < 19:
-        distance = np.abs(y - goal_y) + np.abs(x - goal_x)
-        #return 0.95**distance
-        return -sum(discount_rate ** (i + 1) for i in range(distance))
-    distances = {}
-    h_doors = np.where(obs[1, 9] == 0)[0]  # x values of horizontal doors
-    v_doors = np.where(obs[1, :, 9] == 0)[0]  # y values of vertical doors
-    distances[(h_doors[1], 9)] = np.abs(h_doors[1] - goal_x) + np.abs(9 - goal_y)
-    distances[(9, v_doors[1])] = np.abs(v_doors[1] - goal_y) + np.abs(9 - goal_x)
-    distances[(9, v_doors[0])] = (
-        np.abs(v_doors[0] - 9) + np.abs(9 - h_doors[1]) + distances[(h_doors[1], 9)]
-    )
-    distances[(h_doors[0], 9)] = (
-        np.abs(h_doors[0] - 9) + np.abs(9 - v_doors[1]) + distances[(9, v_doors[1])]
-    )
+# def oracle_policy(obs, rng: np.random.RandomState):
+#     """Oracle policy that computes the optimal action to take given the current
+#     observation for 4rooms environment.
+#     """
+#     obs = obs[0]
+#     [y], [x] = np.nonzero(obs[0])
+#     h_doors = np.where(obs[1, 9] == 0)[0]
+#     v_doors = np.where(obs[1, :, 9] == 0)[0]
+#     upper_half = y < 10
+#     left_half = x < 10
+#     targets = {  # TODO
+#         (True, True): [(1, 1)],
+#         (True, False): [(9, v_doors[0])],
+#         (False, True): [(h_doors[0], 9)],
+#         (False, False): [(9, v_doors[1]), (h_doors[1], 9)],
+#     }
+#     target_locations = targets[(upper_half, left_half)]
+#     if len(target_locations) == 2:
+#         tx, ty = target_locations[0]
+#         dist0 = np.abs(tx - x) + np.abs(ty - y)
+#         tx, ty = target_locations[1]
+#         dist1 = np.abs(tx - x) + np.abs(ty - y)
+#         if dist0 < dist1:
+#             target_locations = [target_locations[0]]
+#         else:
+#             target_locations = [target_locations[1]]
+#     x_target, y_target = target_locations[0]
+#     if x == 9:
+#         return Actions.left
+#     elif y == 9:
+#         return Actions.up
+#     else:
+#         dx = x_target - x
+#         dy = y_target - y
+#         valid_directions = {
+#             Actions.right: True,
+#             Actions.left: True,
+#             Actions.up: True,
+#             Actions.down: True,
+#         }
+#         if x == 10 and y not in v_doors:
+#             valid_directions[Actions.left] = False
+#         elif y == 10 and x not in h_doors:
+#             valid_directions[Actions.up] = False
+#
+#         dirx = Actions.right if dx > 0 else Actions.left
+#         diry = Actions.down if dy > 0 else Actions.up
+#         #  and rng.random() < 0.5:
+#         if dx == 0:
+#             return diry
+#         elif dy == 0:
+#             return dirx
+#         elif not valid_directions[dirx]:
+#             return diry
+#         elif not valid_directions[diry]:
+#             return dirx
+#         else:
+#             return dirx if rng.random() < 0.5 else diry
 
-    upper_half = y < 10
-    left_half = x < 10
-    if not upper_half and not left_half:
-        distance = (np.abs(goal_x - x) + np.abs(goal_y - y)) - 1
-        distance = max(distance, 0)
-    elif upper_half and not left_half:
-        distance = np.abs(x - h_doors[1]) + np.abs(y - 9) + distances[(h_doors[1], 9)]
-    elif not upper_half and left_half:
-        distance = np.abs(x - 9) + np.abs(y - v_doors[1]) + distances[(9, v_doors[1])]
-    else:
-        distance1 = np.abs(x - 9) + np.abs(y - v_doors[0]) + distances[(9, v_doors[0])]
-        distance2 = np.abs(x - h_doors[0]) + np.abs(y - 9) + distances[(h_doors[0], 9)]
-        distance = min(distance1, distance2)
-    #return 0.95**distance
-    return -sum(discount_rate ** (i + 1) for i in range(distance))
+
+# def oracle_q_value(obs, discount_rate):
+#     """Calculates the optimal Q value for the current observation."""
+#     obs = obs[0]
+#     [y], [x] = np.nonzero(obs[0])
+#     [goal_y], [goal_x] = np.nonzero(obs[2])
+#     if obs[0].shape[0] < 19:
+#         distance = np.abs(y - goal_y) + np.abs(x - goal_x)
+#         #return 0.95**distance
+#         return -sum(discount_rate ** (i + 1) for i in range(distance))
+#     distances = {}
+#     h_doors = np.where(obs[1, 9] == 0)[0]  # x values of horizontal doors
+#     v_doors = np.where(obs[1, :, 9] == 0)[0]  # y values of vertical doors
+#     distances[(h_doors[1], 9)] = np.abs(h_doors[1] - goal_x) + np.abs(9 - goal_y)
+#     distances[(9, v_doors[1])] = np.abs(v_doors[1] - goal_y) + np.abs(9 - goal_x)
+#     distances[(9, v_doors[0])] = (
+#         np.abs(v_doors[0] - 9) + np.abs(9 - h_doors[1]) + distances[(h_doors[1], 9)]
+#     )
+#     distances[(h_doors[0], 9)] = (
+#         np.abs(h_doors[0] - 9) + np.abs(9 - v_doors[1]) + distances[(9, v_doors[1])]
+#     )
+#
+#     upper_half = y < 10
+#     left_half = x < 10
+#     if not upper_half and not left_half:
+#         distance = (np.abs(goal_x - x) + np.abs(goal_y - y)) - 1
+#         distance = max(distance, 0)
+#     elif upper_half and not left_half:
+#         distance = np.abs(x - h_doors[1]) + np.abs(y - 9) + distances[(h_doors[1], 9)]
+#     elif not upper_half and left_half:
+#         distance = np.abs(x - 9) + np.abs(y - v_doors[1]) + distances[(9, v_doors[1])]
+#     else:
+#         distance1 = np.abs(x - 9) + np.abs(y - v_doors[0]) + distances[(9, v_doors[0])]
+#         distance2 = np.abs(x - h_doors[0]) + np.abs(y - 9) + distances[(h_doors[0], 9)]
+#         distance = min(distance1, distance2)
+#     #return 0.95**distance
+#     return -sum(discount_rate ** (i + 1) for i in range(distance))
 
 
 class DQNAgent(_DQNAgent):
@@ -219,7 +313,8 @@ class DQNAgent(_DQNAgent):
         self._qval_error = []
         self._optimal_pds = []
         self._td_log_frequency = td_log_frequency
-        self._oracle = oracle
+        self._use_oracle = oracle
+        self._oracle = FourRoomsOracle(discount_rate, step_cost=1, goal_reward=0)
         self._td_error = 0
         self._steps = 0
 
@@ -278,8 +373,8 @@ class DQNAgent(_DQNAgent):
         qvals = self._qnet(observation)
 
         random_actions = self._rng.integers(self._action_space.n, size=batch_size)
-        if self._oracle:
-            greedy_actions = [oracle_policy(observation.cpu().numpy(), self._rng)]
+        if self._use_oracle:
+            greedy_actions = [self._oracle.action(observation.cpu().numpy())]
         else:
             greedy_actions = torch.argmax(qvals, dim=1).cpu().numpy()
 
@@ -312,7 +407,7 @@ class DQNAgent(_DQNAgent):
             transition["next_observation"], device=self._device, dtype=torch.float32
         ).unsqueeze(0)
         next_observation = torch.cat((next_observation, desired_goal), dim=1)
-        optimal_qval = oracle_q_value(observation.cpu().numpy(), self._discount_rate)
+        optimal_qval = self._oracle.value(observation.cpu().numpy())
         qval = self._qnet(observation)
         next_qval = self._target_qnet(next_observation)
         error = (
