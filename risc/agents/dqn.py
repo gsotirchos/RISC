@@ -45,7 +45,7 @@ def oracle_policy(obs, rng: np.random.RandomState):
     v_doors = np.where(obs[1, :, 9] == 0)[0]
     upper_half = y < 10
     left_half = x < 10
-    targets = {
+    targets = {  # TODO
         (True, True): [(1, 1)],
         (True, False): [(9, v_doors[0])],
         (False, True): [(h_doors[0], 9)],
@@ -102,7 +102,8 @@ def oracle_q_value(obs, discount_rate):
     [goal_y], [goal_x] = np.nonzero(obs[2])
     if obs[0].shape[0] < 19:
         distance = np.abs(y - goal_y) + np.abs(x - goal_x)
-        return 0.95**distance
+        #return 0.95**distance
+        return -sum(discount_rate ** (i + 1) for i in range(distance))
     distances = {}
     h_doors = np.where(obs[1, 9] == 0)[0]  # x values of horizontal doors
     v_doors = np.where(obs[1, :, 9] == 0)[0]  # y values of vertical doors
@@ -128,7 +129,7 @@ def oracle_q_value(obs, discount_rate):
         distance1 = np.abs(x - 9) + np.abs(y - v_doors[0]) + distances[(9, v_doors[0])]
         distance2 = np.abs(x - h_doors[0]) + np.abs(y - 9) + distances[(h_doors[0], 9)]
         distance = min(distance1, distance2)
-    # return 0.95**distance
+    #return 0.95**distance
     return -sum(discount_rate ** (i + 1) for i in range(distance))
 
 

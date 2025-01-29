@@ -1,5 +1,5 @@
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping, Callable
 
 import numpy as np
 
@@ -7,8 +7,11 @@ from replays.circular_replay import CircularReplayBuffer
 
 
 class HashableKeyDict(defaultdict):
-    def __init__(self, other=None, *args, **kwargs):
-        super().__init__(lambda: HashableKeyDict(), *args, **kwargs)
+    def __init__(self, default_factory=None, other=None, **kwargs):
+        if isinstance(default_factory, type):
+            def default_factory(_type=default_factory):
+                return _type()
+        super().__init__(default_factory, **kwargs)
         if isinstance(other, Iterable):
             super().update(other)
 
@@ -63,17 +66,17 @@ class SymmetricHashableKeyDict(HashableKeyDict):
         return tuple(sorted(super().to_hashable(*args, **kwargs)))
 
 
-class SymmetricMatrix:
+class SymmetricMatrix(Mapping):
     def __init__(self):
-        self.views = HashableKeyDict(HashableKeyDict)
+        self._views = HashableKeyDict(HashableKeyDict)
 
     @staticmethod
     def process_key(method):
         def wrapper(self, key, *args, **kwargs):
+            key_error = KeyError("All keys must be NumPy arrays")
             if isinstance(key, np.ndarray):
                 key = (key, None)
             elif isinstance(key, tuple):
-                key_error = KeyError("All keys must be NumPy arrays")
                 if len(key) != 2:
                     raise key_error
                 if not isinstance(key[0], np.ndarray):
@@ -89,10 +92,14 @@ class SymmetricMatrix:
     def __setitem__(self, key, value: HashableKeyDict):
         i, j = key
         if j is None:
-            self.views[i] = value
+            if not isinstance(value, HashableKeyDict):
+                raise TypeError(value)
+            self._views[i] = value
+            for j in value:
+                self._views[j][i] = value[j]
         else:
-            self.views[i][j] = value
-            self.views[j][i] = value
+            self._views[i][j] = value
+            self._views[j][i] = value
 
     @process_key
     def __getitem__(self, key):
@@ -100,65 +107,75 @@ class SymmetricMatrix:
         if not self.__contains__(key):
             raise KeyError(key)
         if j is None:
-            return HashableKeyDict(self.views[i])  # O(k)
-            #return self.views[i].items()  # O(1) return a generator for lazy access
-            #return self.views[i].copy()  # O(k) return a copy for safe modifications
+            return dict(self._views[i])  # O(k)
+            #return self._views[i].items()  # O(1) return a generator for lazy access
+            #return self._views[i].copy()  # O(k) return a copy for safe modifications
         else:
-            return self.views[i][j] or self.views[j][i]
+            return self._views[i][j] or self._views[j][i]
 
     @process_key
     def __delitem__(self, key):
         for i, j in key, reversed(key):
             if j is None:
-                del self.views[i]
-                for k in np.array(list(self.views.keys())):
-                    del self.views[k][i]
-                    if not self.views[k]:
-                        del self.views[k]
+                del self._views[i]
+                for k in np.array(list(self._views.keys())):
+                    del self._views[k][i]
+                    if not self._views[k]:
+                        del self._views[k]
                 break
-            del self.views[i][j]
-            if not self.views[i]:
-                del self.views[i]
+            del self._views[i][j]
+            if not self._views[i]:
+                del self._views[i]
 
     @process_key
     def __contains__(self, key):
         i, j = key
         if j is None:
-            return i in self.views
+            return i in self._views
         else:
-            return j in self.views[i] or i in self.views[j]
+            return j in self._views[i] or i in self._views[j]
 
+    @process_key
     def get(self, key, default=None):
-        return self.views.get(key, default)
+        return self._views.get(key, default)
 
+    @process_key
     def pop(self, key, default=None):
-        return self.views.pop(key, default)
+        return self._views.pop(key, default)
 
     def update(self, other=None, **kwargs):
-        return self.views.update(other=None, **kwargs)
+        return self._views.update(other=None, **kwargs)
 
     def keys(self):
-        return self.views.keys()
+        return self._views.keys()
 
     def values(self):
-        return self.views.values()
+        items = dict()
+        for i in self._views:
+            items[i] = list(self._views[i].values())
+        return items.values()
 
     def items(self):
-        return self.views.items()
+        items = dict()
+        for i in self._views:
+            items[i] = list(self._views[i].values())
+        return items.items()
 
-    def __repr__(self):
-        return self.views.__repr__()
+    def __iter__(self):
+        return self._views.__iter__()
 
     def __len__(self):
-        return self.views.__len__()
+        return self._views.__len__()
+
+    def __repr__(self):
+        return self._views.__repr__()
 
     def __clear__(self):
-        return self.views.__clear__()
+        return self._views.__clear__()
 
 
 def distance(state1, state2):
     """Compute distance for both symbolic and continuous states."""
-    # return np.random.randint(32)
     state1, state2 = np.squeeze(state1), np.squeeze(state2)
     if state1.ndim == state2.ndim == 3:
         state1 = np.argwhere(state1[0] == 255).flatten()
@@ -171,11 +188,6 @@ class CountsReplayBuffer(CircularReplayBuffer):
         super().__init__(*args, **kwargs)
         self.counts = HashableKeyDict()
         self.distances = SymmetricMatrix()
-
-    def _remove_distances(self, state):
-        for other_state in self.counts.keys():
-            if (state, other_state) in self.distances:
-                del self.distances[state, other_state]
 
     def _update_distances(self, state):
         if self.counts[state] > 1:
@@ -191,12 +203,11 @@ class CountsReplayBuffer(CircularReplayBuffer):
         if not np.all(overwritten_state == 0):
             self.counts[overwritten_state] -= 1
             if self.counts[overwritten_state] == 0:
-                # self._remove_distances(overwritten_state)
-                del self.distances[overwritten_state]
+                #del self.distances[overwritten_state]  # TODO
                 del self.counts[overwritten_state]
         if not np.all(new_state == 0):
             self.counts[new_state] = self.counts.get(new_state, 0) + 1
-            self._update_distances(new_state)
+            #self._update_distances(new_state)  # TODO
 
     def _add_transition(self, **transition):
         self._update_metadata(transition["observation"])

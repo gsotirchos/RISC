@@ -198,9 +198,10 @@ class OmniGoalGenerator(GoalGenerator):
         if len(counts) == 0:
             return None
         distances = self._lateral_agent._replay_buffer.distances
+        # TODO
         knn_dist_dict = self._get_knn_dist_dict(counts, distances, k, max_visitations)
         frontier_states = self._get_proportion(knn_dist_dict, proportion)
-        # return np.array(list(counts.keys()))
+        # TODO
         return frontier_states
 
     def _novelty(self, states):
@@ -224,8 +225,8 @@ class OmniGoalGenerator(GoalGenerator):
                          for observation, goal in zip(observations, goals, strict=True)])
 
     def _cost(self, *args, **kwargs):
-        # return 1 / (self._confidence(*args, **kwargs) + epsilon)
-        return self._confidence(*args, **kwargs)  # TODO
+        return 1 / (self._confidence(*args, **kwargs) + epsilon)
+        # return self._confidence(*args, **kwargs)  # alt. cost
 
     def _debug_fmt(self, states: np.ndarray, value: int = 255):
         return np.flip(np.argwhere(np.array(states) == value)[..., -2:].squeeze(), axis=-1).tolist()
@@ -248,7 +249,7 @@ class OmniGoalGenerator(GoalGenerator):
                     self._lateral_agent = self._backward_agent
                     lateral_initial_state = goal_state
                     lateral_goal_state = initial_state
-                frontier_states = self._frontier_states(proportion=0.5)  # TODO
+                frontier_states = self._frontier_states(proportion=0.5)
                 if frontier_states is None:
                     return goal_state if agent_traj_state.forward else initial_state
                 if len(frontier_states) == 1:
@@ -258,8 +259,8 @@ class OmniGoalGenerator(GoalGenerator):
                 cost_to_come = np.zeros(len(frontier_states))
                 cost_to_go = np.zeros(len(frontier_states))
                 if self._weights[0] != 0:
-                    # novelty_cost = sigmoid(standardize(1 / self._novelty(frontier_states)))
-                    novelty_cost = self._novelty(frontier_states)  # TODO
+                    novelty_cost = sigmoid(standardize(1 / self._novelty(frontier_states)))
+                    # novelty_cost = self._novelty(frontier_states)  # alt. cost
                 if self._weights[1] != 0:
                     cost_to_reach = self._cost(
                         observation,
@@ -275,18 +276,18 @@ class OmniGoalGenerator(GoalGenerator):
                         frontier_states,
                         lateral_goal_state
                     )
-                priority = softmax(  # TODO
-                    novelty_cost ** self._weights[0]
-                    * cost_to_reach ** self._weights[1]
-                    * cost_to_come ** self._weights[2]
-                    * cost_to_go ** self._weights[3]
+                priority = softmin(
+                    novelty_cost ** self._weights[0] * (
+                        + cost_to_reach * self._weights[1]
+                        + cost_to_come * self._weights[2]
+                        + cost_to_go * self._weights[3]
+                    )
                 )
-                # priority = softmin(
-                #     novelty_cost ** self._weights[0] * (
-                #         + cost_to_reach * self._weights[1]
-                #         + cost_to_come * self._weights[2]
-                #         + cost_to_go * self._weights[3]
-                #     )
+                # priority = softmax(  # alt. cost
+                #     novelty_cost ** self._weights[0]
+                #     * cost_to_reach ** self._weights[1]
+                #     * cost_to_come ** self._weights[2]
+                #     * cost_to_go ** self._weights[3]
                 # )
                 goal_idx = np.random.choice(len(priority), p=priority)  # np.argmin(priority)
                 goal = frontier_states[goal_idx, 0][None, ...]
