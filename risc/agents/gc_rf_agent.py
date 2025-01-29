@@ -120,6 +120,7 @@ class GCResetFree(Agent):
                 id="forward_agent",
                 logger=logger,
                 replay_buffer=replay_buffer,
+                oracle=oracle
             )
             self._backward_agent = base_agent(
                 observation_space=observation_space,
@@ -226,8 +227,6 @@ class GCResetFree(Agent):
         if agent_traj_state.current_goal is None:
             agent_traj_state = self.get_new_direction(agent_traj_state)
             agent_traj_state = self.get_new_goal(observation, agent_traj_state)
-        #if hasattr(self._goal_generator, "update_novelty"):
-        #    self._goal_generator.update_novelty(observation)  # TODO: deprecated
         observation = self._replace_goal_fn(observation, agent_traj_state.current_goal)
         agent = (
             self._forward_agent if agent_traj_state.forward else self._backward_agent
@@ -302,8 +301,6 @@ class GCResetFree(Agent):
                 )
 
             agent_traj_state = GCAgentState(
-                current_direction=agent_traj_state.current_direction,
-                forward=agent_traj_state.forward,
                 forward_success=agent_traj_state.forward_success,
                 forward_goal_idx=agent_traj_state.forward_goal_idx,
                 backward_success=agent_traj_state.backward_success,
@@ -399,10 +396,10 @@ class GCResetFree(Agent):
     def get_new_direction(self, agent_traj_state):
         """ Get the current direction by cycling over them.
         If it is "lateral" then the agent is determined by the next direction. """
-        self._directions.rotate(-1)
         current_direction = self._directions[0]
         next_direction = self._directions[1]
-        # forward = (not agent_traj_state.forward)
+        self._directions.rotate(-1)
+        #forward = (not agent_traj_state.forward)
         forward = (next_direction == "forward") \
             if current_direction == "lateral" \
             else (current_direction == "forward")
