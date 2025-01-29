@@ -1,5 +1,5 @@
 from collections import defaultdict
-from collections.abc import Iterable, Mapping, Callable
+from collections.abc import Hashable, Iterable, Mapping, Callable
 
 import numpy as np
 
@@ -7,21 +7,24 @@ from replays.circular_replay import CircularReplayBuffer
 
 
 class HashableKeyDict(defaultdict):
-    def __init__(self, default_factory=None, other=None, **kwargs):
-        if isinstance(default_factory, type):
-            def default_factory(_type=default_factory):
-                return _type()
-        super().__init__(default_factory, **kwargs)
-        if isinstance(other, Iterable):
-            super().update(other)
+    def __init__(self, default=None, **kwargs):
+        if isinstance(default, type):
+            super().__init__(lambda: default(), **kwargs)
+        elif isinstance(default, Iterable):
+            super().__init__(**kwargs)
+            self.update(other=default)
+        else:  # elif isinstance(default, Callable):
+            super().__init__(default, **kwargs)
 
     @staticmethod
     def to_hashable(obj):
         def _to_hashable(obj):
-            if isinstance(obj, Iterable):
+            if isinstance(obj, (str, bytes)):
+                return obj
+            elif isinstance(obj, Iterable):
                 return tuple(_to_hashable(sub_obj) for sub_obj in obj)
             else:
-                return obj
+                raise KeyError(f"Key {obj} cannot be converted to hashable type")
         return _to_hashable(obj)
 
     @staticmethod
@@ -58,7 +61,15 @@ class HashableKeyDict(defaultdict):
         return super().pop(*args, **kwargs)
 
     def update(self, other=None, **kwargs):
-        super().update(other=other, **kwargs)
+        if other is not None:
+            if hasattr(other, 'items'):
+                for k, v in other.items():
+                    self.__setitem__(k, v)
+            else:
+                for k, v in other:
+                    self.__setitem__(k, v)
+        for k, v in kwargs.items():
+            self.__setitem__(k, v)
 
 
 class SymmetricHashableKeyDict(HashableKeyDict):
@@ -143,8 +154,8 @@ class SymmetricMatrix(Mapping):
     def pop(self, key, default=None):
         return self._views.pop(key, default)
 
-    def update(self, other=None, **kwargs):
-        return self._views.update(other=None, **kwargs)
+    def update(self, **kwargs):
+        return self._views.update(**kwargs)
 
     def keys(self):
         return self._views.keys()
