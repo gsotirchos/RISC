@@ -48,8 +48,8 @@ class FourRoomsOracle():
         if np.array_equal(self._env_obs, env_obs):
             return
         self._env_obs = env_obs
-        self._h_doors = [[i, 9] for i, row in enumerate(env_obs) if row[9] == 0]
-        self._v_doors = [[9, i] for i, row in enumerate(env_obs[9]) if row == 0]
+        self._h_doors = [[9, i] for i, row in enumerate(env_obs) if row[9] == 0]
+        self._v_doors = [[i, 9] for i, row in enumerate(env_obs[9]) if row == 0]
         self._room2room_door = SymmetricHashableKeyDict({
             ("top-left", "bottom-left"): self._h_doors[0],
             ("top-left", "top-right"): self._v_doors[0],
@@ -80,29 +80,29 @@ class FourRoomsOracle():
     def action(self, observation):
         obs = observation.squeeze()
         self._process_env_obs(obs[1])
-        [goal_y], [goal_x] = np.nonzero(obs[2])
-        goal_room = self._get_room(goal_x, goal_y)
-        [agent_y], [agent_x] = np.nonzero(obs[0])
-        agent_room = self._get_room(agent_x, agent_y)
+        goal_pos = np.flip(np.nonzero(obs[2])).squeeze()
+        goal_room = self._get_room(*goal_pos)
+        agent_pos = np.flip(np.nonzero(obs[0])).squeeze()
+        agent_room = self._get_room(*agent_pos)
+        breakpoint()
 
-        if (agent_x, agent_y) == (goal_x, goal_y):
+        if agent_pos == goal_pos:
             return np.random.randint(len(self.Actions))
 
         # If agent is standing on a door, move toward the goal's half-plane
-        if (agent_x, agent_y) in self._h_doors + self._v_doors:
-            if agent_x == 9:
-                return self._direction_to_target((agent_x, agent_y), (goal_x, agent_y))
-            else:  # agent_y == 9
-                return self._direction_to_target((agent_x, agent_y), (agent_x, goal_y))
+        if agent_pos in self._h_doors:
+            return self._direction_to_target(agent_pos, (agent_pos[0], goal_pos[1]))
+        if agent_pos in self._v_doors:
+            return self._direction_to_target(agent_pos, (goal_pos[0], agent_pos[1]))
 
         # If both agent and goal are in the same room, move towards the goal
         if agent_room == goal_room:
-            return self._direction_to_target((agent_x, agent_y), (goal_x, goal_y))
+            return self._direction_to_target(agent_pos, goal_pos)
 
         # If agent and goal are in adjacent rooms, move towards the door connecting them
         if (agent_room, goal_room) in self._room2room_door[agent_room]:
             target_door = self._room2room_door[agent_room, goal_room]
-            return self._direction_to_target((agent_x, agent_y), target_door)
+            return self._direction_to_target(agent_pos, target_door)
 
         # If the rooms are diagonally opposite, choose the shortest path
         # TODO:
@@ -112,16 +112,16 @@ class FourRoomsOracle():
         door2 = self._room2room_door[agent_room][1][1]  # Second possible door
 
         # Calculate distances for both paths
-        dist_path1 = (self._distance((agent_x, agent_y), door1) +
+        dist_path1 = (self._distance(agent_pos, door1) +
                       self._door2door_dist[door1, door3] +
-                      self._distance(door3, (goal_x, goal_y)))
-        dist_path2 = (self._distance((agent_x, agent_y), door1) +
+                      self._distance(door3, goal_pos))
+        dist_path2 = (self._distance(agent_pos, door1) +
                       self._door2door_dist[door2, door4] +
-                      self._distance(door4, (goal_x, goal_y)))
+                      self._distance(door4, goal_pos))
 
         # Choose the door with shorter total path
         target_door = door1 if dist_path1 < dist_path2 else door2
-        return self._direction_to_target((agent_x, agent_y), target_door)
+        return self._direction_to_target(agent_pos, target_door)
 
     def value(self, observation):
         # TODO
