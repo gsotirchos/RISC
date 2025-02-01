@@ -1,5 +1,5 @@
 from collections import defaultdict
-from collections.abc import Hashable, Iterable, Mapping, Callable
+from collections.abc import Iterable, Mapping
 
 import numpy as np
 
@@ -13,7 +13,7 @@ class HashableKeyDict(defaultdict):
         elif isinstance(default, Iterable):
             super().__init__(**kwargs)
             self.update(other=default)
-        else:  # elif isinstance(default, Callable):
+        else:
             super().__init__(default, **kwargs)
 
     @staticmethod

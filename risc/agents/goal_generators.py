@@ -4,7 +4,7 @@ from dataclasses import replace
 import matplotlib.pyplot as plt
 import numpy as np
 import wandb
-from envs.utils import heatmap
+from envs.utils import heatmap as _heatmap
 from hive import registry
 from hive.utils.loggers import Logger, NullLogger
 from hive.utils.registry import Registrable
@@ -13,6 +13,7 @@ from hive.utils.utils import seeder
 from replays.counts_replay import HashableKeyDict
 from scipy.special import expit as sigmoid
 from scipy.special import softmax
+from scipy.stats import zscore
 
 np.set_printoptions(precision=3)
 
@@ -36,7 +37,7 @@ def timer(func):
     return wrapper
 
 
-def visualize(states, metric, **kwargs):
+def heatmap(states, metric, **kwargs):
     if np.isnan(metric).any():
         print(f"Warning: NaN values in {metric}")
         metric[np.isnan(metric)] = 0
@@ -49,7 +50,7 @@ def visualize(states, metric, **kwargs):
     np.add.at(counts, (np.array(y), np.array(x)), metric)
     try:
         fig, ax = plt.subplots()
-        heatmap(
+        _heatmap(
             counts,
             np.arange(height),
             np.arange(width),
@@ -177,9 +178,9 @@ class OmniGoalGenerator(GoalGenerator):
         if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
             print("visualizing knn")
             self._logger.log_metrics(
-                {f"{k}-nn_mean_distance": visualize(newly_visited_states,
-                                                    np.array(list(knn_dist_dict.values())),
-                                                    logscale=True)},
+                {f"{k}-nn_mean_distance": heatmap(newly_visited_states,
+                                                  np.array(list(knn_dist_dict.values())),
+                                                  logscale=True)},
                 f"{self._lateral_agent._id.removesuffix('_agent')}_goal_generator",
             )
         return knn_dist_dict
@@ -260,7 +261,7 @@ class OmniGoalGenerator(GoalGenerator):
                 cost_to_come = np.zeros(len(frontier_states))
                 cost_to_go = np.zeros(len(frontier_states))
                 if self._weights[0] != 0:
-                    novelty_cost = sigmoid(standardize(1 / self._novelty(frontier_states)))
+                    novelty_cost = sigmoid(zscore(1 / (self._novelty(frontier_states + epsilon))))
                     # novelty_cost = self._novelty(frontier_states)  # alt. cost
                 if self._weights[1] != 0:
                     cost_to_reach = self._cost(
@@ -294,7 +295,7 @@ class OmniGoalGenerator(GoalGenerator):
                 goal = frontier_states[goal_idx, 0][None, ...]
                 debug(f"frontier states: {self._debug_fmt(frontier_states[:, 0])}")
                 debug(f"visitations: {1 / self._novelty(frontier_states)}", "   ")
-                debug(f"stdized vis.: {standardize(1 / self._novelty(frontier_states))}", "   ")
+                debug(f"stdized vis.: {zscore(1 / self._novelty(frontier_states))}", "   ")
                 debug(f"novelty costs: {novelty_cost}", "   ")
                 debug(f"priority: {priority}", "   ")
                 debug(f"lateral goal: {self._debug_fmt(goal)}", "   ")
@@ -311,11 +312,11 @@ class OmniGoalGenerator(GoalGenerator):
                 if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
                     self._logger.log_metrics(
                         {
-                            "novelty_cost": visualize(frontier_states, novelty_cost, logscale=True),
-                            "cost_to_reach": visualize(frontier_states, cost_to_reach),
-                            "cost_to_come": visualize(frontier_states, cost_to_come),
-                            "cost_to_go": visualize(frontier_states, cost_to_go),
-                            "priority": visualize(frontier_states, priority, logscale=True),
+                            "novelty_cost": heatmap(frontier_states, novelty_cost, logscale=True),
+                            "cost_to_reach": heatmap(frontier_states, cost_to_reach, vmin=0),
+                            "cost_to_come": heatmap(frontier_states, cost_to_come, vmin=0),
+                            "cost_to_go": heatmap(frontier_states, cost_to_go, vmin=0),
+                            "priority": heatmap(frontier_states, priority, logscale=True),
                         },
                         f"{self._lateral_agent._id.removesuffix('_agent')}_goal_generator",
                     )
