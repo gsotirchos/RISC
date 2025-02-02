@@ -66,6 +66,7 @@ class GCResetFree(Agent):
         log_success=False,
         never_truncate=False,
         use_demo=True,
+        directions=("forward", "backward"),
         **kwargs,
     ):
         """
@@ -107,7 +108,6 @@ class GCResetFree(Agent):
             never_truncate: Whether to truncate trajectories on phase_step_limit.
             use_demo: Whether to use the demo.
         """
-        directions = kwargs.get("directions", ["forward", "backward"])
         self._directions = deque(directions)
         self._separate_agents = separate_agents
         distance_fn = get_distance_fn(distance_type=distance_type)
@@ -159,7 +159,6 @@ class GCResetFree(Agent):
             replace_goal_fn=replace_goal_fn,
             candidates=np.copy(candidates),
             device=self._forward_agent._device,
-            weights=kwargs.get("weights", [1, 1, 1, 1]),
         )
         self._goal_switcher = goal_switcher(
             forward_agent=self._forward_agent,
