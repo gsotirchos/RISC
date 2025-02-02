@@ -141,7 +141,6 @@ class FourRoomsOracle():
     @process_obs
     def compute_success_prob(self, observation, goal):
         distances = list(self._distances[self._agent_cell, self._goal_cell].values())
-        breakpoint()
         return 1 / (1 + min(distances))
 
 
