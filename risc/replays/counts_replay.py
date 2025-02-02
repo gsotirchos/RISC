@@ -197,8 +197,9 @@ def distance(state1, state2):
 class CountsReplayBuffer(CircularReplayBuffer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.counts = HashableKeyDict()
-        self.distances = SymmetricMatrix()
+        self.counts = HashableKeyDict(dict)
+        self.visitations = HashableKeyDict()
+        # self.distances = SymmetricMatrix()
 
     def _update_distances(self, state):
         if self.counts[state] > 1:
@@ -207,19 +208,27 @@ class CountsReplayBuffer(CircularReplayBuffer):
             if (state, other_state) not in self.distances:
                 self.distances[state, other_state] = distance(state, other_state)
 
-    def _update_metadata(self, new_state):
-        """ If a state will be overwritten decrement its count, and if it has no counts
-        left remove its entry. Then increment the count for the new state. """
+    def _update_metadata(self, **transition):
+        """ If a state-action will be overwritten decrement its count, and if it has no counts
+        left remove its state entry entirely. Then increment the new state-action's count. """
         overwritten_state = self._storage["observation"][self._cursor]
+        overwritten_action = self._storage["action"][self._cursor]
         if not np.all(overwritten_state == 0):
-            self.counts[overwritten_state] -= 1
-            if self.counts[overwritten_state] == 0:
-                #del self.distances[overwritten_state]  # TODO
+            self.counts[overwritten_state][overwritten_action] -= 1
+            self.visitations[overwritten_state] -= 1
+            if self.counts[overwritten_state][overwritten_action] == 0:
+                del self.counts[overwritten_state][overwritten_action]
+            if len(self.counts[overwritten_state]) == 0:
+                #del self.distances[overwrittan_state]
                 del self.counts[overwritten_state]
+                del self.visitations[overwritten_state]
+        new_state = transition["observation"]
+        new_action = transition["action"]
         if not np.all(new_state == 0):
-            self.counts[new_state] = self.counts.get(new_state, 0) + 1
-            #self._update_distances(new_state)  # TODO
+            self.counts[new_state][new_action] = self.counts[new_state].get(new_action, 0) + 1
+            self.visitations[new_state] = self.visitations.get(new_state, 0) + 1
+            #self._update_distances(new_state)
 
     def _add_transition(self, **transition):
-        self._update_metadata(transition["observation"])
+        self._update_metadata(**transition)
         super()._add_transition(**transition)
