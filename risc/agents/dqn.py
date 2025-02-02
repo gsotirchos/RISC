@@ -29,9 +29,9 @@ class SuccessNet(DQNNetwork):
 
 
 class FourRoomsOracle():
-    def __init__(self, discount_rate=1, step_cost=0, goal_reward=1, observation=None):
+    def __init__(self, discount_rate=1, step_reward=0, goal_reward=1, observation=None):
         self._discount_rate = discount_rate
-        self._step_cost = step_cost
+        self._step_reward = step_reward
         self._goal_reward = goal_reward
         self._walls = None
         self._process_obs(observation)
@@ -52,17 +52,31 @@ class FourRoomsOracle():
             }
             return cell[0] + movements[action][0], cell[1] + movements[action][1]
 
-    def _process_obs(self, observation):
+    def _process_obs(self, *args):
+        if not args:
+            return
+        observation = args[0]
+        goal = None
         if observation is None:
             return
-        agent_obs, walls_obs, goal_obs = observation.squeeze()
+        if len(args) >= 2:
+            goal = args[1]
+        agent_obs, walls_obs = observation.squeeze()[:2]
+        goal_obs = goal.squeeze() if goal is not None else observation.squeeze()[2]
         self._agent_cell = tuple(np.flip(np.argwhere(agent_obs != 0)).flatten())
-        self._goal_cell =tuple(np.flip(np.argwhere(goal_obs != 0)).flatten())
+        self._goal_cell = tuple(np.flip(np.argwhere(goal_obs != 0)).flatten())
         if np.array_equal(self._walls, walls_obs):
             return
         self._walls = walls_obs
         self._valid_cells = [(x, y) for y, x in np.argwhere(walls_obs == 0)]
         self._distances = self._compute_distances()
+
+    @staticmethod
+    def process_obs(method):
+        def wrapper(self, *args, **kwargs):
+            self._process_obs(*args)
+            return method(self, *args, **kwargs)
+        return wrapper
 
     def _bfs(self, goal):
         dist = defaultdict(lambda: -1)  # -1 = unreachable
@@ -85,7 +99,6 @@ class FourRoomsOracle():
         for cell in self._valid_cells:
             for goal_cell in self._valid_cells:
                 current_dist = goal_dist[goal_cell][cell]
-
                 for action in self.Actions:
                     next_cell = self.Actions.move(action, cell)
                     if next_cell in self._valid_cells:
@@ -96,9 +109,9 @@ class FourRoomsOracle():
                     distances[cell, goal_cell][action] = next_dist
         return distances
 
-    def _discounted_return(self, distances, discount_rate=None, step_cost=None, goal_reward=None):
+    def _discounted_return(self, distances, discount_rate=None, step_reward=None, goal_reward=None):
         discount_rate = discount_rate or self._discount_rate
-        step_cost = step_cost or self._step_cost
+        step_reward = step_reward or self._step_reward
         goal_reward = goal_reward or self._goal_reward
         distances = np.asarray(distances)
         # Σ^N_(n=1) γ ^ n = γ * (1 - γ ^ Ν) / (1 - γ)
@@ -106,20 +119,30 @@ class FourRoomsOracle():
             geom_series_sum = distances
         else:
             geom_series_sum = discount_rate * (1 - discount_rate ** distances) / (1 - discount_rate)
-        return step_cost * geom_series_sum + goal_reward * (discount_rate ** (distances + 1))
+        return step_reward * geom_series_sum + goal_reward * (discount_rate ** (distances + 1))
 
     def _randargmax(self, x, **kwargs):
         return np.argmax(np.random.random(x.shape) * (x == x.max()), **kwargs)
 
-    def value(self, observation, **kwargs):
-        self._process_obs(observation)
+    @process_obs
+    def value(self, observation, step_reward=None, goal_reward=None, **kwargs):
+        if self._agent_cell == self._goal_cell:
+            reward = goal_reward or self._goal_reward
+        else:
+            reward = step_reward or self._step_reward
         distances = list(self._distances[self._agent_cell, self._goal_cell].values())
-        return np.max(self._discounted_return(distances, **kwargs), keepdims=True)
+        return reward + np.max(self._discounted_return(distances, **kwargs), keepdims=True)
 
+    @process_obs
     def action(self, observation, **kwargs):
-        self._process_obs(observation)
         distances = list(self._distances[self._agent_cell, self._goal_cell].values())
         return self._randargmax(self._discounted_return(distances, **kwargs))
+
+    @process_obs
+    def compute_success_prob(self, observation, goal):
+        distances = list(self._distances[self._agent_cell, self._goal_cell].values())
+        breakpoint()
+        return 1 / (1 + min(distances))
 
 
 class DQNAgent(_DQNAgent):
@@ -209,7 +232,7 @@ class DQNAgent(_DQNAgent):
         self._optimal_pds = []
         self._td_log_frequency = td_log_frequency
         self._use_oracle = oracle
-        self._oracle = FourRoomsOracle(discount_rate, step_cost=-1, goal_reward=0)
+        self._oracle = FourRoomsOracle(discount_rate, step_reward=-1, goal_reward=0)
         self._td_error = 0
         self._steps = 0
 
@@ -274,7 +297,7 @@ class DQNAgent(_DQNAgent):
             greedy_actions = torch.argmax(qvals, dim=1).cpu().numpy()
 
         actions = np.where(
-            self._rng.random(batch_size) < -1, random_actions, greedy_actions
+            self._rng.random(batch_size) < epsilon, random_actions, greedy_actions
         )
         if unsqueezed:
             actions = actions[0]

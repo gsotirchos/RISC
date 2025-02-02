@@ -135,6 +135,7 @@ class OmniGoalGenerator(GoalGenerator):
         initial_states,
         goal_states,
         weights,
+        oracle: bool = False,
         log_frequency: int = 10,
         vis_frequency: int = 100,
         **kwargs,
@@ -143,6 +144,7 @@ class OmniGoalGenerator(GoalGenerator):
         self._forward_agent = forward_agent
         self._backward_agent = backward_agent
         self._lateral_agent = None
+        self._oracle = oracle
         self._logger = logger
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_switcher"))
         self._log_schedule = PeriodicSchedule(False, True, log_frequency)
@@ -151,15 +153,15 @@ class OmniGoalGenerator(GoalGenerator):
         self._goal_states = goal_states
         self._weights = weights
 
-    def _get_knn_dist_dict(self, counts, distances, k, max_visitations=None):
-        all_visited_states = np.array(list(counts.keys()))
+    def _get_knn_dist_dict(self, visitations, distances, k, max_visitations=None):
+        all_visited_states = np.array(list(visitations.keys()))
         debug(f"all_visited_states: {self._debug_fmt(all_visited_states[:, 0])}")
         max_visitations = max_visitations or 0
-        if max_visitations == 0 or max_visitations >= max(counts.values()):
+        if max_visitations == 0 or max_visitations >= max(visitations.values()):
             newly_visited_states = all_visited_states
         else:
             newly_visited_states = np.array(
-                [state for state, count in counts.items() if count <= max_visitations]
+                [state for state, count in visitations.items() if count <= max_visitations]
             )
             if newly_visited_states.size == 0:
                 newly_visited_states = all_visited_states
@@ -184,32 +186,46 @@ class OmniGoalGenerator(GoalGenerator):
             )
         return knn_dist_dict
 
+    def _get_untried_actions_counts(self, counts, max_actions=None):
+        num_possible_actions = self._lateral_agent._action_space.n
+        return {state: num_possible_actions - len(actions) for state, actions in counts.items()}
+
     def _get_proportion(self, dictionary, proportion):
         num_keys = int(np.ceil(proportion * len(dictionary)))
-        if num_keys == len(dictionary):
+        if num_keys >= len(dictionary):
             return np.array(list(dictionary.keys()))
         keys, values = np.array(list(dictionary.keys())), np.array(list(dictionary.values()))
-        partitioned_indices = np.argpartition(values, -num_keys)[-num_keys:]
-        selected_keys = keys[partitioned_indices]
-        return selected_keys
+        #partitioned_indices = np.argpartition(values, -num_keys)[-num_keys:]
+        #selected_keys = keys[partitioned_indices]
+        #return selected_keys
+        sorted_indices = np.argsort(values)[::-1]
+        sorted_keys, sorted_values = keys[sorted_indices], values[sorted_indices]
+        cutoff_value = sorted_values[num_keys - 1]
+        greater_mask = sorted_values > cutoff_value
+        m = np.sum(greater_mask)
+        if m >= num_keys:
+            return sorted_keys[greater_mask]
+        threshold_keys = sorted_keys[sorted_values == cutoff_value]
+        random_indices = np.random.choice(len(threshold_keys), size=num_keys - m, replace=False)
+        return np.concatenate([sorted_keys[greater_mask], threshold_keys[random_indices]])
 
-    def _frontier_states(self, proportion=0.5, k=4, max_visitations=None):
+    def _frontier_states(self, proportion=0.5, k=4, max_value=None):
         counts = self._lateral_agent._replay_buffer.counts
+        # visitations = self._lateral_agent._replay_buffer.visitations
         if len(counts) == 0:
             return None
-        distances = self._lateral_agent._replay_buffer.distances
-        return np.array(list(counts.keys()))
-        # TODO
-        knn_dist_dict = self._get_knn_dist_dict(counts, distances, k, max_visitations)
-        frontier_states = self._get_proportion(knn_dist_dict, proportion)
-        # TODO
+        #return np.array(list(counts.keys()))
+        #distances = self._lateral_agent._replay_buffer.distances
+        #knn_dist_dict = self._get_knn_dist_dict(visitations, distances, k, max_value)
+        untried_actions_counts = self._get_untried_actions_counts(counts)
+        frontier_states = self._get_proportion(untried_actions_counts, proportion)
         return frontier_states
 
     def _novelty(self, states):
         if states.ndim == len(self._lateral_agent._observation_space.shape):
             states = np.expand_dims(states, axis=0)
-        counts = self._lateral_agent._replay_buffer.counts
-        return np.array([1 / counts[state] for state in states])
+        visitations = self._lateral_agent._replay_buffer.visitations
+        return np.array([1 / visitations[state] for state in states])
 
     def _confidence(self, observations, goals, agent=None):
         if agent is None:
@@ -222,8 +238,10 @@ class OmniGoalGenerator(GoalGenerator):
             np.repeat(observations, goals.shape[0], axis=0),
             np.tile(goals, (observations.shape[0], 1, 1, 1))
         )
+        if self._oracle:
+            agent = agent._oracle
         return np.array([agent.compute_success_prob(observation, goal)
-                         for observation, goal in zip(observations, goals, strict=True)])
+                         for observation, goal in zip(observations, goals)])
 
     def _cost(self, *args, **kwargs):
         return 1 / (self._confidence(*args, **kwargs) + epsilon)
@@ -250,7 +268,7 @@ class OmniGoalGenerator(GoalGenerator):
                     self._lateral_agent = self._backward_agent
                     lateral_initial_state = goal_state
                     lateral_goal_state = initial_state
-                frontier_states = self._frontier_states(proportion=0.5)
+                frontier_states = self._frontier_states(proportion=0.333)
                 if frontier_states is None:
                     return goal_state if agent_traj_state.forward else initial_state
                 if len(frontier_states) == 1:

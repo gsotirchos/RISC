@@ -75,8 +75,12 @@ kwargs:
               period: 500
         name: GoalConditionedDQNAgent
       goal_generator:
-        name: OmniGoalGenerator
         #name: FBGoalGenerator  # RISC
+        name: OmniGoalGenerator
+        kwargs:
+          oracle: true
+          weights: [1, 1, 1, 1]
+          # TODO: add frontier parameters
       goal_switcher:
         name: SuccessProbabilityGoalSwitcher  # reset-free
         #name: BasicGoalSwitcher  # episodic
@@ -87,12 +91,10 @@ kwargs:
         #name: HERReplayBuffer  # HER
         kwargs:
           capacity: 100000
-          #capacity: 500000
           #her_batch_size: 64  # HER
       separate_agents: true
-      weights: [1, 1, 1, 1]
-      directions: [forward, lateral, backward, lateral]
-      # TODO: add frontier parameters
+      oracle: true
+      directions: [forward, lateral]
   loggers:
   - name: WandbLogger
     kwargs:
