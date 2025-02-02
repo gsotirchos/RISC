@@ -19,7 +19,7 @@ class HashableKeyDict(defaultdict):
     @staticmethod
     def to_hashable(obj):
         def _to_hashable(obj):
-            if isinstance(obj, (str, int, float, bool, bytes)) or obj is None:
+            if isinstance(obj, (np.number, str, int, float, bool, bytes)) or obj is None:
                 return obj
             elif isinstance(obj, Iterable):
                 return tuple(_to_hashable(sub_obj) for sub_obj in obj)
