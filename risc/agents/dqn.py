@@ -1,6 +1,7 @@
 import copy
 from dataclasses import asdict
 from functools import partial
+from collections import defaultdict, deque
 
 import gymnasium as gym
 import numpy as np
@@ -14,7 +15,6 @@ from hive.utils.loggers import Logger
 from hive.utils.schedule import Schedule
 from hive.utils.utils import LossFn, OptimizerFn
 from enum import IntEnum
-from replays.counts_replay import SymmetricHashableKeyDict
 
 
 class SuccessNet(DQNNetwork):
@@ -29,12 +29,12 @@ class SuccessNet(DQNNetwork):
 
 
 class FourRoomsOracle():
-    def __init__(self, discount_rate, step_cost=0, goal_reward=1, env_obs=None):
+    def __init__(self, discount_rate=1, step_cost=0, goal_reward=1, observation=None):
         self._discount_rate = discount_rate
         self._step_cost = step_cost
         self._goal_reward = goal_reward
-        self._env_obs = None
-        self._process_env_obs(env_obs)
+        self._walls = None
+        self._process_obs(observation)
 
     class Actions(IntEnum):
         right = 0
@@ -42,189 +42,84 @@ class FourRoomsOracle():
         left = 2
         up = 3
 
-    def _process_env_obs(self, env_obs):
-        if env_obs is None:
+        @classmethod
+        def move(cls, action, cell=(0, 0)):
+            movements = {
+                cls.right: (1, 0),
+                cls.down: (0, 1),
+                cls.left: (-1, 0),
+                cls.up: (0, -1),
+            }
+            return cell[0] + movements[action][0], cell[1] + movements[action][1]
+
+    def _process_obs(self, observation):
+        if observation is None:
             return
-        if np.array_equal(self._env_obs, env_obs):
+        agent_obs, walls_obs, goal_obs = observation.squeeze()
+        self._agent_cell = tuple(np.flip(np.argwhere(agent_obs != 0)).flatten())
+        self._goal_cell =tuple(np.flip(np.argwhere(goal_obs != 0)).flatten())
+        if np.array_equal(self._walls, walls_obs):
             return
-        self._env_obs = env_obs
-        self._h_doors = [[9, i] for i, row in enumerate(env_obs) if row[9] == 0]
-        self._v_doors = [[i, 9] for i, row in enumerate(env_obs[9]) if row == 0]
-        self._room2room_door = SymmetricHashableKeyDict({
-            ("top-left", "bottom-left"): self._h_doors[0],
-            ("top-left", "top-right"): self._v_doors[0],
-            ("bottom-right", "bottom-left"): self._v_doors[1],
-            ("bottom-right", "top-right"): self._h_doors[1]
-        })
-        self._door2door_dist = SymmetricHashableKeyDict()
-        for h_door in self._h_doors:
-            for v_door in self._v_doors:
-                self._door2door_dist[h_door, v_door] = self._distance(h_door, v_door)
+        self._walls = walls_obs
+        self._valid_cells = [(x, y) for y, x in np.argwhere(walls_obs == 0)]
+        self._distances = self._compute_distances()
 
-    def _get_room(self, x, y):
-        if y < 9:
-            return "top-left" if x < 9 else "top-right"
+    def _bfs(self, goal):
+        dist = defaultdict(lambda: -1)  # -1 = unreachable
+        dist[goal] = 0
+        queue = deque([goal])
+        while queue:
+            cell = queue.popleft()
+            for action in self.Actions:
+                next_cell = self.Actions.move(action, cell)
+                if next_cell in self._valid_cells and dist[next_cell] == -1:
+                    dist[next_cell] = dist[cell] + 1
+                    queue.append(next_cell)
+        return dist
+
+    def _compute_distances(self):
+        goal_dist = dict()
+        for goal_cell in self._valid_cells:
+            goal_dist[goal_cell] = self._bfs(goal_cell)
+        distances = defaultdict(lambda: dict())
+        for cell in self._valid_cells:
+            for goal_cell in self._valid_cells:
+                current_dist = goal_dist[goal_cell][cell]
+
+                for action in self.Actions:
+                    next_cell = self.Actions.move(action, cell)
+                    if next_cell in self._valid_cells:
+                        next_dist = goal_dist[goal_cell][next_cell]
+                    else:
+                        next_dist = current_dist
+
+                    distances[cell, goal_cell][action] = next_dist
+        return distances
+
+    def _discounted_return(self, distances, discount_rate=None, step_cost=None, goal_reward=None):
+        discount_rate = discount_rate or self._discount_rate
+        step_cost = step_cost or self._step_cost
+        goal_reward = goal_reward or self._goal_reward
+        distances = np.asarray(distances)
+        # Σ^N_(n=1) γ ^ n = γ * (1 - γ ^ Ν) / (1 - γ)
+        if discount_rate == 1:
+            geom_series_sum = distances
         else:
-            return "bottom-left" if x < 9 else "bottom-right"
+            geom_series_sum = discount_rate * (1 - discount_rate ** distances) / (1 - discount_rate)
+        return step_cost * geom_series_sum + goal_reward * (discount_rate ** (distances + 1))
 
-    def _distance(self, pos1, pos2):
-        return sum(abs(x1 - x2) for x1, x2 in zip(pos1, pos2))
+    def _randargmax(self, x, **kwargs):
+        return np.argmax(np.random.random(x.shape) * (x == x.max()), **kwargs)
 
-    def _direction_to_target(self, agent_pos, target_pos):
-        dx, dy = target_pos - agent_pos
-        if abs(dx) > abs(dy):
-            return self.Actions.right if dx > 0 else self.Actions.left
-        else:
-            return self.Actions.down if dy > 0 else self.Actions.up
+    def value(self, observation, **kwargs):
+        self._process_obs(observation)
+        distances = list(self._distances[self._agent_cell, self._goal_cell].values())
+        return np.max(self._discounted_return(distances, **kwargs), keepdims=True)
 
-    def action(self, observation):
-        obs = observation.squeeze()
-        self._process_env_obs(obs[1])
-        goal_pos = np.flip(np.nonzero(obs[2])).squeeze()
-        goal_room = self._get_room(*goal_pos)
-        agent_pos = np.flip(np.nonzero(obs[0])).squeeze()
-        agent_room = self._get_room(*agent_pos)
-        breakpoint()
-
-        if agent_pos == goal_pos:
-            return np.random.randint(len(self.Actions))
-
-        # If agent is standing on a door, move toward the goal's half-plane
-        if agent_pos in self._h_doors:
-            return self._direction_to_target(agent_pos, (agent_pos[0], goal_pos[1]))
-        if agent_pos in self._v_doors:
-            return self._direction_to_target(agent_pos, (goal_pos[0], agent_pos[1]))
-
-        # If both agent and goal are in the same room, move towards the goal
-        if agent_room == goal_room:
-            return self._direction_to_target(agent_pos, goal_pos)
-
-        # If agent and goal are in adjacent rooms, move towards the door connecting them
-        if (agent_room, goal_room) in self._room2room_door[agent_room]:
-            target_door = self._room2room_door[agent_room, goal_room]
-            return self._direction_to_target(agent_pos, target_door)
-
-        # If the rooms are diagonally opposite, choose the shortest path
-        # TODO:
-        # - get the doors in the agent's room
-        # - get their successive doors
-        door1 = self._room2room_door[agent_room][0][1]  # First possible door
-        door2 = self._room2room_door[agent_room][1][1]  # Second possible door
-
-        # Calculate distances for both paths
-        dist_path1 = (self._distance(agent_pos, door1) +
-                      self._door2door_dist[door1, door3] +
-                      self._distance(door3, goal_pos))
-        dist_path2 = (self._distance(agent_pos, door1) +
-                      self._door2door_dist[door2, door4] +
-                      self._distance(door4, goal_pos))
-
-        # Choose the door with shorter total path
-        target_door = door1 if dist_path1 < dist_path2 else door2
-        return self._direction_to_target(agent_pos, target_door)
-
-    def value(self, observation):
-        # TODO
-        return 1
-        pass
-
-
-# def oracle_policy(obs, rng: np.random.RandomState):
-#     """Oracle policy that computes the optimal action to take given the current
-#     observation for 4rooms environment.
-#     """
-#     obs = obs[0]
-#     [y], [x] = np.nonzero(obs[0])
-#     h_doors = np.where(obs[1, 9] == 0)[0]
-#     v_doors = np.where(obs[1, :, 9] == 0)[0]
-#     upper_half = y < 10
-#     left_half = x < 10
-#     targets = {  # TODO
-#         (True, True): [(1, 1)],
-#         (True, False): [(9, v_doors[0])],
-#         (False, True): [(h_doors[0], 9)],
-#         (False, False): [(9, v_doors[1]), (h_doors[1], 9)],
-#     }
-#     target_locations = targets[(upper_half, left_half)]
-#     if len(target_locations) == 2:
-#         tx, ty = target_locations[0]
-#         dist0 = np.abs(tx - x) + np.abs(ty - y)
-#         tx, ty = target_locations[1]
-#         dist1 = np.abs(tx - x) + np.abs(ty - y)
-#         if dist0 < dist1:
-#             target_locations = [target_locations[0]]
-#         else:
-#             target_locations = [target_locations[1]]
-#     x_target, y_target = target_locations[0]
-#     if x == 9:
-#         return Actions.left
-#     elif y == 9:
-#         return Actions.up
-#     else:
-#         dx = x_target - x
-#         dy = y_target - y
-#         valid_directions = {
-#             Actions.right: True,
-#             Actions.left: True,
-#             Actions.up: True,
-#             Actions.down: True,
-#         }
-#         if x == 10 and y not in v_doors:
-#             valid_directions[Actions.left] = False
-#         elif y == 10 and x not in h_doors:
-#             valid_directions[Actions.up] = False
-#
-#         dirx = Actions.right if dx > 0 else Actions.left
-#         diry = Actions.down if dy > 0 else Actions.up
-#         #  and rng.random() < 0.5:
-#         if dx == 0:
-#             return diry
-#         elif dy == 0:
-#             return dirx
-#         elif not valid_directions[dirx]:
-#             return diry
-#         elif not valid_directions[diry]:
-#             return dirx
-#         else:
-#             return dirx if rng.random() < 0.5 else diry
-
-
-# def oracle_q_value(obs, discount_rate):
-#     """Calculates the optimal Q value for the current observation."""
-#     obs = obs[0]
-#     [y], [x] = np.nonzero(obs[0])
-#     [goal_y], [goal_x] = np.nonzero(obs[2])
-#     if obs[0].shape[0] < 19:
-#         distance = np.abs(y - goal_y) + np.abs(x - goal_x)
-#         #return 0.95**distance
-#         return -sum(discount_rate ** (i + 1) for i in range(distance))
-#     distances = {}
-#     h_doors = np.where(obs[1, 9] == 0)[0]  # x values of horizontal doors
-#     v_doors = np.where(obs[1, :, 9] == 0)[0]  # y values of vertical doors
-#     distances[(h_doors[1], 9)] = np.abs(h_doors[1] - goal_x) + np.abs(9 - goal_y)
-#     distances[(9, v_doors[1])] = np.abs(v_doors[1] - goal_y) + np.abs(9 - goal_x)
-#     distances[(9, v_doors[0])] = (
-#         np.abs(v_doors[0] - 9) + np.abs(9 - h_doors[1]) + distances[(h_doors[1], 9)]
-#     )
-#     distances[(h_doors[0], 9)] = (
-#         np.abs(h_doors[0] - 9) + np.abs(9 - v_doors[1]) + distances[(9, v_doors[1])]
-#     )
-#
-#     upper_half = y < 10
-#     left_half = x < 10
-#     if not upper_half and not left_half:
-#         distance = (np.abs(goal_x - x) + np.abs(goal_y - y)) - 1
-#         distance = max(distance, 0)
-#     elif upper_half and not left_half:
-#         distance = np.abs(x - h_doors[1]) + np.abs(y - 9) + distances[(h_doors[1], 9)]
-#     elif not upper_half and left_half:
-#         distance = np.abs(x - 9) + np.abs(y - v_doors[1]) + distances[(9, v_doors[1])]
-#     else:
-#         distance1 = np.abs(x - 9) + np.abs(y - v_doors[0]) + distances[(9, v_doors[0])]
-#         distance2 = np.abs(x - h_doors[0]) + np.abs(y - 9) + distances[(h_doors[0], 9)]
-#         distance = min(distance1, distance2)
-#     #return 0.95**distance
-#     return -sum(discount_rate ** (i + 1) for i in range(distance))
+    def action(self, observation, **kwargs):
+        self._process_obs(observation)
+        distances = list(self._distances[self._agent_cell, self._goal_cell].values())
+        return self._randargmax(self._discounted_return(distances, **kwargs))
 
 
 class DQNAgent(_DQNAgent):
@@ -314,7 +209,7 @@ class DQNAgent(_DQNAgent):
         self._optimal_pds = []
         self._td_log_frequency = td_log_frequency
         self._use_oracle = oracle
-        self._oracle = FourRoomsOracle(discount_rate, step_cost=1, goal_reward=0)
+        self._oracle = FourRoomsOracle(discount_rate, step_cost=-1, goal_reward=0)
         self._td_error = 0
         self._steps = 0
 
@@ -379,7 +274,7 @@ class DQNAgent(_DQNAgent):
             greedy_actions = torch.argmax(qvals, dim=1).cpu().numpy()
 
         actions = np.where(
-            self._rng.random(batch_size) < epsilon, random_actions, greedy_actions
+            self._rng.random(batch_size) < -1, random_actions, greedy_actions
         )
         if unsqueezed:
             actions = actions[0]
@@ -418,7 +313,7 @@ class DQNAgent(_DQNAgent):
             )
         ) ** 2
         optimal_difference = np.abs((qval.amax() - optimal_qval).cpu().item())
-        optimal_pd = optimal_difference / optimal_qval
+        optimal_pd = optimal_difference / (optimal_qval + np.finfo(float).eps)
         return (
             error.item(),
             np.abs((qval.amax() - optimal_qval).cpu().item()),
