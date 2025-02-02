@@ -13,7 +13,6 @@ from hive.utils.utils import seeder
 from replays.counts_replay import HashableKeyDict
 from scipy.special import expit as sigmoid
 from scipy.special import softmax
-from scipy.stats import zscore
 
 np.set_printoptions(precision=3)
 
@@ -72,7 +71,7 @@ def softmin(x):
     return softmax(-x)
 
 
-def standardize(x):
+def zscore(x):
     return (x - np.mean(x)) / (np.std(x) + epsilon)
 
 
@@ -261,7 +260,7 @@ class OmniGoalGenerator(GoalGenerator):
                 cost_to_come = np.zeros(len(frontier_states))
                 cost_to_go = np.zeros(len(frontier_states))
                 if self._weights[0] != 0:
-                    novelty_cost = sigmoid(zscore(1 / (self._novelty(frontier_states + epsilon))))
+                    novelty_cost = sigmoid(zscore(1 / (self._novelty(frontier_states) + epsilon)))
                     # novelty_cost = self._novelty(frontier_states)  # alt. cost
                 if self._weights[1] != 0:
                     cost_to_reach = self._cost(
