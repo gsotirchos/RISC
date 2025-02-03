@@ -56,20 +56,21 @@ class FourRoomsOracle():
         if not args:
             return
         observation = args[0]
-        goal = None
         if observation is None:
             return
+        goal = None
         if len(args) >= 2:
             goal = args[1]
         agent_obs, walls_obs = observation.squeeze()[:2]
         goal_obs = goal.squeeze() if goal is not None else observation.squeeze()[2]
         self._agent_cell = tuple(np.flip(np.argwhere(agent_obs != 0)).flatten())
         self._goal_cell = tuple(np.flip(np.argwhere(goal_obs != 0)).flatten())
-        if np.array_equal(self._walls, walls_obs):
-            return
-        self._walls = walls_obs
-        self._valid_cells = [(x, y) for y, x in np.argwhere(walls_obs == 0)]
-        self._distances = self._compute_distances()
+        if not np.array_equal(self._walls, walls_obs):
+            self._walls = walls_obs
+            self._valid_cells = [(x, y) for y, x in np.argwhere(walls_obs == 0)]
+            self._distances = self._compute_distances()
+        self._agent2goal_distances =  \
+            np.array(list(self._distances[self._agent_cell, self._goal_cell].values()))
 
     @staticmethod
     def process_obs(method):
@@ -109,39 +110,32 @@ class FourRoomsOracle():
                     distances[cell, goal_cell][action] = next_dist
         return distances
 
-    def _discounted_return(self, distances, discount_rate=None, step_reward=None, goal_reward=None):
+    def _return(self, distances, discount_rate=None, step_reward=None, goal_reward=None):
         discount_rate = discount_rate or self._discount_rate
         step_reward = step_reward or self._step_reward
         goal_reward = goal_reward or self._goal_reward
         distances = np.asarray(distances)
-        # Σ^N_(n=1) γ ^ n = γ * (1 - γ ^ Ν) / (1 - γ)
+        # Σ^(N-1)_(n=0) γ ^ n = (1 - γ ^ Ν) / (1 - γ)
         if discount_rate == 1:
             geom_series_sum = distances
         else:
-            geom_series_sum = discount_rate * (1 - discount_rate ** distances) / (1 - discount_rate)
-        return step_reward * geom_series_sum + goal_reward * (discount_rate ** (distances + 1))
+            geom_series_sum = (1 - discount_rate ** distances) / (1 - discount_rate)
+        return step_reward * geom_series_sum + goal_reward * (discount_rate ** distances)
 
     def _randargmax(self, x, **kwargs):
         return np.argmax(np.random.random(x.shape) * (x == x.max()), **kwargs)
 
     @process_obs
-    def value(self, observation, step_reward=None, goal_reward=None, **kwargs):
-        if self._agent_cell == self._goal_cell:
-            reward = goal_reward or self._goal_reward
-        else:
-            reward = step_reward or self._step_reward
-        distances = list(self._distances[self._agent_cell, self._goal_cell].values())
-        return reward + np.max(self._discounted_return(distances, **kwargs), keepdims=True)
+    def action(self, observation, **kwargs):
+        return self._randargmax(self._return(self._agent2goal_distances, **kwargs))
 
     @process_obs
-    def action(self, observation, **kwargs):
-        distances = list(self._distances[self._agent_cell, self._goal_cell].values())
-        return self._randargmax(self._discounted_return(distances, **kwargs))
+    def value(self, observation, step_reward=None, goal_reward=None, **kwargs):
+        return np.max(self._return(1 + self._agent2goal_distances, **kwargs), keepdims=True)
 
     @process_obs
     def compute_success_prob(self, observation, goal):
-        distances = list(self._distances[self._agent_cell, self._goal_cell].values())
-        return 1 / (1 + min(distances))
+        return 1 / np.min(1 + self._agent2goal_distances)
 
 
 class DQNAgent(_DQNAgent):
