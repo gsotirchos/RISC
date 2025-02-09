@@ -137,6 +137,16 @@ class FourRoomsOracle():
     def compute_success_prob(self, observation, goal):
         return 1 / np.min(1 + self._agent2goal_distances)
 
+    @process_obs
+    def next_state(self, observation, action):
+        next_cell = self.Actions.move(action, self._agent_cell)
+        if next_cell not in self._valid_cells:
+            return observation
+        next_observation = np.copy(observation)
+        next_observation[(0, *np.flip(next_cell))] = next_observation[(0, *np.flip(self._agent_cell))]
+        next_observation[(0, *np.flip(self._agent_cell))] = 0
+        return next_observation
+
 
 class DQNAgent(_DQNAgent):
     """Adapts observation format to RLHive's observation format. Also takes in a

@@ -199,7 +199,7 @@ class CountsReplayBuffer(CircularReplayBuffer):
         super().__init__(*args, **kwargs)
         self.counts = HashableKeyDict(dict)
         self.visitations = HashableKeyDict()
-        # self.distances = SymmetricMatrix()
+        #self.distances = SymmetricMatrix()
 
     def _update_distances(self, state):
         if self.counts[state] > 1:
@@ -216,18 +216,23 @@ class CountsReplayBuffer(CircularReplayBuffer):
         if not np.all(overwritten_state == 0):
             self.counts[overwritten_state][overwritten_action] -= 1
             self.visitations[overwritten_state] -= 1
+            #self.distances[overwritten_state] -= 1
             if self.counts[overwritten_state][overwritten_action] == 0:
                 del self.counts[overwritten_state][overwritten_action]
             if len(self.counts[overwritten_state]) == 0:
-                #del self.distances[overwrittan_state]
                 del self.counts[overwritten_state]
                 del self.visitations[overwritten_state]
+                #del self.distances[overwrittan_state]
         new_state = transition["observation"]
         new_action = transition["action"]
+        new_next_state = transition["next_observation"]
         if not np.all(new_state == 0):
             self.counts[new_state][new_action] = self.counts[new_state].get(new_action, 0) + 1
+            _ = self.counts[new_next_state]
             self.visitations[new_state] = self.visitations.get(new_state, 0) + 1
+            self.visitations[new_next_state] = self.visitations.get(new_next_state, 0) + 1
             #self._update_distances(new_state)
+            #self._update_distances(new_next_state)
 
     def _add_transition(self, **transition):
         self._update_metadata(**transition)

@@ -4,6 +4,7 @@ import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
 from hive.envs import GymEnv
+from hive.utils.loggers import NullLogger
 from hive.utils.schedule import PeriodicSchedule, ConstantSchedule
 from minigrid.wrappers import (
     ReseedWrapper as _ReseedWrapper,
@@ -236,7 +237,7 @@ class MiniGridEnv(GymEnv):
             if len(self._local_states) > self._local_vis_period:
                 old_pos_x, old_pos_y = self._local_states.popleft()
                 self._local_visitation_counts[old_pos_y][old_pos_x] -= 1
-            if self._vis_period.update():
+            if self._vis_period.update() and not isinstance(self._logger, NullLogger):
                 self.visualize(self._id)
 
         if self._train_video and self._video_reset_schedule.update():

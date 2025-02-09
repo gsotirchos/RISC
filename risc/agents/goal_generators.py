@@ -1,4 +1,3 @@
-import time
 from dataclasses import replace
 
 import matplotlib.pyplot as plt
@@ -17,23 +16,6 @@ from scipy.special import softmax
 np.set_printoptions(precision=3)
 
 epsilon = np.finfo(float).eps
-DEBUG = False
-
-
-def debug(text, prefix="ℹ️ ", color_code="90m"):
-    if not DEBUG:
-        return
-    print(prefix + f"\033[{color_code}{text}\033[0m")
-
-
-def timer(func):
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-        result = func(*args, **kwargs)
-        end_time = time.time()
-        debug(f"{func.__name__} took {end_time - start_time:.6f} seconds", "⏱️")
-        return result
-    return wrapper
 
 
 def heatmap(states, metric, **kwargs):
@@ -57,8 +39,6 @@ def heatmap(states, metric, **kwargs):
             **kwargs
         )
         fig.tight_layout()
-        if DEBUG:
-            breakpoint()
     except Exception:
         print("Warning: Failed to generate heatmap")
         fig = plt.figure()
@@ -135,9 +115,13 @@ class OmniGoalGenerator(GoalGenerator):
         initial_states,
         goal_states,
         weights,
+        frontier_proportion: float = 0.5,
+        max_visitations: int = 0,
+        k: int = 4,
         oracle: bool = False,
         log_frequency: int = 10,
         vis_frequency: int = 100,
+        debug: bool = False,
         **kwargs,
     ):
         super().__init__(logger, **kwargs)
@@ -148,45 +132,50 @@ class OmniGoalGenerator(GoalGenerator):
         self._logger = logger
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_switcher"))
         self._log_schedule = PeriodicSchedule(False, True, log_frequency)
-        self._vis_schedule = PeriodicSchedule(False, True, vis_frequency if not DEBUG else 1)
+        self._vis_schedule = PeriodicSchedule(False, True, vis_frequency if not debug else 1)
         self._initial_states = initial_states
         self._goal_states = goal_states
         self._weights = weights
+        self._proportion = frontier_proportion
+        self._max_visitations = max_visitations
+        self._k = k
+        self._debug = debug
 
-    def _get_knn_dist_dict(self, visitations, distances, k, max_visitations=None):
+    def _get_knn_dist_dict(self, visitations, distances):
         all_visited_states = np.array(list(visitations.keys()))
-        debug(f"all_visited_states: {self._debug_fmt(all_visited_states[:, 0])}")
-        max_visitations = max_visitations or 0
-        if max_visitations == 0 or max_visitations >= max(visitations.values()):
+        self._debug_print(f"all_visited_states: {self._debug_fmt(all_visited_states[:, 0])}")
+        if self._max_visitations == 0 or self._max_visitations >= max(visitations.values()):
             newly_visited_states = all_visited_states
         else:
             newly_visited_states = np.array(
-                [state for state, count in visitations.items() if count <= max_visitations]
+                [state for state, count in visitations.items() if count <= self._max_visitations]
             )
             if newly_visited_states.size == 0:
                 newly_visited_states = all_visited_states
-        debug(f"newly_visited_states: {self._debug_fmt(newly_visited_states[:, 0])}")
+        self._debug_print(f"newly_visited_states: {self._debug_fmt(newly_visited_states[:, 0])}")
         knn_dist_dict = HashableKeyDict()
-        debug("neighbors_dists:")
+        self._debug_print("neighbors_dists:")
         for state in newly_visited_states:
             neighbors_dists = np.array([dist for dist in distances[state].values() if dist != 0])
-            debug(neighbors_dists, "    ")
-            kk = min(len(neighbors_dists), k)
-            knn_dist_dict[state] = np.mean(np.partition(neighbors_dists, kk-1)[:kk])
-        debug("knn_dist_dict[newly_visited_states]:")
+            self._debug_print(neighbors_dists, "    ")
+            k = min(len(neighbors_dists), self._k)
+            knn_dist_dict[state] = np.mean(np.partition(neighbors_dists, k-1)[:k])
+        self._debug_print("knn_dist_dict[newly_visited_states]:")
         for state, dist in knn_dist_dict.items():
-            debug(f"{self._debug_fmt(state[0])}: {dist}", "     ")
+            self._debug_print(f"{self._debug_fmt(state[0])}: {dist}", "     ")
         if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
             print("visualizing knn")
             self._logger.log_metrics(
-                {f"{k}-nn_mean_distance": heatmap(newly_visited_states,
-                                                  np.array(list(knn_dist_dict.values())),
-                                                  logscale=True)},
+                {f"{self._k}-nn_mean_distance": heatmap(
+                    newly_visited_states,
+                    np.array(list(knn_dist_dict.values())),
+                    logscale=True
+                )},
                 f"{self._lateral_agent._id.removesuffix('_agent')}_goal_generator",
             )
         return knn_dist_dict
 
-    def _get_untried_actions_counts(self, counts, max_actions=None):
+    def _get_num_untried_actions(self, counts):
         num_possible_actions = self._lateral_agent._action_space.n
         return {state: num_possible_actions - len(actions) for state, actions in counts.items()}
 
@@ -195,11 +184,9 @@ class OmniGoalGenerator(GoalGenerator):
         if num_keys >= len(dictionary):
             return np.array(list(dictionary.keys()))
         keys, values = np.array(list(dictionary.keys())), np.array(list(dictionary.values()))
-        #partitioned_indices = np.argpartition(values, -num_keys)[-num_keys:]
-        #selected_keys = keys[partitioned_indices]
-        #return selected_keys
         sorted_indices = np.argsort(values)[::-1]
         sorted_keys, sorted_values = keys[sorted_indices], values[sorted_indices]
+        # get valid values with random tie breaking
         cutoff_value = sorted_values[num_keys - 1]
         greater_mask = sorted_values > cutoff_value
         m = np.sum(greater_mask)
@@ -209,17 +196,23 @@ class OmniGoalGenerator(GoalGenerator):
         random_indices = np.random.choice(len(threshold_keys), size=num_keys - m, replace=False)
         return np.concatenate([sorted_keys[greater_mask], threshold_keys[random_indices]])
 
-    def _frontier_states(self, proportion=0.5, k=4, max_value=None):
+    def _get_frontier_states(self):
         counts = self._lateral_agent._replay_buffer.counts
-        # visitations = self._lateral_agent._replay_buffer.visitations
         if len(counts) == 0:
             return None
         #return np.array(list(counts.keys()))
+        #visitations = self._lateral_agent._replay_buffer.visitations
         #distances = self._lateral_agent._replay_buffer.distances
-        #knn_dist_dict = self._get_knn_dist_dict(visitations, distances, k, max_value)
-        untried_actions_counts = self._get_untried_actions_counts(counts)
-        frontier_states = self._get_proportion(untried_actions_counts, proportion)
+        #knn_dist_dict = self._get_knn_dist_dict(visitations, distances)
+        untried_actions_counts = self._get_num_untried_actions(counts)
+        frontier_states = self._get_proportion(untried_actions_counts, self._proportion)
         return frontier_states
+
+    def _get_untried_actions(self, observation, agent):
+        all_actions = set(range(agent._action_space.n))
+        tried_actions = agent._replay_buffer.counts[observation].keys()
+        untried_actions = list(all_actions.difference(tried_actions))
+        return untried_actions or list(all_actions)
 
     def _novelty(self, states):
         if states.ndim == len(self._lateral_agent._observation_space.shape):
@@ -250,15 +243,34 @@ class OmniGoalGenerator(GoalGenerator):
     def _debug_fmt(self, states: np.ndarray, value: int = 255):
         return np.flip(np.argwhere(np.array(states) == value)[..., -2:].squeeze(), axis=-1).tolist()
 
+    def _debug_print(self, text, prefix="ℹ️ ", color_code="90m"):
+        if not self._debug:
+            return
+        print(prefix + f"\033[{color_code}{text}\033[0m")
+
     def generate_goal(self, observation, agent_traj_state):
         observation = observation["observation"]
         initial_state = self._initial_states[self._rng.integers(len(self._initial_states))]
         goal_state = self._goal_states[self._rng.integers(len(self._goal_states))]
+        self._debug_print(f"observation: {self._debug_fmt(observation[0])}")
+        self._debug_print(f"curent direction: {agent_traj_state.current_direction}")
         match agent_traj_state.current_direction.removeprefix("teleport_"):
             case "forward":
-                return goal_state
+                if self._debug:
+                    untried_actions = self._get_untried_actions(observation, self._forward_agent)
+                    # filter out idle actions
+                    #for action in untried_actions:
+                    #    goal = self._forward_agent._oracle.next_state(observation, action)[None, 0]
+                    #    if goal == observation[0]:
+                    #        continue
+                    #    else:
+                    #        break
+                    action = np.min(untried_actions)  # np.random.choice(untried_actions)
+                    goal = self._forward_agent._oracle.next_state(observation, action)[None, 0]
+                else:
+                    goal = goal_state
             case "backward":
-                return initial_state
+                goal = initial_state
             case "lateral":
                 if agent_traj_state.forward:
                     self._lateral_agent = self._forward_agent
@@ -268,10 +280,12 @@ class OmniGoalGenerator(GoalGenerator):
                     self._lateral_agent = self._backward_agent
                     lateral_initial_state = goal_state
                     lateral_goal_state = initial_state
-                frontier_states = self._frontier_states(proportion=0.333)
+                frontier_states = self._get_frontier_states()
                 if frontier_states is None:
+                    self._debug_print("no frontier states yet", "   ")
                     return goal_state if agent_traj_state.forward else initial_state
                 if len(frontier_states) == 1:
+                    self._debug_print(f"goal: {self._debug_fmt(frontier_states[:, 0])}", "   ")
                     return frontier_states[:, 0]
                 novelty_cost = np.zeros(len(frontier_states))
                 cost_to_reach = np.zeros(len(frontier_states))
@@ -310,12 +324,11 @@ class OmniGoalGenerator(GoalGenerator):
                 # )
                 goal_idx = np.random.choice(len(priority), p=priority)  # np.argmin(priority)
                 goal = frontier_states[goal_idx, 0][None, ...]
-                debug(f"frontier states: {self._debug_fmt(frontier_states[:, 0])}")
-                debug(f"visitations: {1 / self._novelty(frontier_states)}", "   ")
-                debug(f"stdized vis.: {zscore(1 / self._novelty(frontier_states))}", "   ")
-                debug(f"novelty costs: {novelty_cost}", "   ")
-                debug(f"priority: {priority}", "   ")
-                debug(f"lateral goal: {self._debug_fmt(goal)}", "   ")
+                self._debug_print(f"frontier states: {self._debug_fmt(frontier_states[:, 0])}", "   ")
+                self._debug_print(f"visitations: {1 / self._novelty(frontier_states)}", "   ")
+                self._debug_print(f"stdzd vis: {zscore(1 / self._novelty(frontier_states))}", "   ")
+                self._debug_print(f"novelty costs: {novelty_cost}", "   ")
+                self._debug_print(f"priority: {priority}", "   ")
                 if self._log_schedule.update() and not isinstance(self._logger, NullLogger):
                     self._logger.log_metrics(
                         {
@@ -337,9 +350,10 @@ class OmniGoalGenerator(GoalGenerator):
                         },
                         f"{self._lateral_agent._id.removesuffix('_agent')}_goal_generator",
                     )
-                if DEBUG:
-                    breakpoint()
-                return goal
+        self._debug_print(f"goal: {self._debug_fmt(goal)}", "   ")
+        if self._debug and isinstance(self._logger, NullLogger):
+            breakpoint()
+        return goal
 
 
 registry.register_all(
@@ -399,8 +413,10 @@ class SuccessProbabilityGoalSwitcher(GoalSwitcher):
         log_frequency: int = 25,
         switch_on_backward: bool = True,
         switch_on_forward: bool = True,
+        switch_on_lateral: bool = True,
         minimum_steps: int = 0,
         trajectory_proportion: float = 1.0,
+        oracle: bool = False,
         **kwargs,
     ):
         self._forward_agent = forward_agent
@@ -411,34 +427,33 @@ class SuccessProbabilityGoalSwitcher(GoalSwitcher):
         self._log_schedule = PeriodicSchedule(False, True, log_frequency)
         self._switch_on_backward = switch_on_backward
         self._switch_on_forward = switch_on_forward
+        self._switch_on_lateral = switch_on_lateral
         self._minimum_steps = minimum_steps
         self._trajectory_proportion = trajectory_proportion
+        self._oracle = oracle
 
     def should_switch(self, observation, agent_traj_state):
         agent = (
             self._forward_agent if agent_traj_state.forward else self._backward_agent
         )
+        if self._oracle:
+            agent = agent._oracle
         success_prob = agent.compute_success_prob(
             observation["observation"], agent_traj_state.current_goal
         )
-        if not agent_traj_state.forward and not self._switch_on_backward:
-            return False, success_prob
-        if agent_traj_state.forward and not self._switch_on_forward:
+        if (agent_traj_state.current_direction == "backward" and not self._switch_on_backward
+              or agent_traj_state.current_direction == "forward" and not self._switch_on_forward
+              or agent_traj_state.current_direction == "lateral" and not self._switch_on_lateral):
             return False, success_prob
         if agent_traj_state.phase_steps < self._minimum_steps:
             return False, success_prob
         if agent_traj_state.goal_switching_state is None:
             apply_goal_switch = self._rng.random() < self._trajectory_proportion
-            agent_traj_state = replace(
-                agent_traj_state, goal_switching_state=apply_goal_switch
-            )
+            agent_traj_state = replace(agent_traj_state, goal_switching_state=apply_goal_switch)
         if not agent_traj_state.goal_switching_state:
             return False, success_prob
-        switching_prob = success_prob * (
-            1 - self._conservative_factor**agent_traj_state.phase_steps
-        )
-        should_switch = self._rng.random() < switching_prob
-        # prefix = "forward" if agent_traj_state.forward else "backward"
+        switching_prob = success_prob*(1 - self._conservative_factor**agent_traj_state.phase_steps)
+        should_switch =  self._rng.random() < switching_prob
         prefix = agent_traj_state.current_direction
         if self._log_schedule.update() and not isinstance(self._logger, NullLogger):
             self._logger.log_metrics(
