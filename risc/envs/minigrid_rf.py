@@ -219,9 +219,6 @@ class MiniGridEnv(GymEnv):
         self._logger = logger
 
     def step(self, action):
-        #print(f"=== self._env.agent_pos: {self._env.agent_pos}")
-        #plt.pause(1)
-        #breakpoint()
         observation, reward, terminated, truncated, self._turn, info = super().step(
             action
         )
