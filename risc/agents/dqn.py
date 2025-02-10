@@ -34,7 +34,7 @@ class FourRoomsOracle():
         self._step_reward = step_reward
         self._goal_reward = goal_reward
         self._walls = None
-        self._process_obs(observation)
+        self._process_observation(observation)
 
     class Actions(IntEnum):
         right = 0
@@ -52,7 +52,7 @@ class FourRoomsOracle():
             }
             return cell[0] + movements[action][0], cell[1] + movements[action][1]
 
-    def _process_obs(self, *args):
+    def _process_observation(self, *args):
         if not args:
             return
         observation = args[0]
@@ -73,9 +73,9 @@ class FourRoomsOracle():
             np.array(list(self._distances[self._agent_cell, self._goal_cell].values()))
 
     @staticmethod
-    def process_obs(method):
+    def processobservation(method):
         def wrapper(self, *args, **kwargs):
-            self._process_obs(*args)
+            self._process_observation(*args)
             return method(self, *args, **kwargs)
         return wrapper
 
@@ -125,25 +125,26 @@ class FourRoomsOracle():
     def _randargmax(self, x, **kwargs):
         return np.argmax(np.random.random(x.shape) * (x == x.max()), **kwargs)
 
-    @process_obs
+    @processobservation
     def action(self, observation, **kwargs):
         return self._randargmax(self._return(self._agent2goal_distances, **kwargs))
 
-    @process_obs
+    @processobservation
     def value(self, observation, step_reward=None, goal_reward=None, **kwargs):
         return np.max(self._return(1 + self._agent2goal_distances, **kwargs), keepdims=True)
 
-    @process_obs
+    @processobservation
     def compute_success_prob(self, observation, goal):
         return 1 / np.min(1 + self._agent2goal_distances)
 
-    @process_obs
+    @processobservation
     def next_state(self, observation, action):
         next_cell = self.Actions.move(action, self._agent_cell)
         if next_cell not in self._valid_cells:
             return observation
         next_observation = np.copy(observation)
-        next_observation[(0, *np.flip(next_cell))] = next_observation[(0, *np.flip(self._agent_cell))]
+        next_observation[(0, *np.flip(next_cell))] = \
+            next_observation[(0, *np.flip(self._agent_cell))]
         next_observation[(0, *np.flip(self._agent_cell))] = 0
         return next_observation
 
@@ -152,6 +153,7 @@ class DQNAgent(_DQNAgent):
     """Adapts observation format to RLHive's observation format. Also takes in a
     batch of observations during act instead of single observation.
     """
+    _oracle = None
 
     def __init__(
         self,
@@ -234,10 +236,11 @@ class DQNAgent(_DQNAgent):
         self._qval_error = []
         self._optimal_pds = []
         self._td_log_frequency = td_log_frequency
-        self._use_oracle = oracle
-        self._oracle = FourRoomsOracle(discount_rate, step_reward=-1, goal_reward=0)
         self._td_error = 0
         self._steps = 0
+        if oracle:
+            self._use_oracle = oracle
+            DQNAgent._oracle = FourRoomsOracle(discount_rate, step_reward=-1, goal_reward=0)
 
     def create_q_networks(self, representation_net):
         super().create_q_networks(representation_net)
@@ -295,7 +298,7 @@ class DQNAgent(_DQNAgent):
 
         random_actions = self._rng.integers(self._action_space.n, size=batch_size)
         if self._use_oracle:
-            greedy_actions = [self._oracle.action(observation.cpu().numpy())]
+            greedy_actions = [DQNAgent._oracle.action(observation.cpu().numpy())]
         else:
             greedy_actions = torch.argmax(qvals, dim=1).cpu().numpy()
 
@@ -328,7 +331,7 @@ class DQNAgent(_DQNAgent):
             transition["next_observation"], device=self._device, dtype=torch.float32
         ).unsqueeze(0)
         next_observation = torch.cat((next_observation, desired_goal), dim=1)
-        optimal_qval = self._oracle.value(observation.cpu().numpy())
+        optimal_qval = DQNAgent._oracle.value(observation.cpu().numpy())
         qval = self._qnet(observation)
         next_qval = self._target_qnet(next_observation)
         error = (
