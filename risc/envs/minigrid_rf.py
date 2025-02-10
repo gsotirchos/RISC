@@ -28,7 +28,8 @@ import os
 try:
     import matplotlib
     matplotlib.use("TkAgg")
-except:
+except Exception as e:
+    print(f"Could not use 'TkAgg':\n{e}")
     pass
 finally:
     import matplotlib.pyplot as plt
