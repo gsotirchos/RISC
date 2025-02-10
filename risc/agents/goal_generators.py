@@ -259,13 +259,6 @@ class OmniGoalGenerator(GoalGenerator):
             case "forward":
                 if self._debug:
                     untried_actions = self._get_untried_actions(observation, self._forward_agent)
-                    # filter out idle actions
-                    #for action in untried_actions:
-                    #    goal = self._forward_agent._oracle.next_state(observation, action)[None, 0]
-                    #    if goal == observation[0]:
-                    #        continue
-                    #    else:
-                    #        break
                     action = np.min(untried_actions)  # np.random.choice(untried_actions)
                     goal = self._forward_agent._oracle.next_state(observation, action)[None, 0]
                 else:

@@ -238,9 +238,8 @@ class DQNAgent(_DQNAgent):
         self._td_log_frequency = td_log_frequency
         self._td_error = 0
         self._steps = 0
-        if oracle:
-            self._use_oracle = oracle
-            DQNAgent._oracle = FourRoomsOracle(discount_rate, step_reward=-1, goal_reward=0)
+        self._use_oracle = oracle
+        DQNAgent._oracle = FourRoomsOracle(discount_rate, step_reward=-1, goal_reward=0)
 
     def create_q_networks(self, representation_net):
         super().create_q_networks(representation_net)
