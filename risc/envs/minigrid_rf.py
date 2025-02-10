@@ -28,6 +28,8 @@ import os
 try:
     import matplotlib
     matplotlib.use("TkAgg")
+except:
+    pass
 finally:
     import matplotlib.pyplot as plt
 
