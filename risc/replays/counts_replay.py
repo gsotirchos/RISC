@@ -227,6 +227,7 @@ class CountsReplayBuffer(CircularReplayBuffer):
         new_action = transition["action"]
         new_next_state = transition["next_observation"]
         if not np.all(new_state == 0):
+            #print(f"Observing: {new_next_state[0]}")
             self.counts[new_state][new_action] = self.counts[new_state].get(new_action, 0) + 1
             _ = self.counts[new_next_state]
             self.visitations[new_state] = self.visitations.get(new_state, 0) + 1

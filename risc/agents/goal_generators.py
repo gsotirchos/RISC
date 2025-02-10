@@ -32,18 +32,19 @@ def heatmap(states, metric, **kwargs):
     try:
         fig, ax = plt.subplots()
         _heatmap(
-            counts,
-            np.arange(height),
-            np.arange(width),
-            ax,
+            data=counts,
+            row_labels=np.arange(height),
+            col_labels=np.arange(width),
+            ax=ax,
+            mask=(counts <= 0),
             **kwargs
         )
-        fig.tight_layout()
-    except Exception:
-        print("Warning: Failed to generate heatmap")
+    except Exception as e:
+        print(f"Warning: Failed to generate heatmap\n{e}")
         fig = plt.figure()
+    fig.tight_layout()
     image = wandb.Image(fig)
-    plt.close("all")
+    plt.close(fig)
     return image
 
 
@@ -132,7 +133,7 @@ class OmniGoalGenerator(GoalGenerator):
         self._logger = logger
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_switcher"))
         self._log_schedule = PeriodicSchedule(False, True, log_frequency)
-        self._vis_schedule = PeriodicSchedule(False, True, vis_frequency if not debug else 1)
+        self._vis_schedule = PeriodicSchedule(False, True, vis_frequency)
         self._initial_states = initial_states
         self._goal_states = goal_states
         self._weights = weights

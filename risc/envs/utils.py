@@ -1,10 +1,8 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm, Normalize
 import seaborn as sns
-
-matplotlib.use("Agg")
 
 
 def heatmap(
@@ -12,13 +10,15 @@ def heatmap(
     row_labels,
     col_labels,
     ax=None,
-    cbar_kw={},
+    cbar_kw=None,
     cbarlabel="",
     cmap="viridis",
-    logscale=False,
     mask=None,
     vmin=None,
     vmax=None,
+    linewidths=1.5,
+    square=True,
+    logscale=False,
     **kwargs
 ):
     """
@@ -55,10 +55,10 @@ def heatmap(
         norm=norm,
         mask=mask,
         cmap=cmap,
-        linewidth=1.5,
         vmin=vmin,
         vmax=vmax,
-        square=True,
+        linewidths=linewidths,
+        square=square,
         **kwargs,
     )
 

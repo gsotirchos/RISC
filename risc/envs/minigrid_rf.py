@@ -1,7 +1,6 @@
 from collections import deque
 
 import gymnasium as gym
-import matplotlib.pyplot as plt
 import numpy as np
 from hive.envs import GymEnv
 from hive.utils.loggers import NullLogger
@@ -29,8 +28,8 @@ import os
 try:
     import matplotlib
     matplotlib.use("TkAgg")
-except:
-    pass
+finally:
+    import matplotlib.pyplot as plt
 
 
 class ReseedWrapper(_ReseedWrapper):
@@ -213,7 +212,8 @@ class MiniGridEnv(GymEnv):
             },
             prefix,
         )
-        plt.close("all")
+        plt.close(fig1)
+        plt.close(fig2)
 
     def register_logger(self, logger):
         self._logger = logger
@@ -309,7 +309,7 @@ def create_vis_fn(env_shape):
         )
         fig.tight_layout()
         image = wandb.Image(fig)
-        plt.close("all")
+        plt.close(fig)
         return image, counts
 
     return partial(vis_fn, width=width, height=height)
