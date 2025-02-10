@@ -100,9 +100,9 @@ kwargs:
       oracle: false
       directions: [forward, lateral]
   loggers:
-  # - name: WandbLogger
-  #   kwargs:
-  #     name: FourRooms_FLBL_1.0_1.0_1.0_1.0
-  #     project: Debug
-  #     resume: allow
-  #     start_method: fork
+  - name: WandbLogger
+    kwargs:
+      name: FourRooms_FLBL_1.0_1.0_1.0_1.0
+      project: Debug
+      resume: allow
+      start_method: fork
