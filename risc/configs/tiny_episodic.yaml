@@ -14,7 +14,7 @@ kwargs:
   train_steps: 1000
   test_frequency: 100
   test_episodes: 10
-  test_max_steps: 100
+  test_max_steps: 30
   seed: 0
   stack_size: 1
   eval_every: false
@@ -24,11 +24,11 @@ kwargs:
     name: minigrid_envs
     kwargs:
       env_name: MiniGrid-TinyRoom-v1
-      eval_max_steps: 100
+      eval_max_steps: 30
       local_vis_period: 1
       reset_free: false  # episodic
       symbolic: true
-      train_max_steps: 1000  # episodic
+      train_max_steps: 30  # episodic
       video_period: 100
       vis_frequency: 1
       render_mode: human
@@ -41,9 +41,11 @@ kwargs:
           device: cpu
           discount_rate: 0.95
           epsilon_schedule:
-            name: ConstantSchedule
+            name: LinearSchedule
             kwargs:
-              value: 0.0
+              end_value: 0.1
+              init_value: 1.0
+              steps: 500
           loss_fn:
             name: MSELoss
           min_replay_history: -1
@@ -66,21 +68,9 @@ kwargs:
               period: 500
         name: GoalConditionedDQNAgent
       goal_generator:
-        #name: FBGoalGenerator  # RISC
-        name: OmniGoalGenerator
-        kwargs:
-          debug: true
-          vis_frequency: 1
-          frontier_proportion: 1
-          max_visitations: 0
-          k: 1
-          weights: [1, 1, 1, 1]
-          oracle: true
+        name: FBGoalGenerator  # RISC
       goal_switcher:
         name: BasicGoalSwitcher  # episodic
-        #name: SuccessProbabilityGoalSwitcher  # reset-free
-        kwargs:
-          oracle: true
       phase_step_limit: 100
       replay_buffer:
         name: CountsReplayBuffer
@@ -90,12 +80,12 @@ kwargs:
           her_batch_size: 64  # HER
       separate_agents: true
       local_visitation_vis_frequency: 1
-      oracle: true
-      directions: [forward, teleport_backward, lateral]
+      oracle: false
+      directions: [forward, forward]
   loggers:
-  - name: WandbLogger
-    kwargs:
-      name: TinyRoom_FbL_1.0_1.0_1.0_1.0
-      project: Debug
-      resume: allow
-      start_method: fork
+  # - name: WandbLogger
+  #   kwargs:
+  #     name: TinyRoom_FbL_1.0_1.0_1.0_1.0
+  #     project: Debug
+  #     resume: allow
+  #     start_method: fork

@@ -1,0 +1,101 @@
+name: ResetFreeRunner
+kwargs:
+  experiment_manager:
+    name: Experiment
+    kwargs:
+      name: TinyRoom_FbL_1.0_1.0_1.0_1.0
+      save_dir: experiment
+      saving_schedule:
+        name: PeriodicSchedule
+        kwargs:
+          off_value: false
+          on_value: true
+          period: 1000000
+  train_steps: 1000
+  test_frequency: 100
+  test_episodes: 10
+  test_max_steps: 100
+  seed: 0
+  stack_size: 1
+  eval_every: false
+  early_terminal: true
+  send_truncation: false
+  env_fn:
+    name: minigrid_envs
+    kwargs:
+      env_name: MiniGrid-TinyRoom-v1
+      eval_max_steps: 100
+      local_vis_period: 1
+      reset_free: false  # episodic
+      symbolic: true
+      train_max_steps: 1000  # episodic
+      video_period: 100
+      vis_frequency: 1
+      render_mode: human
+  agent:
+    name: GCResetFree
+    kwargs:
+      base_agent:
+        kwargs:
+          batch_size: 128
+          device: cpu
+          discount_rate: 0.95
+          epsilon_schedule:
+            name: ConstantSchedule
+            kwargs:
+              value: 0.0
+          loss_fn:
+            name: MSELoss
+          min_replay_history: -1
+          replay_buffer:
+            name: CircularReplayBuffer
+            kwargs:
+              capacity: 100000
+          representation_net:
+            name: ConvNetwork
+            kwargs:
+              channels: [16, 16, 16]
+              paddings: 1
+              kernel_sizes: 3
+              mlp_layers: [16]
+          target_net_update_schedule:
+            name: PeriodicSchedule
+            kwargs:
+              off_value: false
+              on_value: true
+              period: 500
+        name: GoalConditionedDQNAgent
+      goal_generator:
+        #name: FBGoalGenerator  # RISC
+        name: OmniGoalGenerator
+        kwargs:
+          debug: true
+          vis_frequency: 1
+          frontier_proportion: 1
+          max_visitations: 0
+          k: 1
+          weights: [1, 1, 1, 1]
+          oracle: true
+      goal_switcher:
+        name: BasicGoalSwitcher  # episodic
+        #name: SuccessProbabilityGoalSwitcher  # reset-free
+        kwargs:
+          oracle: true
+      phase_step_limit: 100
+      replay_buffer:
+        name: CountsReplayBuffer
+        #name: HERReplayBuffer  # HER
+        kwargs:
+          capacity: 100000
+          her_batch_size: 64  # HER
+      separate_agents: true
+      local_visitation_vis_frequency: 1
+      oracle: true
+      directions: [forward, teleport_backward, lateral]
+  loggers:
+  # - name: WandbLogger
+  #   kwargs:
+  #     name: TinyRoom_FbL_1.0_1.0_1.0_1.0
+  #     project: Debug
+  #     resume: allow
+  #     start_method: fork
