@@ -45,7 +45,7 @@ kwargs:
             kwargs:
               end_value: 0.1
               init_value: 1.0
-              steps: 500
+              steps: 200
           loss_fn:
             name: MSELoss
           min_replay_history: -1
