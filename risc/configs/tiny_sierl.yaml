@@ -11,10 +11,10 @@ kwargs:
           off_value: false
           on_value: true
           period: 1000000
-  train_steps: 1000
+  train_steps: 2000
   test_frequency: 100
   test_episodes: 10
-  test_max_steps: 30
+  test_max_steps: 100
   seed: 0
   stack_size: 1
   eval_every: false
@@ -24,13 +24,13 @@ kwargs:
     name: minigrid_envs
     kwargs:
       env_name: MiniGrid-TinyRoom-v1
-      eval_max_steps: 30
-      local_vis_period: 1
+      eval_max_steps: 100
+      local_vis_period: 4
       reset_free: false  # episodic
       symbolic: true
-      train_max_steps: 1000  # episodic
+      train_max_steps: 2000  # episodic
       video_period: 100
-      vis_frequency: 1
+      vis_frequency: 4
       #render_mode: human
   agent:
     name: GCResetFree
@@ -72,7 +72,7 @@ kwargs:
         name: OmniGoalGenerator
         kwargs:
           debug: false
-          vis_frequency: 1
+          vis_frequency: 4
           frontier_proportion: 1
           max_visitations: 0
           k: 1
@@ -91,7 +91,7 @@ kwargs:
           capacity: 100000
           her_batch_size: 64  # HER
       separate_agents: true
-      local_visitation_vis_frequency: 1
+      local_visitation_vis_frequency: 4
       oracle: false
       directions: [forward, teleport_backward, lateral]
   loggers:

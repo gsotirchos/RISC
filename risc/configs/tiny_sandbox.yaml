@@ -95,7 +95,7 @@ kwargs:
   loggers:
   # - name: WandbLogger
   #   kwargs:
-  #     name: TinyRoom_FbL_1.0_1.0_1.0_1.0
+  #     name: TinyRoom_sandbox
   #     project: Debug
   #     resume: allow
   #     start_method: fork
