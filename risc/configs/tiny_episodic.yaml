@@ -83,9 +83,9 @@ kwargs:
       oracle: false
       directions: [forward, forward]
   loggers:
-  # - name: WandbLogger
-  #   kwargs:
-  #     name: TinyRoom_FbL_1.0_1.0_1.0_1.0
-  #     project: Debug
-  #     resume: allow
-  #     start_method: fork
+  - name: WandbLogger
+    kwargs:
+      name: TinyRoom_FbL_1.0_1.0_1.0_1.0
+      project: Debug
+      resume: allow
+      start_method: fork
