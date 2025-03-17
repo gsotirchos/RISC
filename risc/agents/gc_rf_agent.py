@@ -235,6 +235,8 @@ class GCResetFree(Agent):
             observation, agent_traj_state.subagent_traj_state
         )
         if agent_traj_state.next_action is not None:
+            if not isinstance(agent_traj_state.next_action, int):
+                print(f"WARNING: action {agent_traj_state.next_action} is not an integer")
             action = agent_traj_state.next_action
             agent_traj_state = replace(agent_traj_state, next_action=None)
         return action, replace(
@@ -393,7 +395,11 @@ class GCResetFree(Agent):
         return terminated, truncated, success
 
     def get_new_goal(self, observation, agent_traj_state):
-        goal, action = self._goal_generator.generate_goal(observation, agent_traj_state)
+        goal = self._goal_generator.generate_goal(observation, agent_traj_state)
+        if isinstance(goal, tuple):
+            goal, action = goal
+        else:
+            action = None
         return replace(agent_traj_state, current_goal=goal, next_action=action)
 
     def get_new_direction(self, agent_traj_state):
