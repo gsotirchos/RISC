@@ -7,7 +7,7 @@ class HERReplayBuffer(CountsReplayBuffer):
     """Replay buffer with Hindsight Experience Replay (HER)."""
     def __init__(self, *args, her_batch_size=64, **kwargs):
         super().__init__(*args, **kwargs)
-        self.her_batch_size = her_batch_size
+        self._her_batch_size = her_batch_size
 
     def sample(self, batch_size):
         # Get the regular batch
@@ -35,7 +35,7 @@ class HERReplayBuffer(CountsReplayBuffer):
 
         # Select random indices for HER in the batch
         her_indices = np.random.choice(
-            batch_size, self.her_batch_size, replace=False
+            batch_size, self._her_batch_size, replace=False
         )
 
         for i in her_indices:

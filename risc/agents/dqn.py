@@ -199,6 +199,7 @@ class DQNAgent(_DQNAgent):
             replay_buffer,
             action_shape=action_space.shape,
             action_dtype=action_space.dtype,
+            action_n=action_space.n,
         )
         super().__init__(
             observation_space=observation_space,

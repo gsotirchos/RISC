@@ -49,10 +49,6 @@ kwargs:
           loss_fn:
             name: MSELoss
           min_replay_history: -1
-          replay_buffer:
-            name: CircularReplayBuffer
-            kwargs:
-              capacity: 100000
           representation_net:
             name: ConvNetwork
             kwargs:

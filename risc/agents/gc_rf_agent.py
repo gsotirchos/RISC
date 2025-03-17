@@ -20,8 +20,9 @@ import pickle
 @dataclass(frozen=True)
 class GCAgentState:
     subagent_traj_state: Any = None
-    current_goal: Any = None
     current_direction: str = None
+    current_goal: Any = None
+    next_action: Any = None
     forward: bool = True
     phase_steps: int = 0
     phase_return: int = 0
@@ -233,6 +234,9 @@ class GCResetFree(Agent):
         action, subagent_traj_state = agent.act(
             observation, agent_traj_state.subagent_traj_state
         )
+        if agent_traj_state.next_action is not None:
+            action = agent_traj_state.next_action
+            agent_traj_state = replace(agent_traj_state, next_action=None)
         return action, replace(
             agent_traj_state,
             subagent_traj_state=subagent_traj_state,
@@ -389,8 +393,8 @@ class GCResetFree(Agent):
         return terminated, truncated, success
 
     def get_new_goal(self, observation, agent_traj_state):
-        goal = self._goal_generator.generate_goal(observation, agent_traj_state)
-        return replace(agent_traj_state, current_goal=goal)
+        goal, action = self._goal_generator.generate_goal(observation, agent_traj_state)
+        return replace(agent_traj_state, current_goal=goal, next_action=action)
 
     def get_new_direction(self, agent_traj_state):
         """ Get the current direction by cycling over them.

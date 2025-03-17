@@ -195,45 +195,54 @@ def distance(state1, state2):
 
 
 class CountsReplayBuffer(CircularReplayBuffer):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, action_n: int, **kwargs):
         super().__init__(*args, **kwargs)
-        self.counts = HashableKeyDict(dict)
-        self.visitations = HashableKeyDict()
-        #self.distances = SymmetricMatrix()
+        self._action_n = action_n
+        # self.action_counts = HashableKeyDict(dict(int))
+        self.action_counts = HashableKeyDict(int)
+        # self.state_counts = HashableKeyDict(int)
+        # self.distances = SymmetricMatrix()
 
-    def _update_distances(self, state):
-        if self.counts[state] > 1:
-            return
-        for other_state in np.array(list(self.counts.keys())):
-            if (state, other_state) not in self.distances:
-                self.distances[state, other_state] = distance(state, other_state)
+    # def _update_distances(self, state):
+    #     if self.action_counts[state] > 1:
+    #         return
+    #     for other_state in np.array(list(self.action_counts.keys())):
+    #         if (state, other_state) not in self.distances:
+    #             self.distances[state, other_state] = distance(state, other_state)
 
     def _update_metadata(self, **transition):
-        """ If a state-action will be overwritten decrement its count, and if it has no counts
-        left remove its state entry entirely. Then increment the new state-action's count. """
+        """ If an observation will be overwritten decrement its counts,
+        and if an item has no counts left remove its state entry entirely. """
         overwritten_state = self._storage["observation"][self._cursor]
         overwritten_action = self._storage["action"][self._cursor]
+        # overwritten_next_state = self._storage["next_observation"][self._cursor]
         if not np.all(overwritten_state == 0):
-            self.counts[overwritten_state][overwritten_action] -= 1
-            self.visitations[overwritten_state] -= 1
-            #self.distances[overwritten_state] -= 1
-            if self.counts[overwritten_state][overwritten_action] == 0:
-                del self.counts[overwritten_state][overwritten_action]
-            if len(self.counts[overwritten_state]) == 0:
-                del self.counts[overwritten_state]
-                del self.visitations[overwritten_state]
-                #del self.distances[overwrittan_state]
+            # self.action_counts[overwritten_state][overwritten_action] -= 1
+            # if self.action_counts[overwritten_state][overwritten_action] <= 0:
+            #     del self.action_counts[overwritten_state][overwritten_action]
+            # if len(self.action_counts[overwritten_state]) <= 0:
+            #     del self.action_counts[overwritten_state]
+            self.action_counts[overwritten_state, overwritten_action] -= 1
+            if self.action_counts[overwritten_state, overwritten_action] <= 0:
+                del self.action_counts[overwritten_state, overwritten_action]
+            # self.state_counts[overwritten_next_state] -= 1
+            # if len(self.state_counts[overwritten_next_state]) <= 0:
+            #     del self.state_counts[overwritten_next_state]
+            #     # del self.distances[overwrittan_next_state]
         new_state = transition["observation"]
         new_action = transition["action"]
-        new_next_state = transition["next_observation"]
+        # new_next_state = transition["next_observation"]
         if not np.all(new_state == 0):
-            #print(f"Observing: {new_next_state[0]}")
-            self.counts[new_state][new_action] = self.counts[new_state].get(new_action, 0) + 1
-            _ = self.counts[new_next_state]
-            self.visitations[new_state] = self.visitations.get(new_state, 0) + 1
-            self.visitations[new_next_state] = self.visitations.get(new_next_state, 0) + 1
-            #self._update_distances(new_state)
-            #self._update_distances(new_next_state)
+            #print(f"Acting:\n{transition['observation'][0]} \n -> {transition['action']}")
+            #print(f"Observing:\n{transition['next_observation'][0]}")
+            # self.action_counts[new_state][new_action] += 1
+            # _ = self.action_counts[new_next_state]
+            if (new_state, new_action) not in self.action_counts:
+                for action in range(self._action_n):
+                    self.action_counts[new_state, action] += 0
+            self.action_counts[new_state, new_action] += 1
+            # self.state_counts[new_next_state] += 1
+            # self._update_distances(new_next_state)
 
     def _add_transition(self, **transition):
         self._update_metadata(**transition)

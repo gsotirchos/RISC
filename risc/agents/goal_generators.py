@@ -142,9 +142,21 @@ class OmniGoalGenerator(GoalGenerator):
         self._k = k
         self._debug = debug
 
+    def _dbg_format(self, states: np.ndarray, actions: np.ndarray | None = None, value: int = 255):
+        positions = np.flip(np.argwhere(np.array(states) == value)[..., -2:].squeeze(), axis=-1)
+        if actions is not None:
+            return list(zip(positions.tolist(), actions.tolist()))
+        else:
+            return positions.tolist()
+
+    def _dbg_print(self, text, prefix="ℹ️ ", color_code="37m"):
+        if not self._debug:
+            return
+        print(prefix + f"\033[{color_code}{text}\033[0m")
+
     def _get_knn_dist_dict(self, visitations, distances):
         all_visited_states = np.array(list(visitations.keys()))
-        self._debug_print(f"all_visited_states: {self._debug_fmt(all_visited_states[:, 0])}")
+        self._dbg_print(f"all_visited_states: {self._dbg_format(all_visited_states[:, 0])}")
         if self._max_visitations == 0 or self._max_visitations >= max(visitations.values()):
             newly_visited_states = all_visited_states
         else:
@@ -153,17 +165,17 @@ class OmniGoalGenerator(GoalGenerator):
             )
             if newly_visited_states.size == 0:
                 newly_visited_states = all_visited_states
-        self._debug_print(f"newly_visited_states: {self._debug_fmt(newly_visited_states[:, 0])}")
+        self._dbg_print(f"newly_visited_states: {self._dbg_format(newly_visited_states[:, 0])}")
         knn_dist_dict = HashableKeyDict()
-        self._debug_print("neighbors_dists:")
+        self._dbg_print("neighbors_dists:")
         for state in newly_visited_states:
             neighbors_dists = np.array([dist for dist in distances[state].values() if dist != 0])
-            self._debug_print(neighbors_dists, "    ")
+            self._dbg_print(neighbors_dists, "    ")
             k = min(len(neighbors_dists), self._k)
             knn_dist_dict[state] = np.mean(np.partition(neighbors_dists, k-1)[:k])
-        self._debug_print("knn_dist_dict[newly_visited_states]:")
+        self._dbg_print("knn_dist_dict[newly_visited_states]:")
         for state, dist in knn_dist_dict.items():
-            self._debug_print(f"{self._debug_fmt(state[0])}: {dist}", "     ")
+            self._dbg_print(f"{self._dbg_format(state[0])}: {dist}", "     ")
         if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
             print("visualizing knn")
             self._logger.log_metrics(
@@ -197,29 +209,36 @@ class OmniGoalGenerator(GoalGenerator):
         random_indices = np.random.choice(len(threshold_keys), size=num_keys - m, replace=False)
         return np.concatenate([sorted_keys[greater_mask], threshold_keys[random_indices]])
 
-    def _get_frontier_states(self):
-        counts = self._lateral_agent._replay_buffer.counts
+    def _get_frontier(self):
+        counts = self._lateral_agent._replay_buffer.action_counts
         if len(counts) == 0:
-            return None
+            return None, None
         #return np.array(list(counts.keys()))
         #visitations = self._lateral_agent._replay_buffer.visitations
         #distances = self._lateral_agent._replay_buffer.distances
         #knn_dist_dict = self._get_knn_dist_dict(visitations, distances)
-        untried_actions_counts = self._get_num_untried_actions(counts)
-        frontier_states = self._get_proportion(untried_actions_counts, self._proportion)
-        return frontier_states
+        #untried_actions_counts = self._get_num_untried_actions(counts)
+        #frontier_states = self._get_proportion(untried_actions_counts, self._proportion)
+        if (self._max_visitations == 0
+                or self._max_visitations < min(counts.values())
+                or self._max_visitations >= max(counts.values())):
+            def satisfies_condition(count): return True
+        else:
+            def satisfies_condition(count): return count <= self._max_visitations
+        frontier_state_actions = [
+            state_action for state_action, count in counts.items() if satisfies_condition(count)
+        ]
+        frontier_states, frontier_actions = zip(*frontier_state_actions)
+        return np.array(frontier_states), np.array(frontier_actions)
 
-    def _get_untried_actions(self, observation, agent):
-        all_actions = set(range(agent._action_space.n))
-        tried_actions = agent._replay_buffer.counts[observation].keys()
-        untried_actions = list(all_actions.difference(tried_actions))
-        return untried_actions or list(all_actions)
-
-    def _novelty(self, states):
+    def _novelty(self, states, actions = None):
         if states.ndim == len(self._lateral_agent._observation_space.shape):
             states = np.expand_dims(states, axis=0)
-        visitations = self._lateral_agent._replay_buffer.visitations
-        return np.array([1 / visitations[state] for state in states])
+        if actions is not None:
+            states = list(zip(states.tolist(), actions.tolist()))
+        counts = self._lateral_agent._replay_buffer.action_counts
+        novelties = np.array([1 / (counts[state] + epsilon) for state in states])
+        return novelties
 
     def _confidence(self, observations, goals, agent=None):
         if agent is None:
@@ -238,33 +257,21 @@ class OmniGoalGenerator(GoalGenerator):
                          for observation, goal in zip(observations, goals)])
 
     def _cost(self, *args, **kwargs):
+        # TODO: use a distribution
         return 1 / (self._confidence(*args, **kwargs) + epsilon)
         # return self._confidence(*args, **kwargs)  # alt. cost
-
-    def _debug_fmt(self, states: np.ndarray, value: int = 255):
-        return np.flip(np.argwhere(np.array(states) == value)[..., -2:].squeeze(), axis=-1).tolist()
-
-    def _debug_print(self, text, prefix="ℹ️ ", color_code="90m"):
-        if not self._debug:
-            return
-        print(prefix + f"\033[{color_code}{text}\033[0m")
 
     def generate_goal(self, observation, agent_traj_state):
         observation = observation["observation"]
         initial_state = self._initial_states[self._rng.integers(len(self._initial_states))]
         goal_state = self._goal_states[self._rng.integers(len(self._goal_states))]
-        self._debug_print(f"observation: {self._debug_fmt(observation[0])}")
-        self._debug_print(f"curent direction: {agent_traj_state.current_direction}")
+        self._dbg_print(f"observation: {self._dbg_format(observation[0])}")
+        self._dbg_print(f"curent direction: {agent_traj_state.current_direction}")
         match agent_traj_state.current_direction.removeprefix("teleport_"):
             case "forward":
-                if self._debug:
-                    untried_actions = self._get_untried_actions(observation, self._forward_agent)
-                    action = np.min(untried_actions)  # np.random.choice(untried_actions)
-                    goal = self._forward_agent._oracle.next_state(observation, action)[None, 0]
-                else:
-                    goal = goal_state
+                goal = goal_state, None
             case "backward":
-                goal = initial_state
+                goal = initial_state, None
             case "lateral":
                 if agent_traj_state.forward:
                     self._lateral_agent = self._forward_agent
@@ -274,20 +281,24 @@ class OmniGoalGenerator(GoalGenerator):
                     self._lateral_agent = self._backward_agent
                     lateral_initial_state = goal_state
                     lateral_goal_state = initial_state
-                frontier_states = self._get_frontier_states()
+                frontier_states, frontier_actions = self._get_frontier()
+                self._dbg_print(f"frontier state-actions: {self._dbg_format(frontier_states[:, 0], frontier_actions)}")
                 if frontier_states is None:
-                    self._debug_print("no frontier states yet", "   ")
-                    return goal_state if agent_traj_state.forward else initial_state
+                    self._dbg_print("no frontier states yet", "   ")
+                    self._dbg_print(f"goal state: {self._dbg_format(initial_state)}", "   ")
+                    self._dbg_print(f"goal action: {None}", "   ")
+                    return (goal_state, None) if agent_traj_state.forward else (initial_state, None)
                 if len(frontier_states) == 1:
-                    self._debug_print(f"goal: {self._debug_fmt(frontier_states[:, 0])}", "   ")
-                    return frontier_states[:, 0]
+                    self._dbg_print(f"goal state: {self._dbg_format(frontier_states[:, 0])}","   ")
+                    self._dbg_print(f"goal action: {None}", "   ")
+                    return frontier_states[:, 0], frontier_actions
                 novelty_cost = np.zeros(len(frontier_states))
                 cost_to_reach = np.zeros(len(frontier_states))
                 cost_to_come = np.zeros(len(frontier_states))
                 cost_to_go = np.zeros(len(frontier_states))
                 if self._weights[0] != 0:
-                    novelty_cost = sigmoid(zscore(1 / (self._novelty(frontier_states) + epsilon)))
-                    # novelty_cost = self._novelty(frontier_states)  # alt. cost
+                    novelty_cost = sigmoid(self._novelty(frontier_states, frontier_actions))
+                    # novelty_cost = sigmoid(zscore(1 / (self._novelty(frontier_states) + epsilon)))
                 if self._weights[1] != 0:
                     cost_to_reach = self._cost(
                         observation,
@@ -304,7 +315,8 @@ class OmniGoalGenerator(GoalGenerator):
                         lateral_goal_state
                     )
                 priority = softmin(
-                    novelty_cost ** self._weights[0] * (
+                    novelty_cost ** self._weights[0]
+                    * (
                         + cost_to_reach * self._weights[1]
                         + cost_to_come * self._weights[2]
                         + cost_to_go * self._weights[3]
@@ -317,12 +329,11 @@ class OmniGoalGenerator(GoalGenerator):
                 #     * cost_to_go ** self._weights[3]
                 # )
                 goal_idx = np.random.choice(len(priority), p=priority)  # np.argmin(priority)
-                goal = frontier_states[goal_idx, 0][None, ...]
-                self._debug_print(f"frontier states: {self._debug_fmt(frontier_states[:, 0])}", "   ")
-                self._debug_print(f"visitations: {1 / self._novelty(frontier_states)}", "   ")
-                self._debug_print(f"stdzd vis: {zscore(1 / self._novelty(frontier_states))}", "   ")
-                self._debug_print(f"novelty costs: {novelty_cost}", "   ")
-                self._debug_print(f"priority: {priority}", "   ")
+                goal = frontier_states[goal_idx, 0][None, ...], frontier_actions[goal_idx]
+                self._dbg_print(f"visitations: {(1 / self._novelty(frontier_states, frontier_actions)).astype(int)}", "   ")
+                # self._dbg_print(f"stdzed vis.: {zscore(1 / self._novelty(frontier_states, frontier_actions))}", "   ")
+                self._dbg_print(f"novelty costs: {novelty_cost}", "   ")
+                self._dbg_print(f"priority: {np.round(priority, 3)}", "   ")
                 if self._log_schedule.update() and not isinstance(self._logger, NullLogger):
                     self._logger.log_metrics(
                         {
@@ -336,7 +347,8 @@ class OmniGoalGenerator(GoalGenerator):
                 if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
                     self._logger.log_metrics(
                         {
-                            "novelty_cost": heatmap(frontier_states, novelty_cost, logscale=True),
+                            # TODO:
+                            # "novelty_cost": heatmap(frontier_states, novelty_cost, logscale=True),
                             "cost_to_reach": heatmap(frontier_states, cost_to_reach, vmin=0),
                             "cost_to_come": heatmap(frontier_states, cost_to_come, vmin=0),
                             "cost_to_go": heatmap(frontier_states, cost_to_go, vmin=0),
@@ -344,7 +356,8 @@ class OmniGoalGenerator(GoalGenerator):
                         },
                         f"{self._lateral_agent._id.removesuffix('_agent')}_goal_generator",
                     )
-        self._debug_print(f"goal: {self._debug_fmt(goal)}", "   ")
+        self._dbg_print(f"goal state: {self._dbg_format(goal[0])}", "   ")
+        self._dbg_print(f"goal action: {goal[1]}", "   ")
         if self._debug and isinstance(self._logger, NullLogger):
             breakpoint()
         return goal

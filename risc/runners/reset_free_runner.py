@@ -165,8 +165,5 @@ class ResetFreeRunner(SingleAgentRunner):
     def teleport_to_goal(self, environment, agent_traj_state):
         observation = environment.teleport(agent_traj_state.current_goal)
         transition_info = TransitionInfo(self._agents, self._stack_size)
-        agent_traj_state = replace(
-            agent_traj_state,
-            current_goal=None
-        )
+        agent_traj_state = replace(agent_traj_state, current_goal=None)
         return observation, transition_info, agent_traj_state
