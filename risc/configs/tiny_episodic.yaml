@@ -67,7 +67,7 @@ kwargs:
         name: FBGoalGenerator  # RISC
       goal_switcher:
         name: BasicGoalSwitcher  # episodic
-      phase_step_limit: 100
+      phase_step_limit: 20
       replay_buffer:
         name: CountsReplayBuffer
         #name: HERReplayBuffer  # HER
