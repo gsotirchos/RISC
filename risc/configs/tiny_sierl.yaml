@@ -73,7 +73,7 @@ kwargs:
           max_visitations: 10
           k: 1
           weights: [1, 1, 1, 1]
-          oracle: true
+          oracle: false
       goal_switcher:
         name: BasicGoalSwitcher  # episodic
         #name: SuccessProbabilityGoalSwitcher  # reset-free
