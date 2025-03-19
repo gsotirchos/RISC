@@ -258,9 +258,7 @@ class MiniGridEnv(GymEnv):
         return super().reset()
 
     def teleport(self, state):
-        pos = np.flip(np.argwhere(state[0] == 255)[..., -2:].squeeze(), axis=-1).tolist()
-        #print(f"=== teleporting to: {pos}")
-        return self._env.teleport(pos)
+        return self._env.teleport(state)
 
     def save(self, folder_name):
         pass

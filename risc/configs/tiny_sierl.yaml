@@ -1,9 +1,9 @@
-name: ResetFreeRunner
+name: SingleAgentRunner
 kwargs:
   experiment_manager:
     name: Experiment
     kwargs:
-      name: TinyRoom_FbL_1.0_1.0_1.0_1.0
+      name: TinyRoom_FbL_1.0_0.0_1.0_1.0
       save_dir: experiment
       saving_schedule:
         name: PeriodicSchedule
@@ -12,6 +12,8 @@ kwargs:
           on_value: true
           period: 1000000
   train_steps: 100000
+  max_steps_per_episode: 100
+  #train_phase_steps: 2000 # reset-free
   test_frequency: 100
   test_episodes: 10
   test_max_steps: 100
@@ -28,7 +30,7 @@ kwargs:
       local_vis_period: 200
       reset_free: false  # episodic
       symbolic: true
-      train_max_steps: 100000  # episodic
+      train_max_steps: 100  # episodic
       video_period: 100
       vis_frequency: 200
       #render_mode: human
@@ -45,7 +47,7 @@ kwargs:
             kwargs:
               end_value: 0.1
               init_value: 1.0
-              steps: 200
+              steps: 10000
           loss_fn:
             name: MSELoss
           min_replay_history: -1
@@ -73,11 +75,14 @@ kwargs:
           max_visitations: 10
           k: 1
           weights: [1, 1, 1, 1]
-          oracle: false
+          oracle: true
       goal_switcher:
-        name: BasicGoalSwitcher  # episodic
+        #name: BasicGoalSwitcher  # episodic
+        name: TimeoutGoalSwitcher
         #name: SuccessProbabilityGoalSwitcher  # reset-free
         kwargs:
+          threshold: 0.75
+          window_size: 5
           oracle: true
       phase_step_limit: 10
       replay_buffer:
@@ -85,7 +90,7 @@ kwargs:
         #name: HERReplayBuffer  # HER
         kwargs:
           capacity: 100000
-          her_batch_size: 64  # HER
+          #her_batch_size: 64  # HER
       separate_agents: true
       local_visitation_vis_frequency: 200
       oracle: false
@@ -93,7 +98,7 @@ kwargs:
   loggers:
   - name: WandbLogger
     kwargs:
-      name: TinyRoom_FbL_1.0_1.0_1.0_1.0
+      name: TinyRoom_FbL_1.0_0.0_1.0_1.0
       project: Debug
       resume: allow
       start_method: fork

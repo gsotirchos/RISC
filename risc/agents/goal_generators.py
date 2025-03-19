@@ -417,7 +417,7 @@ class TimeoutGoalSwitcher(GoalSwitcher):
         logger: Logger,
         log_frequency: int = 25,
         threshold: float = 0.75,
-        window_size: int = 10,
+        window_size: int = 5,
         # oracle: bool = False,
         **kwargs,
     ):
@@ -435,23 +435,28 @@ class TimeoutGoalSwitcher(GoalSwitcher):
 
     def should_switch(self, update_info, agent_traj_state):
         agent = self._forward_agent if agent_traj_state.forward else self._backward_agent
-        breakpoint()
-        obs_is_new = agent._replay_buffer.action_counts.get(
-            (update_info.observation["observation"], update_info.action),
-            0
-        ) <= 1
-        self._window_avg += (obs_is_new - self._window[0]) / self._window_size
-        self._window.append(obs_is_new)
+        success_prob = agent.compute_success_prob(  # = cost-to-go
+            update_info.observation["observation"],
+            agent_traj_state.current_goal
+        )
         # initial_state = self._initial_states[self._rng.integers(len(self._initial_states))]
         # cost_to_come = agent.compute_success_prob(
         #     np.concatenate([initial_state, observation["observation"][1][None, ...]]),
         #     observation["observation"][:, 0]
         # )
         # ... = agent_traj_state.phase_steps / cost_to_come  # ???
-        success_prob = cost_to_go = agent.compute_success_prob(
-            update_info.observation["observation"],
-            agent_traj_state.current_goal
-        )
+        if agent_traj_state.current_direction == "forward":
+            return False, success_prob
+        if agent_traj_state.phase_steps == 0:
+            self._window = deque(np.zeros(self._window_size), maxlen=self._window_size)
+            self._window_avg = 0
+        obs_is_new = agent._replay_buffer.state_counts.get(
+            update_info.next_observation["observation"],
+            0
+        ) <= 1
+        breakpoint()
+        self._window_avg += (obs_is_new - self._window[0]) / self._window_size
+        self._window.append(obs_is_new)
         return self._window_avg >= self._threshold, success_prob
 
 class SuccessProbabilityGoalSwitcher(GoalSwitcher):

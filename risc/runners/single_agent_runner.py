@@ -5,6 +5,7 @@ import time
 from dataclasses import asdict
 from functools import partial
 from typing import List
+from dataclasses import replace
 
 import numpy as np
 from envs.reset_free_envs import ResetFreeEnv
@@ -48,10 +49,10 @@ class SingleAgentRunner(_SingleAgentRunner):
         test_frequency: int = -1,
         test_episodes: int = 1,
         stack_size: int = 1,
-        max_steps_per_episode: int = 1000000000,
-        test_max_steps: int = 1000000000,
         seed: int = None,
+        test_max_steps: int = 1000000000,
         eval_every: bool = False,
+        max_steps_per_episode: int = 1000000000,
         early_terminal: bool = True,
         send_truncation: bool = False,
     ):
@@ -196,6 +197,13 @@ class SingleAgentRunner(_SingleAgentRunner):
         episode_metrics[agent.id]["episode_length"] += active
         episode_metrics["full_episode_length"] += active
 
+
+        # handle teleport requests
+        if agent_traj_state.current_direction.startswith("teleport"):
+            observation, transition_info, agent_traj_state = self.teleport_to_goal(
+                environment, agent_traj_state
+            )
+
         return (
             terminated,
             truncated,
@@ -272,6 +280,32 @@ class SingleAgentRunner(_SingleAgentRunner):
             [("full_episode_length", 0)],
         )
 
+    def run_training(self):
+        """Run the training loop. Note, to ensure that the test phase is run during
+        the individual runners must call :py:meth:`~Runner.update_step` in their
+        :py:meth:`~Runner.run_episode` methods.
+        See :py:class:`~hive.runners.single_agent_loop.SingleAgentRunner` and
+        :py:class:`~hive.runners.multi_agent_loop.MultiAgentRunner` for examples."""
+        self.train_mode(True)
+        while self._train_schedule.get_value():
+            #print("New training episode")
+            # Run training episode
+            if not self._training:
+                self.train_mode(True)
+            episode_metrics = self.run_episode(self._train_environment)
+            if self._logger.should_log("train"):
+                episode_metrics = episode_metrics.get_flat_dict()
+                self._logger.log_metrics(episode_metrics, "train")
+
+            # Save experiment state
+            if self._save_experiment:
+                self._experiment_manager.save()
+                self._save_experiment = False
+
+        # Run a final test episode and save the experiment.
+        self.run_testing()
+        self._experiment_manager.save()
+
     def run_testing(self):
         """Run a testing phase."""
         if self._eval_environment is None:
@@ -336,10 +370,7 @@ class SingleAgentRunner(_SingleAgentRunner):
             max_steps = self._max_steps_per_episode
         episode_metrics = self.create_episode_metrics()
         terminated, truncated = False, False
-        observation, info = environment.reset()
-        transition_info = TransitionInfo(self._agents, self._stack_size)
-        transition_info.start_agent(self._agents[0])
-        agent_traj_state = None
+        observation, transition_info, agent_traj_state = self.reset_environment(environment)
         steps = 0
         active = True
         # Run the loop until the episode ends or times out
@@ -378,3 +409,16 @@ class SingleAgentRunner(_SingleAgentRunner):
             self.update_step()
 
         return episode_metrics
+
+    def reset_environment(self, environment):
+        observation, _ = environment.reset()
+        transition_info = TransitionInfo(self._agents, self._stack_size)
+        transition_info.start_agent(self._agents[0])
+        agent_traj_state = None
+        return observation, transition_info, agent_traj_state
+
+    def teleport_to_goal(self, environment, agent_traj_state):
+        observation = environment.teleport(agent_traj_state.current_goal)
+        transition_info = TransitionInfo(self._agents, self._stack_size)
+        agent_traj_state = replace(agent_traj_state, current_goal=None)
+        return observation, transition_info, agent_traj_state

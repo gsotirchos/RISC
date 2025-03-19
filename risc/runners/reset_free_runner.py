@@ -1,6 +1,5 @@
 import logging
 from typing import List
-from dataclasses import replace
 
 from envs.reset_free_envs import ResetFreeEnv
 from hive.agents.agent import Agent
@@ -45,10 +44,10 @@ class ResetFreeRunner(SingleAgentRunner):
         test_frequency: int = -1,
         test_episodes: int = 1,
         stack_size: int = 1,
-        test_max_steps: int = 1000000000,
-        train_phase_steps: int = 2000,
         seed: int = None,
+        test_max_steps: int = 1000000000,
         eval_every: bool = False,
+        train_phase_steps: int = 2000,
         **kwargs,
     ):
         self._test_max_steps = test_max_steps
@@ -63,10 +62,13 @@ class ResetFreeRunner(SingleAgentRunner):
             test_frequency=test_frequency,
             test_episodes=test_episodes,
             stack_size=stack_size,
-            max_steps_per_episode=train_steps,
-            test_max_steps=test_max_steps,
             seed=seed,
+            test_max_steps=test_max_steps,
             eval_every=eval_every,
+            max_steps_per_episode=train_steps,
+            # early_terminal=True,
+            # send_truncation=False,
+            **kwargs
         )
 
     def train_mode(self, training):
@@ -84,6 +86,7 @@ class ResetFreeRunner(SingleAgentRunner):
             self._train_environment
         )
         while self._train_schedule.get_value():
+            #print("New training episode")
             # Run training episode
             if not self._training:
                 self.train_mode(True)
@@ -137,14 +140,8 @@ class ResetFreeRunner(SingleAgentRunner):
                 transition_info,
                 agent_traj_state,
             )
-            if agent_traj_state.current_direction.startswith("teleport"):
-                observation, transition_info, agent_traj_state = self.teleport_to_goal(
-                    environment, agent_traj_state
-                )
             if terminated or truncated:
-                observation, transition_info, agent_traj_state = self.reset_environment(
-                    environment
-                )
+                observation, transition_info, agent_traj_state = self.reset_environment(environment)
                 #self._logger.log_scalar(
                 #    "num_interventions",
                 #    self._train_environment._env.num_interventions,
@@ -154,16 +151,3 @@ class ResetFreeRunner(SingleAgentRunner):
             self.update_step()
 
         return episode_metrics, observation, transition_info, agent_traj_state
-
-    def reset_environment(self, environment):
-        observation, _ = environment.reset()
-        transition_info = TransitionInfo(self._agents, self._stack_size)
-        transition_info.start_agent(self._agents[0])
-        agent_traj_state = None
-        return observation, transition_info, agent_traj_state
-
-    def teleport_to_goal(self, environment, agent_traj_state):
-        observation = environment.teleport(agent_traj_state.current_goal)
-        transition_info = TransitionInfo(self._agents, self._stack_size)
-        agent_traj_state = replace(agent_traj_state, current_goal=None)
-        return observation, transition_info, agent_traj_state

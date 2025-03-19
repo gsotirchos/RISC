@@ -87,6 +87,7 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
                         self.grid_obs[1, j, i] = 255
                     elif cell.type == "goal":
                         self.goal_obs[0, j, i] = 255
+        #print("=== resetting")
         return self.gen_obs(), {}
 
     def gen_obs(self):
@@ -121,6 +122,9 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
         reward = 0
         terminated = False
         truncated = False
+
+        #print(f"     State: {np.flip(np.argwhere(self.gen_obs()['observation'][0] == 255)[..., -2:].squeeze(), axis=-1).tolist()}")
+        #print(f"    Action: {action}")
 
         # Get the position in front of the agent
         try:
@@ -159,6 +163,8 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
             self.render()
 
         obs = self.gen_obs()
+        #print(f"Next state: {np.flip(np.argwhere(obs['observation'][0] == 255)[..., -2:].squeeze(), axis=-1).tolist()}")
+        breakpoint()
 
         return obs, reward, terminated, truncated, {}
 
@@ -180,7 +186,9 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
             # Randomize the goal's position
             self.place_obj(Goal())
 
-    def teleport(self, pos):
+    def teleport(self, state):
+        pos = np.flip(np.argwhere(state[0] == 255)[..., -2:].squeeze(), axis=-1).tolist()
+        #print(f"=== teleporting to: {pos}")
         self.agent_pos = pos
         return self.gen_obs()
 
