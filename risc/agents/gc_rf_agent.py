@@ -373,7 +373,7 @@ class GCResetFree(Agent):
         else:
             terminated = False
         should_switch, success_prob = self._goal_switcher.should_switch(
-            update_info.observation, agent_traj_state
+            update_info, agent_traj_state
         )
         failure = agent_traj_state.phase_steps >= self._phase_step_limit
 

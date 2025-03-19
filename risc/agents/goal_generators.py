@@ -392,7 +392,7 @@ class BasicGoalSwitcher(GoalSwitcher):
         self._backward_agent = backward_agent
         self.log_success = log_success
 
-    def should_switch(self, observation, agent_traj_state):
+    def should_switch(self, update_info, agent_traj_state):
         if self.log_success:
             agent = (
                 self._forward_agent
@@ -400,7 +400,7 @@ class BasicGoalSwitcher(GoalSwitcher):
                 else self._backward_agent
             )
             success_prob = agent.compute_success_prob(
-                observation["observation"], agent_traj_state.current_goal
+                update_info.observation["observation"], agent_traj_state.current_goal
             )
         else:
             success_prob = 0.0
@@ -433,11 +433,11 @@ class TimeoutGoalSwitcher(GoalSwitcher):
         self._window = deque(np.zeros(window_size), maxlen=window_size)
         self._window_avg = 0
 
-    def should_switch(self, observation, agent_traj_state):
+    def should_switch(self, update_info, agent_traj_state):
         agent = self._forward_agent if agent_traj_state.forward else self._backward_agent
         breakpoint()
         obs_is_new = agent._replay_buffer.action_counts.get(
-            (observation["observation"], observation["action"]),
+            (update_info.observation["observation"], update_info.action),
             0
         ) <= 1
         self._window_avg += (obs_is_new - self._window[0]) / self._window_size
@@ -449,7 +449,7 @@ class TimeoutGoalSwitcher(GoalSwitcher):
         # )
         # ... = agent_traj_state.phase_steps / cost_to_come  # ???
         success_prob = cost_to_go = agent.compute_success_prob(
-            observation["observation"],
+            update_info.observation["observation"],
             agent_traj_state.current_goal
         )
         return self._window_avg >= self._threshold, success_prob
@@ -542,11 +542,11 @@ class ReverseCurriculumGoalSwitcher(GoalSwitcher):
         self._log_schedule = PeriodicSchedule(False, True, log_frequency)
         self._success_threshold = success_threshold
 
-    def should_switch(self, observation, agent_traj_state):
+    def should_switch(self, update_info, agent_traj_state):
         if agent_traj_state.forward:
             return False
         success_prob = self._forward_agent.compute_success_prob(
-            observation["observation"],
+            update_info.observation["observation"],
             self._goal_states[self._rng.integers(len(self._goal_states))],
         )
         should_switch = success_prob < self._success_threshold
