@@ -78,7 +78,8 @@ kwargs:
           weights: [1, 1, 1, 1]
           oracle: true
       goal_switcher:
-        name: BasicGoalSwitcher  # episodic
+        #name: BasicGoalSwitcher  # episodic
+        name: TimeoutGoalSwitcher
         #name: SuccessProbabilityGoalSwitcher  # reset-free
         kwargs:
           oracle: true

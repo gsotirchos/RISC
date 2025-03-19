@@ -1,3 +1,4 @@
+from collections import deque
 from dataclasses import replace
 
 import matplotlib.pyplot as plt
@@ -405,6 +406,53 @@ class BasicGoalSwitcher(GoalSwitcher):
             success_prob = 0.0
         return False, success_prob
 
+class TimeoutGoalSwitcher(GoalSwitcher):
+    """Goal switcher that switches after running out of time."""
+
+    def __init__(
+        self,
+        forward_agent,
+        backward_agent,
+        initial_states,
+        logger: Logger,
+        log_frequency: int = 25,
+        threshold: float = 0.75,
+        window_size: int = 10,
+        # oracle: bool = False,
+        **kwargs,
+    ):
+        self._forward_agent = forward_agent
+        self._backward_agent = backward_agent
+        self._initial_states = initial_states
+        self._logger = logger
+        self._rng = np.random.default_rng(seeder.get_new_seed("goal_switcher"))
+        self._log_schedule = PeriodicSchedule(False, True, log_frequency)
+        # self._oracle = oracle
+        self._threshold = threshold
+        self._window_size = window_size
+        self._window = deque(np.zeros(window_size), maxlen=window_size)
+        self._window_avg = 0
+
+    def should_switch(self, observation, agent_traj_state):
+        agent = self._forward_agent if agent_traj_state.forward else self._backward_agent
+        breakpoint()
+        obs_is_new = agent._replay_buffer.action_counts.get(
+            (observation["observation"], observation["action"]),
+            0
+        ) <= 1
+        self._window_avg += (obs_is_new - self._window[0]) / self._window_size
+        self._window.append(obs_is_new)
+        # initial_state = self._initial_states[self._rng.integers(len(self._initial_states))]
+        # cost_to_come = agent.compute_success_prob(
+        #     np.concatenate([initial_state, observation["observation"][1][None, ...]]),
+        #     observation["observation"][:, 0]
+        # )
+        # ... = agent_traj_state.phase_steps / cost_to_come  # ???
+        success_prob = cost_to_go = agent.compute_success_prob(
+            observation["observation"],
+            agent_traj_state.current_goal
+        )
+        return self._window_avg >= self._threshold, success_prob
 
 class SuccessProbabilityGoalSwitcher(GoalSwitcher):
     """Goal switcher that switches goals based on the success probability of the
@@ -520,6 +568,7 @@ registry.register_all(
     GoalSwitcher,
     {
         "BasicGoalSwitcher": BasicGoalSwitcher,
+        "TimeoutGoalSwitcher": TimeoutGoalSwitcher,
         "SuccessProbabilityGoalSwitcher": SuccessProbabilityGoalSwitcher,
         "ReverseCurriculumGoalSwitcher": ReverseCurriculumGoalSwitcher,
     },
