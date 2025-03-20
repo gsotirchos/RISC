@@ -316,8 +316,9 @@ def create_vis_fn(env_shape):
     return partial(vis_fn, width=width, height=height)
 
 
-def get_goals(env_shape, all_obs):
-    goal = tuple([dim - 2 for dim in env_shape])
+def get_goals(desired_goal, all_obs):
+    goal = np.flip(np.argwhere(desired_goal != 0)).flatten().tolist()
+    # goal = tuple([dim - 2 for dim in env_shape])
     return [g for g in all_obs["desired_goal"] if g[0, goal[1], goal[0]] == 255]
 
 
@@ -424,7 +425,7 @@ def get_minigrid_envs(
         get_distance_fn=partial(
             get_distance_calculator, initial_state=initial_obs["observation"]
         ),
-        goal_states=get_goals(env_shape, all_obs),
+        goal_states=get_goals(initial_obs["desired_goal"][0], all_obs),
         initial_states=[initial_obs["observation"][0:1]],
         forward_demos=None,
         backward_demos=None,

@@ -311,7 +311,7 @@ class TinyRoomEnv(MiniGridEnv):
 class BugTrapEnv(MiniGridEnv):
     """Bug trap environment."""
 
-    def __init__(self, agent_pos=(5, 12), goal_pos=(17, 17), max_steps=100, **kwargs):
+    def __init__(self, agent_pos=(6, 9), goal_pos=(9, 9), max_steps=100, **kwargs):
         self._agent_default_pos = agent_pos
         self._goal_default_pos = goal_pos
 
@@ -340,18 +340,23 @@ class BugTrapEnv(MiniGridEnv):
         self.grid.vert_wall(0, 0)
         self.grid.vert_wall(width - 1, 0)
 
-        # top and bottom horizontal wall of the bugtrap
-        self.grid.horz_wall(3, 3, length=width - 6)
-        self.grid.horz_wall(3, height - 4, length=width - 6)
+        self.grid.vert_wall(int(width * 0.45), int(height * 0.35), length=int(height * 0.35))
+        self.grid.horz_wall(int(width * 0.45), int(height * 0.35), length=int(width * 0.35))
+        self.grid.horz_wall(int(width * 0.45), int(height * 0.65), length=int(width * 0.35))
 
-        # middle entrance of the bugtrap
-        self.grid.horz_wall(3, height // 2 - 1, length=width // 2 - 3)
-        self.grid.horz_wall(3, height // 2 + 1, length=width // 2 - 3)
-
-        # left and right vertical walls of the bugtrap
-        self.grid.vert_wall(3, 3, length=height // 2 - 3)
-        self.grid.vert_wall(3, height // 2 + 1, length=height // 2 - 4)
-        self.grid.vert_wall(width - 4, 3, length=height - 6)
+        ### Old bugtrap
+        # # top and bottom horizontal wall of the bugtrap
+        # self.grid.horz_wall(3, 3, length=width - 6)
+        # self.grid.horz_wall(3, height - 4, length=width - 6)
+        #
+        # # middle entrance of the bugtrap
+        # self.grid.horz_wall(3, height // 2 - 1, length=width // 2 - 3)
+        # self.grid.horz_wall(3, height // 2 + 1, length=width // 2 - 3)
+        #
+        # # left and right vertical walls of the bugtrap
+        # self.grid.vert_wall(3, 3, length=height // 2 - 3)
+        # self.grid.vert_wall(3, height // 2 + 1, length=height // 2 - 4)
+        # self.grid.vert_wall(width - 4, 3, length=height - 6)
 
         self.place_agent_goal()
 
