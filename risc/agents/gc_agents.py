@@ -170,9 +170,8 @@ class GoalConditionedMixin:
         returns the uncertaintainty of the observation-goal pair."""
         return super().compute_uncertainties(states)
 
-    @concat_obs_goal
-    def get_stats(self, states):
-        return super().get_stats(states)
+    def get_stats(self, observations, goals):
+        return super().get_stats(observations, goals)
 
 
 class GoalConditionedDQNAgent(GoalConditionedMixin, DQNAgent):

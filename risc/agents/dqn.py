@@ -574,25 +574,10 @@ class DQNAgent(_DQNAgent):
         states = torch.as_tensor(states, device=self._device)
         return self._success_net(states).amax(dim=1).detach().cpu().numpy()
 
-    # @torch.no_grad()
-    # def get_stats(self, obs, goals):
-    #     obs = torch.tensor(obs, device=self._device)
-    #     goals = torch.tensor(goals, device=self._device)
-    #     goals = goals.unsqueeze(0)
-    #     goals = goals.expand((obs.shape[0], -1, -1, -1))
-    #     state = torch.cat([obs, goals], dim=1)
-    #     metrics = {}
-    #     if self._compute_success_probability:
-    #         success_prob = self._success_net(state).amax(dim=1)  # > 0.25
-    #         metrics["success_prob"] = success_prob.cpu().numpy()
-    #     qvals = self._qnet(state).amax(dim=1)
-    #     metrics["qvals"] = qvals.cpu().numpy()
-    #     return metrics
-
     @torch.no_grad()
-    def get_stats(self, states):
+    def get_stats(self, *args):
         metrics = {}
         if self._compute_success_probability:
-            metrics["success_prob"] = self.compute_success_prob(states)
-        metrics["qvals"] = self.compute_value(states)
+            metrics["success_prob"] = self.compute_success_prob(*args)
+        metrics["qvals"] = self.compute_value(*args)
         return metrics
