@@ -536,6 +536,8 @@ class DQNAgent(_DQNAgent):
         ).unsqueeze(0)
         return torch.max(self._success_net(observation)).detach().cpu().item()
 
+    # TODO: definitions for values(states), success_probs(states)
+
     def get_stats(self, obs, goals):
         with torch.no_grad():
             obs = torch.tensor(obs, device=self._device)

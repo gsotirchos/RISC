@@ -2,6 +2,7 @@ from collections import deque
 from dataclasses import replace
 
 import matplotlib.pyplot as plt
+import torch
 import numpy as np
 import wandb
 from envs.utils import heatmap as _heatmap
@@ -254,8 +255,18 @@ class OmniGoalGenerator(GoalGenerator):
         )
         if self._oracle:
             agent = agent._oracle
-        return np.array([agent.compute_success_prob(observation, goal)
-                         for observation, goal in zip(observations, goals)])
+            states = np.concatenate([observations, goals], axis=1)
+            confidence = -np.array([agent.value(state) for state in states]).squeeze()
+        else:
+            # TODO: use new definition
+            with torch.no_grad():
+                observations = torch.tensor(observations, device=agent._device)
+                goals = torch.tensor(goals, device=agent._device)
+                states = torch.cat([observations, goals], dim=1)
+                confidence = -agent._qnet(states).amax(dim=1).cpu().numpy()
+        # confidence = np.array([agent.compute_success_prob(observation, goal)
+        #                        for observation, goal in zip(observations, goals)])
+        return confidence
 
     def _cost(self, *args, **kwargs):
         # TODO: use a distribution
