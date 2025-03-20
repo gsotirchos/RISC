@@ -454,7 +454,7 @@ class TimeoutGoalSwitcher(GoalSwitcher):
             update_info.next_observation["observation"],
             0
         ) <= 1
-        breakpoint()
+        #breakpoint()
         self._window_avg += (obs_is_new - self._window[0]) / self._window_size
         self._window.append(obs_is_new)
         return self._window_avg >= self._threshold, success_prob
