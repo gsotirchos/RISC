@@ -199,10 +199,11 @@ class SingleAgentRunner(_SingleAgentRunner):
 
 
         # handle teleport requests
-        if agent_traj_state.current_direction.startswith("teleport"):
-            observation, transition_info, agent_traj_state = self.teleport_to_goal(
-                environment, agent_traj_state
-            )
+        if hasattr(agent_traj_state, 'current_direction'):
+            if agent_traj_state.current_direction.startswith("teleport"):
+                observation, transition_info, agent_traj_state = self.teleport_to_goal(
+                    environment, agent_traj_state
+                )
 
         return (
             terminated,
