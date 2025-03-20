@@ -11,7 +11,7 @@ kwargs:
           off_value: false
           on_value: true
           period: 1000000
-  train_steps: 100000
+  train_steps: 30000
   max_steps_per_episode: 100
   #train_phase_steps: 2000 # reset-free
   test_frequency: 100
@@ -75,7 +75,7 @@ kwargs:
           max_visitations: 10
           k: 1
           weights: [1, 1, 1, 1]
-          oracle: true
+          oracle: false
       goal_switcher:
         #name: BasicGoalSwitcher  # episodic
         name: TimeoutGoalSwitcher
