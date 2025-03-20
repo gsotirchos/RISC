@@ -77,7 +77,7 @@ kwargs:
           frontier_proportion: 1
           max_visitations: 10
           k: 1
-          weights: [1, 1, 1, 1]
+          weights: [1, 0, 1, 1]
           oracle: true
       goal_switcher:
         #name: BasicGoalSwitcher  # episodic
