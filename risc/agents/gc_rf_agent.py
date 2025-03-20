@@ -235,8 +235,12 @@ class GCResetFree(Agent):
             observation, agent_traj_state.subagent_traj_state
         )
         if agent_traj_state.next_action is not None:
-            if not isinstance(agent_traj_state.next_action, int):
-                print(f"WARNING: action {agent_traj_state.next_action} ({type(agent_traj_state.next_action)}) is not an integer")
+            if not isinstance(agent_traj_state.next_action, (int, np.integer)):
+                print(f"WARNING: bad action type {type(agent_traj_state.next_action)}: {agent_traj_state.next_action}")
+                agent_traj_state = replace(
+                    agent_traj_state,
+                    next_action=agent_traj_state.next_action[0]
+                )
             action = agent_traj_state.next_action
             agent_traj_state = replace(agent_traj_state, next_action=None)
         return action, replace(
