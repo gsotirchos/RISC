@@ -135,33 +135,44 @@ class GoalConditionedMixin:
 
         return super().act(observation, agent_traj_state)
 
-    def compute_value(self, observation, goals):
+    @staticmethod
+    def concat_obs_goal(method):
+        """Takes in an observation (np.ndarray) and a goal (np.ndarray) and
+        passes the observation-goal pair as the input to the wrapped method."""
+        def wrapper(self, observations, goals, *args, **kwargs):
+            if len(observations.shape) == len(self._observation_space.shape):
+                observations = np.expand_dims(observations, axis=0)
+            if len(goals.shape) == len(self._goal_space.shape):
+                goals = np.expand_dims(goals, axis=0)
+            observations, goals = (
+                np.repeat(observations, goals.shape[0], axis=0),
+                np.tile(goals, (observations.shape[0], 1, 1, 1))
+            )
+            states = np.concatenate([observations, goals], axis=1)
+            return method(self, states, *args, **kwargs)
+        return wrapper
+
+    @concat_obs_goal
+    def compute_value(self, states):
         """Takes in an observation (np.ndarray) and a goal (np.ndarray) and
         returns the value of the observation-goal pair."""
-        if len(observation.shape) == len(self._observation_space.shape):
-            observation = np.expand_dims(observation, axis=0)
-        if len(goals.shape) == len(self._goal_space.shape):
-            goals = np.expand_dims(goals, axis=0)
-        observation, goals = np.broadcast_arrays(observation, goals)
-        state = np.concatenate([observation, goals], axis=1)
-        return super().compute_value(state)
+        return super().compute_value(states)
 
-    def compute_uncertainties(self, observation, goals):
-        """Takes in an observation (np.ndarray) and a goal (np.ndarray) and
-        returns the value of the observation-goal pair."""
-        if len(observation.shape) == len(self._observation_space.shape):
-            observation = np.expand_dims(observation, axis=0)
-        if len(goals.shape) == len(self._goal_space.shape):
-            goals = np.expand_dims(goals, axis=0)
-        observation, goals = np.broadcast_arrays(observation, goals)
-        state = np.concatenate([observation, goals], axis=1)
-        return super().compute_uncertainties(state)
-
-    def compute_success_prob(self, observation, goals):
+    @concat_obs_goal
+    def compute_success_prob(self, states):
         """Takes in an observation (np.ndarray) and a goal (np.ndarray) and
         returns the probability that the agent succeeds at the task."""
-        state = np.concatenate([observation, goals], axis=0)
-        return super().compute_success_prob(state)
+        return super().compute_success_prob(states)
+
+    @concat_obs_goal
+    def compute_uncertainties(self, states):
+        """Takes in an observation (np.ndarray) and a goal (np.ndarray) and
+        returns the uncertaintainty of the observation-goal pair."""
+        return super().compute_uncertainties(states)
+
+    @concat_obs_goal
+    def get_stats(self, states):
+        return super().get_stats(states)
 
 
 class GoalConditionedDQNAgent(GoalConditionedMixin, DQNAgent):

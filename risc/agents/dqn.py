@@ -29,7 +29,16 @@ class SuccessNet(DQNNetwork):
 
 
 class FourRoomsOracle():
-    def __init__(self, discount_rate=1, step_reward=0, goal_reward=1, observation=None):
+    def __init__(
+        self,
+        observation_shape,
+        goal_shape,
+        discount_rate=1,
+        step_reward=0,
+        goal_reward=1,
+        observation=None
+    ):
+        self._observation_shape = observation_shape
         self._discount_rate = discount_rate
         self._step_reward = step_reward
         self._goal_reward = goal_reward
@@ -130,14 +139,6 @@ class FourRoomsOracle():
         return self._randargmax(self._return(self._agent2goal_distances, **kwargs))
 
     @processobservation
-    def value(self, observation, step_reward=None, goal_reward=None, **kwargs):
-        return np.max(self._return(1 + self._agent2goal_distances, **kwargs), keepdims=True)
-
-    @processobservation
-    def compute_success_prob(self, observation, goal):
-        return 1 / np.min(1 + self._agent2goal_distances)
-
-    @processobservation
     def next_state(self, observation, action):
         next_cell = self.Actions.move(action, self._agent_cell)
         if next_cell not in self._valid_cells:
@@ -147,6 +148,36 @@ class FourRoomsOracle():
             next_observation[(0, *np.flip(self._agent_cell))]
         next_observation[(0, *np.flip(self._agent_cell))] = 0
         return next_observation
+
+    @processobservation
+    def value(self, observation, step_reward=None, goal_reward=None, **kwargs):
+        return np.max(self._return(1 + self._agent2goal_distances, **kwargs), keepdims=True)
+
+    @processobservation
+    def success_prob(self, observation, goal):
+        return 1 / np.min(1 + self._agent2goal_distances)
+
+    @staticmethod
+    def broadcast_obs_goals(method):
+        def wrapper(self, observations, goals, *args, **kwargs):
+            if len(observations.shape) == len(self._observation_shape):
+                observations = np.expand_dims(observations, axis=0)
+            if len(goals.shape) == len(self._observation_shape):
+                goals = np.expand_dims(goals, axis=0)
+            observations, goals = (
+                np.repeat(observations, goals.shape[0], axis=0),
+                np.tile(goals, (observations.shape[0], 1, 1, 1))
+            )
+            return method(self, observations, goals, *args, **kwargs)
+        return wrapper
+
+    @broadcast_obs_goals
+    def compute_value(self, observations, goals, **kwargs):
+        return np.array([self.value(obs, goal, **kwargs) for obs, goal in zip(observations, goals)])
+
+    @broadcast_obs_goals
+    def compute_success_prob(self, observations, goals):
+        return np.array([self.success_prob(obs, goal) for obs, goal in zip(observations, goals)])
 
 
 class DQNAgent(_DQNAgent):
@@ -240,7 +271,12 @@ class DQNAgent(_DQNAgent):
         self._td_error = 0
         self._steps = 0
         self._use_oracle = oracle
-        DQNAgent._oracle = FourRoomsOracle(discount_rate, step_reward=-1, goal_reward=0)
+        DQNAgent._oracle = FourRoomsOracle(
+            observation_space.shape,
+            discount_rate,
+            step_reward=-1,
+            goal_reward=0
+        )
 
     def create_q_networks(self, representation_net):
         super().create_q_networks(representation_net)
@@ -530,25 +566,33 @@ class DQNAgent(_DQNAgent):
         else:
             self._target_success_net.load_state_dict(self._success_net.state_dict())
 
-    def compute_success_prob(self, observation):
-        observation = torch.as_tensor(
-            observation, device=self._device, dtype=torch.float32
-        ).unsqueeze(0)
-        return torch.max(self._success_net(observation)).detach().cpu().item()
+    def compute_value(self, states):
+        states = torch.as_tensor(states, device=self._device)
+        return self._qnet(states).amax(dim=1).detach().cpu().numpy()
 
-    # TODO: definitions for values(states), success_probs(states)
+    def compute_success_prob(self, states):
+        states = torch.as_tensor(states, device=self._device)
+        return self._success_net(states).amax(dim=1).detach().cpu().numpy()
 
-    def get_stats(self, obs, goals):
-        with torch.no_grad():
-            obs = torch.tensor(obs, device=self._device)
-            goals = torch.tensor(goals, device=self._device)
-            goals = goals.unsqueeze(0)
-            goals = goals.expand((obs.shape[0], -1, -1, -1))
-            state = torch.cat([obs, goals], dim=1)
-            metrics = {}
-            if self._compute_success_probability:
-                success_prob = self._success_net(state).amax(dim=1)  # > 0.25
-                metrics["success_prob"] = success_prob.cpu().numpy()
-            qvals = self._qnet(state).amax(dim=1)
-            metrics["qvals"] = qvals.cpu().numpy()
-            return metrics
+    # @torch.no_grad()
+    # def get_stats(self, obs, goals):
+    #     obs = torch.tensor(obs, device=self._device)
+    #     goals = torch.tensor(goals, device=self._device)
+    #     goals = goals.unsqueeze(0)
+    #     goals = goals.expand((obs.shape[0], -1, -1, -1))
+    #     state = torch.cat([obs, goals], dim=1)
+    #     metrics = {}
+    #     if self._compute_success_probability:
+    #         success_prob = self._success_net(state).amax(dim=1)  # > 0.25
+    #         metrics["success_prob"] = success_prob.cpu().numpy()
+    #     qvals = self._qnet(state).amax(dim=1)
+    #     metrics["qvals"] = qvals.cpu().numpy()
+    #     return metrics
+
+    @torch.no_grad()
+    def get_stats(self, states):
+        metrics = {}
+        if self._compute_success_probability:
+            metrics["success_prob"] = self.compute_success_prob(states)
+        metrics["qvals"] = self.compute_value(states)
+        return metrics

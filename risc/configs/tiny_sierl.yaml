@@ -74,6 +74,7 @@ kwargs:
           frontier_proportion: 1
           max_visitations: 10
           k: 1
+          use_success_prob: false
           weights: [1, 1, 1, 1]
           oracle: false
       goal_switcher:

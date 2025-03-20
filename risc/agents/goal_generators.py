@@ -121,6 +121,7 @@ class OmniGoalGenerator(GoalGenerator):
         frontier_proportion: float = 0.5,
         max_visitations: int = 0,
         k: int = 4,
+        use_success_prob: bool = False,
         oracle: bool = False,
         log_frequency: int = 10,
         vis_frequency: int = 100,
@@ -142,6 +143,7 @@ class OmniGoalGenerator(GoalGenerator):
         self._proportion = frontier_proportion
         self._max_visitations = max_visitations
         self._k = k
+        self._use_success_prob = use_success_prob
         self._debug = debug
 
     def _dbg_format(self, states: np.ndarray, actions: np.ndarray | None = None, value: int = 255):
@@ -245,27 +247,12 @@ class OmniGoalGenerator(GoalGenerator):
     def _confidence(self, observations, goals, agent=None):
         if agent is None:
             agent = self._lateral_agent
-        if observations.ndim == len(agent._observation_space.shape):
-            observations = np.expand_dims(observations, axis=0)
-        if goals.ndim == len(agent._goal_space.shape):
-            goals = np.expand_dims(goals, axis=1)
-        observations, goals = (
-            np.repeat(observations, goals.shape[0], axis=0),
-            np.tile(goals, (observations.shape[0], 1, 1, 1))
-        )
         if self._oracle:
             agent = agent._oracle
-        #    states = np.concatenate([observations, goals], axis=1)
-        #    confidence = -1 / np.array([agent.value(state) for state in states]).squeeze()
-        #else:
-        #    # TODO: use new definition
-        #    with torch.no_grad():
-        #        observations = torch.tensor(observations, device=agent._device)
-        #        goals = torch.tensor(goals, device=agent._device)
-        #        states = torch.cat([observations, goals], dim=1)
-        #        confidence = -1 / agent._qnet(states).amax(dim=1).cpu().numpy()
-        confidence = np.array([agent.compute_success_prob(observation, goal)
-                               for observation, goal in zip(observations, goals)])
+        if self._use_success_prob:
+            confidence = agent.compute_success_prob(observations, goals).squeeze()
+        else:  # use Q-values
+            confidence = -1 / agent.compute_value(observations, goals).squeeze()
         return confidence
 
     def _cost(self, *args, **kwargs):
@@ -314,12 +301,12 @@ class OmniGoalGenerator(GoalGenerator):
                 if self._weights[1] != 0:
                     cost_to_reach = self._cost(
                         observation,
-                        frontier_states[:, 0]
+                        frontier_states[:, None, 0]
                     )
                 if self._weights[2] != 0:
                     cost_to_come = self._cost(
                         np.concatenate([lateral_initial_state, observation[1][None, ...]]),
-                        frontier_states[:, 0]
+                        frontier_states[:, None, 0]
                     )
                 if self._weights[3] != 0:
                     cost_to_go = self._cost(
@@ -417,6 +404,7 @@ class BasicGoalSwitcher(GoalSwitcher):
             success_prob = 0.0
         return False, success_prob
 
+
 class TimeoutGoalSwitcher(GoalSwitcher):
     """Goal switcher that switches after running out of time."""
 
@@ -453,7 +441,7 @@ class TimeoutGoalSwitcher(GoalSwitcher):
         # initial_state = self._initial_states[self._rng.integers(len(self._initial_states))]
         # cost_to_come = agent.compute_success_prob(
         #     np.concatenate([initial_state, observation["observation"][1][None, ...]]),
-        #     observation["observation"][:, 0]
+        #     observation["observation"][:, None, 0]
         # )
         # ... = agent_traj_state.phase_steps / cost_to_come  # ???
         if agent_traj_state.current_direction == "forward":
@@ -469,6 +457,7 @@ class TimeoutGoalSwitcher(GoalSwitcher):
         self._window_avg += (obs_is_new - self._window[0]) / self._window_size
         self._window.append(obs_is_new)
         return self._window_avg >= self._threshold, success_prob
+
 
 class SuccessProbabilityGoalSwitcher(GoalSwitcher):
     """Goal switcher that switches goals based on the success probability of the
