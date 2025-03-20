@@ -74,7 +74,7 @@ kwargs:
           frontier_proportion: 1
           max_visitations: 10
           k: 1
-          weights: [1, 0, 1, 0]
+          weights: [1, 1, 1, 1]
           oracle: false
       goal_switcher:
         #name: BasicGoalSwitcher  # episodic
@@ -98,7 +98,7 @@ kwargs:
   loggers:
   - name: WandbLogger
     kwargs:
-      name: TinyRoom_FbL_1.0_0.0_1.0_0.0
+      name: TinyRoom_SIERL_succ-probs_oracle2
       project: Debug
       resume: allow
       start_method: fork

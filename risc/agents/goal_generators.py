@@ -255,17 +255,17 @@ class OmniGoalGenerator(GoalGenerator):
         )
         if self._oracle:
             agent = agent._oracle
-            states = np.concatenate([observations, goals], axis=1)
-            confidence = -1 / np.array([agent.value(state) for state in states]).squeeze()
-        else:
-            # TODO: use new definition
-            with torch.no_grad():
-                observations = torch.tensor(observations, device=agent._device)
-                goals = torch.tensor(goals, device=agent._device)
-                states = torch.cat([observations, goals], dim=1)
-                confidence = -1 / agent._qnet(states).amax(dim=1).cpu().numpy()
-        # confidence = np.array([agent.compute_success_prob(observation, goal)
-        #                        for observation, goal in zip(observations, goals)])
+        #    states = np.concatenate([observations, goals], axis=1)
+        #    confidence = -1 / np.array([agent.value(state) for state in states]).squeeze()
+        #else:
+        #    # TODO: use new definition
+        #    with torch.no_grad():
+        #        observations = torch.tensor(observations, device=agent._device)
+        #        goals = torch.tensor(goals, device=agent._device)
+        #        states = torch.cat([observations, goals], dim=1)
+        #        confidence = -1 / agent._qnet(states).amax(dim=1).cpu().numpy()
+        confidence = np.array([agent.compute_success_prob(observation, goal)
+                               for observation, goal in zip(observations, goals)])
         return confidence
 
     def _cost(self, *args, **kwargs):
