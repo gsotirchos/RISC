@@ -164,7 +164,7 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
 
         obs = self.gen_obs()
         #print(f"Next state: {np.flip(np.argwhere(obs['observation'][0] == 255)[..., -2:].squeeze(), axis=-1).tolist()}")
-        breakpoint()
+        #breakpoint()
 
         return obs, reward, terminated, truncated, {}
 
