@@ -434,10 +434,11 @@ class TimeoutGoalSwitcher(GoalSwitcher):
 
     def should_switch(self, update_info, agent_traj_state):
         agent = self._forward_agent if agent_traj_state.forward else self._backward_agent
-        success_prob = agent.compute_success_prob(  # = cost-to-go
-            update_info.observation["observation"],
-            agent_traj_state.current_goal
-        )
+        success_prob = 0.0
+        # success_prob = agent.compute_success_prob(  # = cost-to-go
+        #     update_info.observation["observation"],
+        #     agent_traj_state.current_goal
+        # )
         # initial_state = self._initial_states[self._rng.integers(len(self._initial_states))]
         # cost_to_come = agent.compute_success_prob(
         #     np.concatenate([initial_state, observation["observation"][1][None, ...]]),
