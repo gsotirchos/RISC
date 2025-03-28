@@ -425,7 +425,7 @@ def get_minigrid_envs(
         get_distance_fn=partial(
             get_distance_calculator, initial_state=initial_obs["observation"]
         ),
-        goal_states=get_goals(initial_obs["desired_goal"][0], all_obs),
+        goal_states=get_goals(initial_obs["desired_goal"], all_obs),
         initial_states=[initial_obs["observation"][0:1]],
         forward_demos=None,
         backward_demos=None,
