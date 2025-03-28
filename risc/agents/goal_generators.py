@@ -158,71 +158,10 @@ class OmniGoalGenerator(GoalGenerator):
             return
         print(prefix + f"\033[{color_code}{text}\033[0m")
 
-    def _get_knn_dist_dict(self, visitations, distances):
-        all_visited_states = np.array(list(visitations.keys()))
-        self._dbg_print(f"all_visited_states: {self._dbg_format(all_visited_states[:, 0])}")
-        if self._max_visitations == 0 or self._max_visitations >= max(visitations.values()):
-            newly_visited_states = all_visited_states
-        else:
-            newly_visited_states = np.array(
-                [state for state, count in visitations.items() if count <= self._max_visitations]
-            )
-            if newly_visited_states.size == 0:
-                newly_visited_states = all_visited_states
-        self._dbg_print(f"newly_visited_states: {self._dbg_format(newly_visited_states[:, 0])}")
-        knn_dist_dict = HashableKeyDict()
-        self._dbg_print("neighbors_dists:")
-        for state in newly_visited_states:
-            neighbors_dists = np.array([dist for dist in distances[state].values() if dist != 0])
-            self._dbg_print(neighbors_dists, "    ")
-            k = min(len(neighbors_dists), self._k)
-            knn_dist_dict[state] = np.mean(np.partition(neighbors_dists, k-1)[:k])
-        self._dbg_print("knn_dist_dict[newly_visited_states]:")
-        for state, dist in knn_dist_dict.items():
-            self._dbg_print(f"{self._dbg_format(state[0])}: {dist}", "     ")
-        if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
-            print("visualizing knn")
-            self._logger.log_metrics(
-                {f"{self._k}-nn_mean_distance": heatmap(
-                    newly_visited_states,
-                    np.array(list(knn_dist_dict.values())),
-                    logscale=True
-                )},
-                f"{self._lateral_agent._id.removesuffix('_agent')}_goal_generator",
-            )
-        return knn_dist_dict
-
-    def _get_num_untried_actions(self, counts):
-        num_possible_actions = self._lateral_agent._action_space.n
-        return {state: num_possible_actions - len(actions) for state, actions in counts.items()}
-
-    def _get_proportion(self, dictionary, proportion):
-        num_keys = int(np.ceil(proportion * len(dictionary)))
-        if num_keys >= len(dictionary):
-            return np.array(list(dictionary.keys()))
-        keys, values = np.array(list(dictionary.keys())), np.array(list(dictionary.values()))
-        sorted_indices = np.argsort(values)[::-1]
-        sorted_keys, sorted_values = keys[sorted_indices], values[sorted_indices]
-        # get valid values with random tie breaking
-        cutoff_value = sorted_values[num_keys - 1]
-        greater_mask = sorted_values > cutoff_value
-        m = np.sum(greater_mask)
-        if m >= num_keys:
-            return sorted_keys[greater_mask]
-        threshold_keys = sorted_keys[sorted_values == cutoff_value]
-        random_indices = np.random.choice(len(threshold_keys), size=num_keys - m, replace=False)
-        return np.concatenate([sorted_keys[greater_mask], threshold_keys[random_indices]])
-
     def _get_frontier(self):
         counts = self._lateral_agent._replay_buffer.action_counts
         if len(counts) == 0:
             return None, None
-        #return np.array(list(counts.keys()))
-        #visitations = self._lateral_agent._replay_buffer.visitations
-        #distances = self._lateral_agent._replay_buffer.distances
-        #knn_dist_dict = self._get_knn_dist_dict(visitations, distances)
-        #untried_actions_counts = self._get_num_untried_actions(counts)
-        #frontier_states = self._get_proportion(untried_actions_counts, self._proportion)
         if (self._max_visitations == 0
                 or self._max_visitations < min(counts.values())
                 or self._max_visitations >= max(counts.values())):
@@ -256,7 +195,6 @@ class OmniGoalGenerator(GoalGenerator):
         return confidence
 
     def _cost(self, *args, **kwargs):
-        # TODO: use a distribution
         return 1 / (self._confidence(*args, **kwargs) + epsilon)
         # return self._confidence(*args, **kwargs)  # alt. cost
 
@@ -296,6 +234,7 @@ class OmniGoalGenerator(GoalGenerator):
                 cost_to_come = np.zeros(len(frontier_states))
                 cost_to_go = np.zeros(len(frontier_states))
                 if self._weights[0] != 0:
+                    # TODO: use a distribution
                     novelty_cost = sigmoid(self._novelty(frontier_states, frontier_actions))
                     # novelty_cost = sigmoid(zscore(1 / (self._novelty(frontier_states) + epsilon)))
                 if self._weights[1] != 0:
@@ -321,12 +260,6 @@ class OmniGoalGenerator(GoalGenerator):
                         + cost_to_go * self._weights[3]
                     )
                 )
-                # priority = softmax(  # alt. cost
-                #     novelty_cost ** self._weights[0]
-                #     * cost_to_reach ** self._weights[1]
-                #     * cost_to_come ** self._weights[2]
-                #     * cost_to_go ** self._weights[3]
-                # )
                 goal_idx = np.random.choice(len(priority), p=priority)  # np.argmin(priority)
                 goal = frontier_states[goal_idx, 0][None, ...], frontier_actions[goal_idx].squeeze()
                 self._dbg_print(f"visitations: {(1 / self._novelty(frontier_states, frontier_actions)).astype(int)}", "   ")
@@ -435,6 +368,7 @@ class TimeoutGoalSwitcher(GoalSwitcher):
     def should_switch(self, update_info, agent_traj_state):
         agent = self._forward_agent if agent_traj_state.forward else self._backward_agent
         success_prob = 0.0
+        # TODO: oracle
         # success_prob = agent.compute_success_prob(  # = cost-to-go
         #     update_info.observation["observation"],
         #     agent_traj_state.current_goal
