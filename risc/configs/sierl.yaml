@@ -52,11 +52,11 @@ kwargs:
               steps: 10000
           loss_fn:
             name: MSELoss
-          min_replay_history: 512
-          replay_buffer:
-            name: CircularReplayBuffer
+          optimizer_fn:
+            name: Adam
             kwargs:
-              capacity: 100000
+              lr: 0.0003
+          min_replay_history: 512
           representation_net:
             name: ConvNetwork
             kwargs:
