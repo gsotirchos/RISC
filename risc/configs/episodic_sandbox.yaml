@@ -3,7 +3,7 @@ kwargs:
   experiment_manager:
     name: Experiment
     kwargs:
-      name: TinyRoom_sandbox
+      name: episodic_sandbox
       save_dir: experiment
       saving_schedule:
         name: PeriodicSchedule
@@ -79,17 +79,15 @@ kwargs:
         kwargs:
           debug: true
           vis_frequency: 200
-          frontier_proportion: 1
-          max_visitations: 10
-          k: 1
-          use_success_prob: false
           weights: [1, 1, 1, 1]
+          max_visitations: 10
+          use_success_prob: false
           oracle: true
       phase_step_limit: 10
       goal_switcher:
         #name: BasicGoalSwitcher  # episodic
-        name: TimeoutGoalSwitcher
         #name: SuccessProbabilityGoalSwitcher  # reset-free
+        name: TimeoutGoalSwitcher
         kwargs:
           threshold: 0.75
           window_size: 5
@@ -107,7 +105,7 @@ kwargs:
   loggers:
   # - name: WandbLogger
   #   kwargs:
-  #     name: TinyRoom_sandbox
+  #     name: episodic_sandbox
   #     project: Debug
   #     resume: allow
   #     start_method: fork

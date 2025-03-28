@@ -118,9 +118,7 @@ class OmniGoalGenerator(GoalGenerator):
         initial_states,
         goal_states,
         weights,
-        frontier_proportion: float = 0.5,
         max_visitations: int = 0,
-        k: int = 4,
         use_success_prob: bool = False,
         oracle: bool = False,
         log_frequency: int = 10,
@@ -140,9 +138,7 @@ class OmniGoalGenerator(GoalGenerator):
         self._initial_states = initial_states
         self._goal_states = goal_states
         self._weights = weights
-        self._proportion = frontier_proportion
         self._max_visitations = max_visitations
-        self._k = k
         self._use_success_prob = use_success_prob
         self._debug = debug
 
