@@ -84,7 +84,7 @@ kwargs:
       separate_agents: false
       local_visitation_vis_frequency: 200
       oracle: false
-      directions: [forward, forward]
+      directions: forward
   loggers:
   - name: WandbLogger
     kwargs:

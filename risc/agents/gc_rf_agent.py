@@ -109,7 +109,7 @@ class GCResetFree(Agent):
             never_truncate: Whether to truncate trajectories on phase_step_limit.
             use_demo: Whether to use the demo.
         """
-        self._directions = deque(directions)
+        self._directions = np.array(directions).flatten()
         self._separate_agents = separate_agents
         distance_fn = get_distance_fn(distance_type=distance_type)
         super().__init__(observation_space, action_space, id)
@@ -183,7 +183,7 @@ class GCResetFree(Agent):
         if self._vis_fn is not None:
             self._local_metrics = {}
             self._global_metrics = {}
-            for direction in directions:
+            for direction in self._directions:
                 self._local_metrics[direction] = {}
                 self._global_metrics[direction] = {}
                 for metric in ["observation", "desired_goal"]:
@@ -210,7 +210,7 @@ class GCResetFree(Agent):
             self._id, PeriodicSchedule(False, True, log_frequency)
         )
         self._timescale = self.id
-        self._phase_step_limit = phase_step_limit
+        self._phase_step_limit = np.roll(phase_step_limit, 1).flatten()
         self._use_termination_signal = use_termination_signal
         self._log_success = log_success
         self._never_truncate = never_truncate
@@ -375,7 +375,7 @@ class GCResetFree(Agent):
         should_switch, success_prob = self._goal_switcher.should_switch(
             update_info, agent_traj_state
         )
-        failure = agent_traj_state.phase_steps >= self._phase_step_limit
+        failure = agent_traj_state.phase_steps >= self._phase_step_limit[0]
 
         truncated = not terminated and (failure or should_switch)
         truncated = truncated or update_info.truncated
@@ -406,11 +406,11 @@ class GCResetFree(Agent):
         """ Get the current direction by cycling over them.
         If it is "lateral" then the agent is determined by the next direction. """
         current_direction = self._directions[0]
-        next_direction = self._directions[1]
-        self._directions.rotate(-1)
+        self._directions = np.roll(self._directions, -1)
+        self._phase_step_limit = np.roll(self._phase_step_limit, -1)
+        next_direction = self._directions[0]
         #forward = (not agent_traj_state.forward)
-        forward = (next_direction == "forward") \
-            if current_direction == "lateral" \
+        forward = (next_direction == "forward") if current_direction == "lateral" \
             else (current_direction == "forward")
         return replace(
             agent_traj_state,

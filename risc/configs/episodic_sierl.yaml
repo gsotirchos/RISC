@@ -80,7 +80,7 @@ kwargs:
           max_visitations: 5
           use_success_prob: false
           oracle: false
-      phase_step_limit: 450
+      phase_step_limit: [400, 1, 100]
       goal_switcher:
         #name: BasicGoalSwitcher  # episodic
         #name: SuccessProbabilityGoalSwitcher  # reset-free
