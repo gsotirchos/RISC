@@ -307,7 +307,7 @@ class GoalSwitcher(Registrable):
     def type_name(cls):
         return "goal_switcher"
 
-    def should_switch(self, observation, agent_traj_state):
+    def should_switch(self, update_info, agent_traj_state):
         raise NotImplementedError
 
 
@@ -423,14 +423,14 @@ class SuccessProbabilityGoalSwitcher(GoalSwitcher):
         self._trajectory_proportion = trajectory_proportion
         self._oracle = oracle
 
-    def should_switch(self, observation, agent_traj_state):
+    def should_switch(self, update_info, agent_traj_state):
         agent = (
             self._forward_agent if agent_traj_state.forward else self._backward_agent
         )
         if self._oracle:
             agent = agent._oracle
         success_prob = agent.compute_success_prob(
-            observation["observation"], agent_traj_state.current_goal
+           update_info.observation["observation"], agent_traj_state.current_goal
         )
         if (agent_traj_state.current_direction == "backward" and not self._switch_on_backward
               or agent_traj_state.current_direction == "forward" and not self._switch_on_forward
