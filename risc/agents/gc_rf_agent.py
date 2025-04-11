@@ -20,7 +20,7 @@ import pickle
 @dataclass(frozen=True)
 class GCAgentState:
     subagent_traj_state: Any = None
-    current_direction: str = None
+    current_direction: str | None = None
     current_goal: Any = None
     next_action: Any = None
     forward: bool = True
