@@ -224,7 +224,7 @@ class OmniGoalGenerator(GoalGenerator):
             if len(frontier_states) == 1:
                 self._dbg_print(f"goal state: {self._dbg_format(frontier_states[:, 0])}","   ")
                 self._dbg_print(f"goal action: {None}", "   ")
-                return frontier_states[:, 0], frontier_actions
+                return frontier_states[:, 0], frontier_actions.squeeze()
             novelty_cost = np.zeros(len(frontier_states))
             cost_to_reach = np.zeros(len(frontier_states))
             cost_to_come = np.zeros(len(frontier_states))
@@ -257,7 +257,7 @@ class OmniGoalGenerator(GoalGenerator):
                 )
             )
             goal_idx = np.random.choice(len(priority), p=priority)  # np.argmin(priority)
-            goal = frontier_states[goal_idx, 0][None, ...], frontier_actions[goal_idx].squeeze()
+            goal = frontier_states[goal_idx, 0][None, ...], frontier_actions[goal_idx]
             self._dbg_print(f"visitations: {(1 / self._novelty(frontier_states, frontier_actions)).astype(int)}", "   ")
             # self._dbg_print(f"stdzed vis.: {zscore(1 / self._novelty(frontier_states, frontier_actions))}", "   ")
             self._dbg_print(f"novelty costs: {novelty_cost}", "   ")
