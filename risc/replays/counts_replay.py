@@ -1,5 +1,6 @@
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
+from functools import wraps
 
 import numpy as np
 
@@ -16,8 +17,8 @@ class HashableKeyDict(defaultdict):
         else:
             super().__init__(default, **kwargs)
 
-    @staticmethod
-    def to_hashable(obj):
+    #@staticmethod
+    def to_hashable(self, obj):
         def _to_hashable(obj):
             if isinstance(obj, (np.number, str, int, float, bool, bytes)) or obj is None:
                 return obj
@@ -27,8 +28,9 @@ class HashableKeyDict(defaultdict):
                 raise KeyError(f"Key {obj} cannot be converted to hashable type")
         return _to_hashable(obj)
 
-    @staticmethod
+    #@staticmethod
     def hashable_key(method):
+        @wraps(method)
         def wrapper(self, key, *args, **kwargs):
             key = self.to_hashable(key)
             return method(self, key, *args, **kwargs)
@@ -81,8 +83,9 @@ class SymmetricMatrix(Mapping):
     def __init__(self):
         self._views = HashableKeyDict(HashableKeyDict)
 
-    @staticmethod
+    #@staticmethod
     def process_key(method):
+        @wraps(method)
         def wrapper(self, key, *args, **kwargs):
             key_error = KeyError("All keys must be NumPy arrays")
             if isinstance(key, np.ndarray):
@@ -228,7 +231,7 @@ class CountsReplayBuffer(CircularReplayBuffer):
             self.state_counts[overwritten_next_state] -= 1
             if len(self.state_counts[overwritten_next_state]) <= 0:
                 del self.state_counts[overwritten_next_state]
-            #     # del self.distances[overwrittan_next_state]
+                # del self.distances[overwrittan_next_state]
         new_state = transition["observation"]
         new_action = transition["action"]
         new_next_state = transition["next_observation"]

@@ -1,4 +1,4 @@
-from functools import partial
+from functools import partial, wraps
 
 import gymnasium as gym
 import numpy as np
@@ -135,10 +135,11 @@ class GoalConditionedMixin:
 
         return super().act(observation, agent_traj_state)
 
-    @staticmethod
+    #@staticmethod
     def concat_obs_goal(method):
         """Takes in an observation (np.ndarray) and a goal (np.ndarray) and
         passes the observation-goal pair as the input to the wrapped method."""
+        @wraps(method)
         def wrapper(self, observations, goals, *args, **kwargs):
             if len(observations.shape) == len(self._observation_space.shape):
                 observations = np.expand_dims(observations, axis=0)

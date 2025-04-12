@@ -142,7 +142,7 @@ class OmniGoalGenerator(GoalGenerator):
         self._use_success_prob = use_success_prob
         self._debug = debug
 
-    def _dbg_format(self, states: np.ndarray, actions: np.ndarray | None = None, value: int = 255):
+    def _dbg_format(self, states: np.ndarray, actions: np.ndarray = None, value: int = 255):
         positions = np.flip(np.argwhere(np.array(states) == value)[..., -2:].squeeze(), axis=-1)
         if actions is not None:
             return list(zip(positions.tolist(), actions.tolist()))
@@ -200,90 +200,90 @@ class OmniGoalGenerator(GoalGenerator):
         goal_state = self._goal_states[self._rng.integers(len(self._goal_states))]
         self._dbg_print(f"observation: {self._dbg_format(observation[0])}")
         self._dbg_print(f"curent direction: {agent_traj_state.current_direction}")
-        match agent_traj_state.current_direction.removeprefix("teleport_"):
-            case "forward":
-                goal = goal_state, None
-            case "backward":
-                goal = initial_state, None
-            case "lateral":
-                if agent_traj_state.forward:
-                    self._lateral_agent = self._forward_agent
-                    lateral_initial_state = initial_state
-                    lateral_goal_state = goal_state
-                else:
-                    self._lateral_agent = self._backward_agent
-                    lateral_initial_state = goal_state
-                    lateral_goal_state = initial_state
-                frontier_states, frontier_actions = self._get_frontier()
-                self._dbg_print(f"frontier state-actions: {self._dbg_format(frontier_states[:, 0], frontier_actions)}")
-                if frontier_states is None:
-                    self._dbg_print("no frontier states yet", "   ")
-                    self._dbg_print(f"goal state: {self._dbg_format(initial_state)}", "   ")
-                    self._dbg_print(f"goal action: {None}", "   ")
-                    return (goal_state, None) if agent_traj_state.forward else (initial_state, None)
-                if len(frontier_states) == 1:
-                    self._dbg_print(f"goal state: {self._dbg_format(frontier_states[:, 0])}","   ")
-                    self._dbg_print(f"goal action: {None}", "   ")
-                    return frontier_states[:, 0], frontier_actions
-                novelty_cost = np.zeros(len(frontier_states))
-                cost_to_reach = np.zeros(len(frontier_states))
-                cost_to_come = np.zeros(len(frontier_states))
-                cost_to_go = np.zeros(len(frontier_states))
-                if self._weights[0] != 0:
-                    # TODO: use a distribution
-                    novelty_cost = sigmoid(self._novelty(frontier_states, frontier_actions))
-                    # novelty_cost = sigmoid(zscore(1 / (self._novelty(frontier_states) + epsilon)))
-                if self._weights[1] != 0:
-                    cost_to_reach = self._cost(
-                        observation,
-                        frontier_states[:, None, 0]
-                    )
-                if self._weights[2] != 0:
-                    cost_to_come = self._cost(
-                        np.concatenate([lateral_initial_state, observation[1][None, ...]]),
-                        frontier_states[:, None, 0]
-                    )
-                if self._weights[3] != 0:
-                    cost_to_go = self._cost(
-                        frontier_states,
-                        lateral_goal_state
-                    )
-                priority = softmin(
-                    novelty_cost ** self._weights[0]
-                    * (
-                        + cost_to_reach * self._weights[1]
-                        + cost_to_come * self._weights[2]
-                        + cost_to_go * self._weights[3]
-                    )
+        curret_direction = agent_traj_state.current_direction.removeprefix("teleport_")
+        if curret_direction == "forward":
+            goal = goal_state, None
+        elif curret_direction == "backward":
+            goal = initial_state, None
+        elif curret_direction == "lateral":
+            if agent_traj_state.forward:
+                self._lateral_agent = self._forward_agent
+                lateral_initial_state = initial_state
+                lateral_goal_state = goal_state
+            else:
+                self._lateral_agent = self._backward_agent
+                lateral_initial_state = goal_state
+                lateral_goal_state = initial_state
+            frontier_states, frontier_actions = self._get_frontier()
+            self._dbg_print(f"frontier state-actions: {self._dbg_format(frontier_states[:, 0], frontier_actions)}")
+            if frontier_states is None:
+                self._dbg_print("no frontier states yet", "   ")
+                self._dbg_print(f"goal state: {self._dbg_format(initial_state)}", "   ")
+                self._dbg_print(f"goal action: {None}", "   ")
+                return (goal_state, None) if agent_traj_state.forward else (initial_state, None)
+            if len(frontier_states) == 1:
+                self._dbg_print(f"goal state: {self._dbg_format(frontier_states[:, 0])}","   ")
+                self._dbg_print(f"goal action: {None}", "   ")
+                return frontier_states[:, 0], frontier_actions
+            novelty_cost = np.zeros(len(frontier_states))
+            cost_to_reach = np.zeros(len(frontier_states))
+            cost_to_come = np.zeros(len(frontier_states))
+            cost_to_go = np.zeros(len(frontier_states))
+            if self._weights[0] != 0:
+                # TODO: use a distribution
+                novelty_cost = sigmoid(self._novelty(frontier_states, frontier_actions))
+                # novelty_cost = sigmoid(zscore(1 / (self._novelty(frontier_states) + epsilon)))
+            if self._weights[1] != 0:
+                cost_to_reach = self._cost(
+                    observation,
+                    frontier_states[:, None, 0]
                 )
-                goal_idx = np.random.choice(len(priority), p=priority)  # np.argmin(priority)
-                goal = frontier_states[goal_idx, 0][None, ...], frontier_actions[goal_idx].squeeze()
-                self._dbg_print(f"visitations: {(1 / self._novelty(frontier_states, frontier_actions)).astype(int)}", "   ")
-                # self._dbg_print(f"stdzed vis.: {zscore(1 / self._novelty(frontier_states, frontier_actions))}", "   ")
-                self._dbg_print(f"novelty costs: {novelty_cost}", "   ")
-                self._dbg_print(f"priority: {np.round(priority, 3)}", "   ")
-                if self._log_schedule.update() and not isinstance(self._logger, NullLogger):
-                    self._logger.log_metrics(
-                        {
-                            "goal/novelty_cost": novelty_cost[goal_idx],
-                            "goal/cost_to_reach": cost_to_reach[goal_idx],
-                            "goal/cost_to_come": cost_to_come[goal_idx],
-                            "goal/cost_to_go": cost_to_go[goal_idx],
-                        },
-                        f"{self._lateral_agent._id.removesuffix('_agent')}_goal_generator",
-                    )
-                if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
-                    self._logger.log_metrics(
-                        {
-                            # TODO:
-                            # "novelty_cost": heatmap(frontier_states, novelty_cost, logscale=True),
-                            "cost_to_reach": heatmap(frontier_states, cost_to_reach, vmin=0),
-                            "cost_to_come": heatmap(frontier_states, cost_to_come, vmin=0),
-                            "cost_to_go": heatmap(frontier_states, cost_to_go, vmin=0),
-                            "priority": heatmap(frontier_states, priority, logscale=True),
-                        },
-                        f"{self._lateral_agent._id.removesuffix('_agent')}_goal_generator",
-                    )
+            if self._weights[2] != 0:
+                cost_to_come = self._cost(
+                    np.concatenate([lateral_initial_state, observation[1][None, ...]]),
+                    frontier_states[:, None, 0]
+                )
+            if self._weights[3] != 0:
+                cost_to_go = self._cost(
+                    frontier_states,
+                    lateral_goal_state
+                )
+            priority = softmin(
+                novelty_cost ** self._weights[0]
+                * (
+                    + cost_to_reach * self._weights[1]
+                    + cost_to_come * self._weights[2]
+                    + cost_to_go * self._weights[3]
+                )
+            )
+            goal_idx = np.random.choice(len(priority), p=priority)  # np.argmin(priority)
+            goal = frontier_states[goal_idx, 0][None, ...], frontier_actions[goal_idx].squeeze()
+            self._dbg_print(f"visitations: {(1 / self._novelty(frontier_states, frontier_actions)).astype(int)}", "   ")
+            # self._dbg_print(f"stdzed vis.: {zscore(1 / self._novelty(frontier_states, frontier_actions))}", "   ")
+            self._dbg_print(f"novelty costs: {novelty_cost}", "   ")
+            self._dbg_print(f"priority: {np.round(priority, 3)}", "   ")
+            if self._log_schedule.update() and not isinstance(self._logger, NullLogger):
+                self._logger.log_metrics(
+                    {
+                        "goal/novelty_cost": novelty_cost[goal_idx],
+                        "goal/cost_to_reach": cost_to_reach[goal_idx],
+                        "goal/cost_to_come": cost_to_come[goal_idx],
+                        "goal/cost_to_go": cost_to_go[goal_idx],
+                    },
+                    f"{self._lateral_agent._id.removesuffix('_agent')}_goal_generator",
+                )
+            if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
+                self._logger.log_metrics(
+                    {
+                        # TODO:
+                        # "novelty_cost": heatmap(frontier_states, novelty_cost, logscale=True),
+                        "cost_to_reach": heatmap(frontier_states, cost_to_reach, vmin=0),
+                        "cost_to_come": heatmap(frontier_states, cost_to_come, vmin=0),
+                        "cost_to_go": heatmap(frontier_states, cost_to_go, vmin=0),
+                        "priority": heatmap(frontier_states, priority, logscale=True),
+                    },
+                    f"{self._lateral_agent._id.removesuffix('_agent')}_goal_generator",
+                )
         self._dbg_print(f"goal state: {self._dbg_format(goal[0])}", "   ")
         self._dbg_print(f"goal action: {goal[1]}", "   ")
         if self._debug and isinstance(self._logger, NullLogger):

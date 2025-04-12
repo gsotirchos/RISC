@@ -81,7 +81,7 @@ class FourRoomsOracle():
         self._agent2goal_distances =  \
             np.array(list(self._distances[self._agent_cell, self._goal_cell].values()))
 
-    @staticmethod
+    #@staticmethod
     def processobservation(method):
         def wrapper(self, *args, **kwargs):
             self._process_observation(*args)
@@ -157,7 +157,7 @@ class FourRoomsOracle():
     def success_prob(self, observation, goal):
         return 1 / np.min(1 + self._agent2goal_distances)
 
-    @staticmethod
+    #@staticmethod
     def broadcast_obs_goals(method):
         def wrapper(self, observations, goals, *args, **kwargs):
             if len(observations.shape) == len(self._observation_shape):
