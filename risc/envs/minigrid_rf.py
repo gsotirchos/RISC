@@ -420,7 +420,7 @@ def get_minigrid_envs(
         success_fn=success_fn,
         reward_fn=reward_fn,
         replace_goal_fn=replace_goal_fn,
-        all_states_fn=lambda *args: all_obs,
+        all_states_fn=lambda: all_obs,
         vis_fn=create_vis_fn(env_shape),
         get_distance_fn=partial(
             get_distance_calculator, initial_state=initial_obs["observation"]

@@ -6,13 +6,14 @@ import gymnasium as gym
 import minigrid
 import numpy as np
 from gymnasium.envs.registration import register
-from minigrid.core.constants import DIR_TO_VEC
+from minigrid.core.constants import DIR_TO_VEC, COLORS
 from minigrid.core.grid import Grid
 from minigrid.core.mission import MissionSpace
-from minigrid.core.world_object import Goal
+from minigrid.core.world_object import Goal, WorldObj
 from minigrid.core.roomgrid import RoomGrid as _RoomGrid
 from minigrid.envs.empty import EmptyEnv as _EmptyEnv
 from minigrid.envs.fourrooms import FourRoomsEnv as _FourRoomsEnv
+from minigrid.utils.rendering import fill_coords, point_in_rect
 
 
 class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
@@ -138,6 +139,10 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
         if fwd_cell is None or fwd_cell.can_overlap():
             self.agent_pos = tuple(fwd_pos)
             self.agent_dir = action
+        if fwd_cell is not None and fwd_cell.color == "purple":
+            slide_action = fwd_cell.action
+            self.agent_pos += DIR_TO_VEC[slide_action]
+            self.agent_dir = slide_action
         if fwd_cell is not None and fwd_cell.type == "goal":
             terminated = True
             reward = 1.0  # self._reward()
@@ -340,6 +345,7 @@ class BugTrapEnv(MiniGridEnv):
         self.grid.vert_wall(0, 0)
         self.grid.vert_wall(width - 1, 0)
 
+        # Generate bug trap walls
         self.grid.vert_wall(int(width * 0.45), int(height * 0.35), length=int(height * 0.35))
         self.grid.horz_wall(int(width * 0.45), int(height * 0.35), length=int(width * 0.35))
         self.grid.horz_wall(int(width * 0.45), int(height * 0.65), length=int(width * 0.35))
@@ -357,6 +363,50 @@ class BugTrapEnv(MiniGridEnv):
         # self.grid.vert_wall(3, 3, length=height // 2 - 3)
         # self.grid.vert_wall(3, height // 2 + 1, length=height // 2 - 4)
         # self.grid.vert_wall(width - 4, 3, length=height - 6)
+
+        self.place_agent_goal()
+
+
+class HallwayEnv(MiniGridEnv):
+    """Hallway environment."""
+
+    def __init__(self, agent_pos=(6, 9), goal_pos=(9, 9), max_steps=100, **kwargs):
+        self._agent_default_pos = agent_pos
+        self._goal_default_pos = goal_pos
+
+        self.width = self.height = 19
+        mission_space = MissionSpace(mission_func=self._gen_mission)
+
+        super().__init__(
+            mission_space=mission_space,
+            width=self.width,
+            height=self.height,
+            max_steps=max_steps,
+            **kwargs,
+        )
+
+    @staticmethod
+    def _gen_mission():
+        return "reach the goal"
+
+    def _gen_grid(self, width, height):
+        # Create the grid
+        self.grid = Grid(width, height)
+
+        # Generate the surrounding walls
+        self.grid.horz_wall(0, 0)
+        self.grid.horz_wall(0, height - 1)
+        self.grid.vert_wall(0, 0)
+        self.grid.vert_wall(width - 1, 0)
+
+        # Generate hallway walls
+        for i in [5, 6, 7, 8]:
+           self.put_obj(Slide(3), i, 8)
+           self.put_obj(Slide(1), i, 10)
+        self.grid.vert_wall(10, 8, 3)
+        self.grid.horz_wall(9, 8, 1)
+        self.grid.horz_wall(9, 10, 1)
+
 
         self.place_agent_goal()
 
@@ -435,10 +485,37 @@ class EmptyEnv(MiniGridEnv, _EmptyEnv):
         )
 
 
+class Slide(WorldObj):
+    def __init__(self, action):
+        self.action = action
+        super().__init__("wall", "purple")
+
+    def can_overlap(self) -> bool:
+        """Can the agent overlap with this?"""
+        return True
+
+    def can_pickup(self) -> bool:
+        """Can the agent pick this up?"""
+        return False
+
+    def can_contain(self) -> bool:
+        """Can this contain another object?"""
+        return False
+
+    def see_behind(self) -> bool:
+        """Can the agent see behind this object?"""
+        return True
+
+    def render(self, img):
+        """Draw this object with the given renderer"""
+        fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS[self.color])
+
+
 register(id="MiniGrid-TwoRooms-v1", entry_point="envs.minigrid_envs:TwoRoomsEnv")
 register(id="MiniGrid-FourRooms-v1", entry_point="envs.minigrid_envs:FourRoomsEnv")
 register(id="MiniGrid-TinyRoom-v1", entry_point="envs.minigrid_envs:TinyRoomEnv")
 register(id="MiniGrid-BugTrap-v1", entry_point="envs.minigrid_envs:BugTrapEnv")
+register(id="MiniGrid-Hallway-v1", entry_point="envs.minigrid_envs:HallwayEnv")
 register(id="MiniGrid-LockedDoor-v1", entry_point="envs.minigrid_envs:LockedDoorEnv")
 
 for size in range(4, 20, 2):
