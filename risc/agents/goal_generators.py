@@ -2,7 +2,7 @@ from collections import deque
 from dataclasses import replace
 
 import matplotlib.pyplot as plt
-import torch
+#import torch
 import numpy as np
 import wandb
 from envs.utils import heatmap as _heatmap
@@ -11,7 +11,7 @@ from hive.utils.loggers import Logger, NullLogger
 from hive.utils.registry import Registrable
 from hive.utils.schedule import PeriodicSchedule
 from hive.utils.utils import seeder
-from replays.counts_replay import HashableKeyDict
+#from replays.counts_replay import HashableKeyDict
 from scipy.special import expit as sigmoid
 from scipy.special import softmax
 
@@ -224,7 +224,7 @@ class OmniGoalGenerator(GoalGenerator):
             if len(frontier_states) == 1:
                 self._dbg_print(f"goal state: {self._dbg_format(frontier_states[:, 0])}","   ")
                 self._dbg_print(f"goal action: {None}", "   ")
-                return frontier_states[:, 0], frontier_actions.squeeze()
+                return frontier_states[:, 0], frontier_actions[0]
             novelty_cost = np.zeros(len(frontier_states))
             cost_to_reach = np.zeros(len(frontier_states))
             cost_to_come = np.zeros(len(frontier_states))
