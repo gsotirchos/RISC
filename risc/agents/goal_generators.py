@@ -129,7 +129,6 @@ class OmniGoalGenerator(GoalGenerator):
         super().__init__(logger, **kwargs)
         self._forward_agent = forward_agent
         self._backward_agent = backward_agent
-        self._lateral_agent = None
         self._oracle = oracle
         self._logger = logger
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_switcher"))
@@ -154,8 +153,16 @@ class OmniGoalGenerator(GoalGenerator):
             return
         print(prefix + f"\033[{color_code}{text}\033[0m")
 
-    def _get_frontier(self):
-        counts = self._lateral_agent._replay_buffer.action_counts
+    def _get_agent_init_goal_states(self, agent_traj_state):
+        forward_initial_state = self._initial_states[self._rng.integers(len(self._initial_states))]
+        forward_goal_state = self._goal_states[self._rng.integers(len(self._goal_states))]
+        if agent_traj_state.forward:
+            return self._forward_agent, forward_initial_state, forward_goal_state
+        else:
+            return self._backward_agent, forward_goal_state, forward_initial_state
+
+    def _get_frontier(self, agent):
+        counts = agent._replay_buffer.action_counts
         if len(counts) == 0:
             return None, None
         if (self._max_visitations == 0
@@ -170,18 +177,16 @@ class OmniGoalGenerator(GoalGenerator):
         frontier_states, frontier_actions = zip(*frontier_state_actions)
         return np.array(frontier_states), np.array(frontier_actions)
 
-    def _novelty(self, states, actions = None):
-        if states.ndim == len(self._lateral_agent._observation_space.shape):
+    def _novelty(self, agent, states, actions = None):
+        if states.ndim == len(agent._observation_space.shape):
             states = np.expand_dims(states, axis=0)
         if actions is not None:
             states = list(zip(states.tolist(), actions.tolist()))
-        counts = self._lateral_agent._replay_buffer.action_counts
+        counts = agent._replay_buffer.action_counts
         novelties = np.array([1 / (counts[state] + epsilon) for state in states])
         return novelties
 
-    def _confidence(self, observations, goals, agent=None):
-        if agent is None:
-            agent = self._lateral_agent
+    def _confidence(self, agent, observations, goals):
         if self._oracle:
             agent = agent._oracle
         if self._use_success_prob:
@@ -192,29 +197,61 @@ class OmniGoalGenerator(GoalGenerator):
 
     def _cost(self, *args, **kwargs):
         return 1 / (self._confidence(*args, **kwargs) + epsilon)
-        # return self._confidence(*args, **kwargs)  # alt. cost
+        #return self._confidence(*args, **kwargs)  # alt. cost
+
+    def _calculate_priority(
+        self,
+        agent,
+        observation,
+        initial_state,
+        goal_state,
+        frontier_states,
+        frontier_actions
+    ):
+        novelty_cost = np.zeros(len(frontier_states))
+        cost_to_reach = np.zeros(len(frontier_states))
+        cost_to_come = np.zeros(len(frontier_states))
+        cost_to_go = np.zeros(len(frontier_states))
+        if self._weights[0] != 0:
+            # TODO: use a distribution
+            novelty_cost = sigmoid(self._novelty(agent, frontier_states, frontier_actions))
+            #novelty_cost = sigmoid(zscore(1 / (self._novelty(agent, frontier_states, frontier_actions) + epsilon)))
+        if self._weights[1] != 0:
+            cost_to_reach = self._cost(
+                agent,
+                observation,
+                frontier_states[:, None, 0]
+            )
+        if self._weights[2] != 0:
+            cost_to_come = self._cost(
+                agent,
+                np.concatenate([initial_state, observation[1][None, ...]]),
+                frontier_states[:, None, 0]
+            )
+        if self._weights[3] != 0:
+            cost_to_go = self._cost(
+                agent,
+                frontier_states,
+                goal_state
+            )
+        priority = softmin(
+            novelty_cost ** self._weights[0]
+            * (
+                + cost_to_reach * self._weights[1]
+                + cost_to_come * self._weights[2]
+                + cost_to_go * self._weights[3]
+            )
+        )
+        return priority, novelty_cost, cost_to_reach, cost_to_come, cost_to_go
 
     def generate_goal(self, observation, agent_traj_state):
         observation = observation["observation"]
-        initial_state = self._initial_states[self._rng.integers(len(self._initial_states))]
-        goal_state = self._goal_states[self._rng.integers(len(self._goal_states))]
         self._dbg_print(f"observation: {self._dbg_format(observation[0])}")
         self._dbg_print(f"curent direction: {agent_traj_state.current_direction}")
+        agent, initial_state, goal_state = self._get_agent_init_goal_states(agent_traj_state)
         curret_direction = agent_traj_state.current_direction.removeprefix("teleport_")
-        if curret_direction == "forward":
-            goal = goal_state, None
-        elif curret_direction == "backward":
-            goal = initial_state, None
-        elif curret_direction == "lateral":
-            if agent_traj_state.forward:
-                self._lateral_agent = self._forward_agent
-                lateral_initial_state = initial_state
-                lateral_goal_state = goal_state
-            else:
-                self._lateral_agent = self._backward_agent
-                lateral_initial_state = goal_state
-                lateral_goal_state = initial_state
-            frontier_states, frontier_actions = self._get_frontier()
+        if curret_direction == "lateral":
+            frontier_states, frontier_actions = self._get_frontier(agent)
             self._dbg_print(f"frontier state-actions: {self._dbg_format(frontier_states[:, 0], frontier_actions)}")
             if frontier_states is None:
                 self._dbg_print("no frontier states yet", "   ")
@@ -225,41 +262,23 @@ class OmniGoalGenerator(GoalGenerator):
                 self._dbg_print(f"goal state: {self._dbg_format(frontier_states[:, 0])}","   ")
                 self._dbg_print(f"goal action: {None}", "   ")
                 return frontier_states[:, 0], frontier_actions[0]
-            novelty_cost = np.zeros(len(frontier_states))
-            cost_to_reach = np.zeros(len(frontier_states))
-            cost_to_come = np.zeros(len(frontier_states))
-            cost_to_go = np.zeros(len(frontier_states))
-            if self._weights[0] != 0:
-                # TODO: use a distribution
-                novelty_cost = sigmoid(self._novelty(frontier_states, frontier_actions))
-                # novelty_cost = sigmoid(zscore(1 / (self._novelty(frontier_states) + epsilon)))
-            if self._weights[1] != 0:
-                cost_to_reach = self._cost(
-                    observation,
-                    frontier_states[:, None, 0]
-                )
-            if self._weights[2] != 0:
-                cost_to_come = self._cost(
-                    np.concatenate([lateral_initial_state, observation[1][None, ...]]),
-                    frontier_states[:, None, 0]
-                )
-            if self._weights[3] != 0:
-                cost_to_go = self._cost(
-                    frontier_states,
-                    lateral_goal_state
-                )
-            priority = softmin(
-                novelty_cost ** self._weights[0]
-                * (
-                    + cost_to_reach * self._weights[1]
-                    + cost_to_come * self._weights[2]
-                    + cost_to_go * self._weights[3]
-                )
+            (
+                priority,
+                novelty_cost,
+                cost_to_reach,
+                cost_to_come,cost_to_go
+            ) = self._calculate_priority(
+                agent,
+                observation,
+                initial_state,
+                goal_state,
+                frontier_states,
+                frontier_actions
             )
             goal_idx = np.random.choice(len(priority), p=priority)  # np.argmin(priority)
             goal = frontier_states[goal_idx, 0][None, ...], frontier_actions[goal_idx]
             self._dbg_print(f"visitations: {(1 / self._novelty(frontier_states, frontier_actions)).astype(int)}", "   ")
-            # self._dbg_print(f"stdzed vis.: {zscore(1 / self._novelty(frontier_states, frontier_actions))}", "   ")
+            #self._dbg_print(f"stdzed vis.: {zscore(1 / self._novelty(frontier_states, frontier_actions))}", "   ")
             self._dbg_print(f"novelty costs: {novelty_cost}", "   ")
             self._dbg_print(f"priority: {np.round(priority, 3)}", "   ")
             if self._log_schedule.update() and not isinstance(self._logger, NullLogger):
@@ -270,20 +289,22 @@ class OmniGoalGenerator(GoalGenerator):
                         "goal/cost_to_come": cost_to_come[goal_idx],
                         "goal/cost_to_go": cost_to_go[goal_idx],
                     },
-                    f"{self._lateral_agent._id.removesuffix('_agent')}_goal_generator",
+                    f"{agent._id.removesuffix('_agent')}_goal_generator",
                 )
             if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
                 self._logger.log_metrics(
                     {
                         # TODO:
-                        # "novelty_cost": heatmap(frontier_states, novelty_cost, logscale=True),
+                        #"novelty_cost": heatmap(frontier_states, novelty_cost, logscale=True),
                         "cost_to_reach": heatmap(frontier_states, cost_to_reach, vmin=0),
                         "cost_to_come": heatmap(frontier_states, cost_to_come, vmin=0),
                         "cost_to_go": heatmap(frontier_states, cost_to_go, vmin=0),
                         "priority": heatmap(frontier_states, priority, logscale=True),
                     },
-                    f"{self._lateral_agent._id.removesuffix('_agent')}_goal_generator",
+                    f"{agent._id.removesuffix('_agent')}_goal_generator",
                 )
+        else:  # curret_direction != "lateral"
+            goal = goal_state, None
         self._dbg_print(f"goal state: {self._dbg_format(goal[0])}", "   ")
         self._dbg_print(f"goal action: {goal[1]}", "   ")
         if self._debug and isinstance(self._logger, NullLogger):
@@ -346,7 +367,7 @@ class TimeoutGoalSwitcher(GoalSwitcher):
         log_frequency: int = 25,
         threshold: float = 0.75,
         window_size: int = 5,
-        # oracle: bool = False,
+        #oracle: bool = False,
         **kwargs,
     ):
         self._forward_agent = forward_agent
@@ -355,7 +376,7 @@ class TimeoutGoalSwitcher(GoalSwitcher):
         self._logger = logger
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_switcher"))
         self._log_schedule = PeriodicSchedule(False, True, log_frequency)
-        # self._oracle = oracle
+        #self._oracle = oracle
         self._threshold = threshold
         self._window_size = window_size
         self._window = deque(np.zeros(window_size), maxlen=window_size)
@@ -365,16 +386,16 @@ class TimeoutGoalSwitcher(GoalSwitcher):
         agent = self._forward_agent if agent_traj_state.forward else self._backward_agent
         success_prob = 0.0
         # TODO: oracle
-        # success_prob = agent.compute_success_prob(  # = cost-to-go
-        #     update_info.observation["observation"],
-        #     agent_traj_state.current_goal
-        # )
-        # initial_state = self._initial_states[self._rng.integers(len(self._initial_states))]
-        # cost_to_come = agent.compute_success_prob(
-        #     np.concatenate([initial_state, observation["observation"][1][None, ...]]),
-        #     observation["observation"][:, None, 0]
-        # )
-        # ... = agent_traj_state.phase_steps / cost_to_come  # ???
+        #success_prob = agent.compute_success_prob(  # = cost-to-go
+        #    update_info.observation["observation"],
+        #    agent_traj_state.current_goal
+        #)
+        #initial_state = self._initial_states[self._rng.integers(len(self._initial_states))]
+        #cost_to_come = agent.compute_success_prob(
+        #    np.concatenate([initial_state, observation["observation"][1][None, ...]]),
+        #    observation["observation"][:, None, 0]
+        #)
+        #... = agent_traj_state.phase_steps / cost_to_come  # ???
         if agent_traj_state.current_direction == "forward":
             return False, success_prob
         if agent_traj_state.phase_steps == 0:

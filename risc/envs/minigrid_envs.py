@@ -370,7 +370,7 @@ class BugTrapEnv(MiniGridEnv):
 class HallwayEnv(MiniGridEnv):
     """Hallway environment."""
 
-    def __init__(self, agent_pos=(6, 9), goal_pos=(9, 9), max_steps=100, **kwargs):
+    def __init__(self, agent_pos=(14, 9), goal_pos=(9, 9), max_steps=100, **kwargs):
         self._agent_default_pos = agent_pos
         self._goal_default_pos = goal_pos
 
