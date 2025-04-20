@@ -11,8 +11,8 @@ kwargs:
           off_value: false
           on_value: true
           period: 1000000
-  train_steps: 60000
-  max_steps_per_episode: 500
+  train_steps: 150000
+  max_steps_per_episode: 500  # episodic
   #train_phase_steps: 2000 # reset-free
   test_frequency: 100
   test_episodes: 10
@@ -25,7 +25,7 @@ kwargs:
   env_fn:
     name: minigrid_envs
     kwargs:
-      env_name: MiniGrid-BugTrap-v1
+      env_name: MiniGrid-Hallway-v1
       eval_max_steps: 100
       local_vis_period: 200
       reset_free: false  # episodic
@@ -47,14 +47,14 @@ kwargs:
             kwargs:
               end_value: 0.1
               init_value: 1.0
-              steps: 10000
+              steps: 20000
           loss_fn:
             name: MSELoss
           optimizer_fn:
             name: Adam
             kwargs:
               lr: 0.0003
-          min_replay_history: -1
+          min_replay_history: 128
           compute_success_probability: false
           representation_net:
             name: ConvNetwork
@@ -80,21 +80,21 @@ kwargs:
           max_visitations: 5
           use_success_prob: false
           oracle: false
-      phase_step_limit: [400, 1, 100]
+      phase_step_limit: [50, 1, 450]
       goal_switcher:
         #name: BasicGoalSwitcher  # episodic
         #name: SuccessProbabilityGoalSwitcher  # reset-free
         name: TimeoutGoalSwitcher
         kwargs:
           threshold: 0.75
-          window_size: 30
+          window_size: 5
           oracle: false
       replay_buffer:
         name: CountsReplayBuffer
         #name: HERReplayBuffer  # HER
         kwargs:
           capacity: 100000
-          #her_batch_size: 64  # HER
+          #her_batch_size: 16  # HER
       separate_agents: false
       local_visitation_vis_frequency: 200
       oracle: false
@@ -102,7 +102,7 @@ kwargs:
   loggers:
   - name: WandbLogger
     kwargs:
-      name: episodic_SIERL
+      name: episodic_SIERL_phase50-450
       project: Debug
       resume: allow
       start_method: fork
