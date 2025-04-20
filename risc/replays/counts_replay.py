@@ -229,7 +229,7 @@ class CountsReplayBuffer(CircularReplayBuffer):
             if self.action_counts[overwritten_state, overwritten_action] <= 0:
                 del self.action_counts[overwritten_state, overwritten_action]
             self.state_counts[overwritten_next_state] -= 1
-            if len(self.state_counts[overwritten_next_state]) <= 0:
+            if self.state_counts[overwritten_next_state] <= 0:
                 del self.state_counts[overwritten_next_state]
                 # del self.distances[overwrittan_next_state]
         new_state = transition["observation"]
