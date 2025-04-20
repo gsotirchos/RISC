@@ -400,7 +400,7 @@ class HallwayEnv(MiniGridEnv):
         self.grid.vert_wall(width - 1, 0)
 
         # Generate hallway walls
-        for i in [5, 6, 7, 8]:
+        for i in [6, 7, 8]:
            self.put_obj(Slide(3), i, 8)
            self.put_obj(Slide(1), i, 10)
         self.grid.vert_wall(10, 8, 3)
