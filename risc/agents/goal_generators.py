@@ -275,7 +275,7 @@ class OmniGoalGenerator(GoalGenerator):
                 frontier_states,
                 frontier_actions
             )
-            goal_idx = np.random.choice(len(priority), p=priority)  # np.argmin(priority)
+            goal_idx = self._rng.choice(len(priority), p=priority)  # np.argmin(priority)
             goal = frontier_states[goal_idx, 0][None, ...], frontier_actions[goal_idx]
             #self._dbg_print(f"visitations: {(1 / self._novelty(agent, frontier_states, frontier_actions)).astype(int)}", "   ")
             #self._dbg_print(f"stdzed vis.: {zscore(1 / self._novelty(agent, frontier_states, frontier_actions))}", "   ")
