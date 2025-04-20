@@ -296,10 +296,10 @@ class OmniGoalGenerator(GoalGenerator):
                     {
                         # TODO:
                         #"novelty_cost": heatmap(frontier_states, novelty_cost, logscale=True),
-                        "cost_to_reach": heatmap(frontier_states, cost_to_reach, vmin=0),
-                        "cost_to_come": heatmap(frontier_states, cost_to_come, vmin=0),
-                        "cost_to_go": heatmap(frontier_states, cost_to_go, vmin=0),
-                        "priority": heatmap(frontier_states, priority, logscale=True),
+                        "cost_to_reach": heatmap(frontier_states[:, None, 0], cost_to_reach, vmin=0),
+                        "cost_to_come": heatmap(frontier_states[:, None, 0], cost_to_come, vmin=0),
+                        "cost_to_go": heatmap(frontier_states[:, None, 0], cost_to_go, vmin=0),
+                        "priority": heatmap(frontier_states[:, None, 0], priority, logscale=True),
                     },
                     f"{agent._id.removesuffix('_agent')}_goal_generator",
                 )
