@@ -86,10 +86,10 @@ kwargs:
         #name: SuccessProbabilityGoalSwitcher  # reset-free
         name: TimeoutGoalSwitcher
         kwargs:
-          threshold: 0.75
-          window_size: 5
-          #novel_threshold: 5
-          #familiar_threshold: 2
+          #threshold: 0.75
+          #window_size: 5
+          novel_threshold: 5
+          familiar_threshold: 1
           oracle: false
       replay_buffer:
         name: CountsReplayBuffer
