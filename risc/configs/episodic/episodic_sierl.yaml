@@ -82,12 +82,14 @@ kwargs:
           oracle: false
       phase_step_limit: [450, 1, 50]
       goal_switcher:
-        #name: BasicGoalSwitcher  # episodic
+        #name: BasicGoalSwitcher
         #name: SuccessProbabilityGoalSwitcher  # reset-free
         name: TimeoutGoalSwitcher
         kwargs:
           threshold: 0.75
           window_size: 5
+          #novel_threshold: 5
+          #familiar_threshold: 2
           oracle: false
       replay_buffer:
         name: CountsReplayBuffer
