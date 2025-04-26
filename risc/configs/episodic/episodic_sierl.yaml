@@ -80,7 +80,7 @@ kwargs:
           max_visitations: 5
           use_success_prob: false
           oracle: false
-      phase_step_limit: [50, 1, 450]
+      phase_step_limit: [450, 1, 50]
       goal_switcher:
         #name: BasicGoalSwitcher  # episodic
         #name: SuccessProbabilityGoalSwitcher  # reset-free
@@ -102,7 +102,7 @@ kwargs:
   loggers:
   - name: WandbLogger
     kwargs:
-      name: episodic_SIERL_phase50-450
+      name: episodic_SIERL
       project: Debug
       resume: allow
       start_method: fork
