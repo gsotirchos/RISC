@@ -32,7 +32,7 @@ kwargs:
       symbolic: true
       train_max_steps: 500  # episodic
       video_period: 100
-      vis_frequency: 200
+      vis_frequency: 100
       #render_mode: human
   agent:
     name: GCResetFree
@@ -82,7 +82,7 @@ kwargs:
           capacity: 100000
           #her_batch_size: 16  # HER
       separate_agents: false
-      local_visitation_vis_frequency: 200
+      local_visitation_vis_frequency: 100
       oracle: false
       directions: forward
   loggers:
