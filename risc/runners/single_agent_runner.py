@@ -15,6 +15,7 @@ from hive.runners import SingleAgentRunner as _SingleAgentRunner
 from hive.runners.utils import Metrics, TransitionInfo
 from hive.utils.experiment import Experiment
 from hive.utils.loggers import ScheduledLogger, NullLogger
+from hive.utils.utils import seeder
 from wandb_osh.hooks import TriggerWandbSyncHook
 
 
@@ -95,6 +96,7 @@ class SingleAgentRunner(_SingleAgentRunner):
         if self._test_random_goals:
             self._logger.register_timescale("test_random_goals")
         self._eval_every = eval_every
+        self._rng = np.random.default_rng(seeder.get_new_seed("runner"))
         self._all_states_fn = reset_free_env.all_states_fn
         self._vis_fn = reset_free_env.vis_fn
         self._train_environment.register_logger(self._logger)
@@ -329,8 +331,9 @@ class SingleAgentRunner(_SingleAgentRunner):
         for _ in range(self._test_episodes):
             if random_goal:
                 #self._agents[0]._all_states_fn()
-                random_state = self._all_states_fn()['observation'][3]  # TODO
-                breakpoint()
+                random_state = self._all_states_fn()['observation'][
+                    self._rng.integers(len(self._all_states_fn()['observation']))
+                ]
                 print("TESTING RANDOM GOALS")
                 environment.place_goal(random_state)
             else:
