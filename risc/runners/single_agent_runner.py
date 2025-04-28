@@ -51,6 +51,7 @@ class SingleAgentRunner(_SingleAgentRunner):
         stack_size: int = 1,
         seed: int = None,
         test_max_steps: int = 1000000000,
+        test_random_goals: bool = False,
         eval_every: bool = False,
         max_steps_per_episode: int = 1000000000,
         early_terminal: bool = True,
@@ -73,6 +74,7 @@ class SingleAgentRunner(_SingleAgentRunner):
         self._test_max_steps = test_max_steps
         self._early_terminal = early_terminal
         self._send_truncation = send_truncation
+        self._test_random_goals = test_random_goals
         super().__init__(
             reset_free_env.train_env,
             agent,
@@ -90,7 +92,10 @@ class SingleAgentRunner(_SingleAgentRunner):
             self._logger = self._logger._logger_list[0]
         if not isinstance(self._logger, NullLogger):
             self._logger.register_timescale("train", log_timescale=True)
+        if self._test_random_goals:
+            self._logger.register_timescale("test_random_goals")
         self._eval_every = eval_every
+        self._all_states_fn = reset_free_env.all_states_fn
         self._vis_fn = reset_free_env.vis_fn
         self._train_environment.register_logger(self._logger)
         self._eval_environment.register_logger(self._logger)
@@ -312,18 +317,32 @@ class SingleAgentRunner(_SingleAgentRunner):
         if self._eval_environment is None:
             return
         self.train_mode(False)
+        self.test_and_log(self._eval_environment, prefix="test")
+        if self._test_random_goals:
+            self.test_and_log(self._eval_environment, random_goal=True, prefix="test_random_goals")
+        self._run_testing = False
+        self._trigger_sync()
+        self.train_mode(True)
+
+    def test_and_log(self, environment, random_goal=False, prefix="test"):
         aggregated_episode_metrics = self.create_episode_metrics().get_flat_dict()
         for _ in range(self._test_episodes):
-            episode_metrics = self.run_episode(
-                self._eval_environment, self._test_max_steps
-            )
+            if random_goal:
+                #self._agents[0]._all_states_fn()
+                random_state = self._all_states_fn()['observation'][3]  # TODO
+                breakpoint()
+                print("TESTING RANDOM GOALS")
+                environment.place_goal(random_state)
+            else:
+                print("TESTING")
+            episode_metrics = self.run_episode(environment, self._test_max_steps)
             for metric, value in episode_metrics.get_flat_dict().items():
                 aggregated_episode_metrics[metric] += value / self._test_episodes
-        self._logger.update_step("test")
+        self._logger.update_step(prefix)
         if self._eval_every:
             rewards = aggregated_episode_metrics[f"{self._agents[0]._id}_reward"]
             episode_lengths = aggregated_episode_metrics["full_episode_length"]
-            initial_states = self._eval_environment._initial_states
+            initial_states = environment._initial_states
 
             def get_log_fn(metric_name, prefix):
                 def log_fn(x):
@@ -333,14 +352,14 @@ class SingleAgentRunner(_SingleAgentRunner):
 
             reward_plot, _ = self._vis_fn(
                 initial_states,
-                get_log_fn("reward_plot", "test"),
+                get_log_fn("reward_plot", prefix),
                 totals=rewards,
                 max_count=1,
                 fmt=".1f",
             )
             episode_length_plot, _ = self._vis_fn(
                 initial_states,
-                get_log_fn("episode_length_plot", "test"),
+                get_log_fn("episode_length_plot", prefix),
                 totals=episode_lengths,
                 max_count=self._max_steps_per_episode,
             )
@@ -356,10 +375,9 @@ class SingleAgentRunner(_SingleAgentRunner):
             for metric, value in aggregated_episode_metrics.items():
                 aggregated_episode_metrics[metric] = np.mean(value)
             self._logger.log_metrics(eval_every_metrics, "eval_every")
-        self._logger.log_metrics(aggregated_episode_metrics, "test")
-        self._run_testing = False
-        self._trigger_sync()
-        self.train_mode(True)
+        self._logger.log_metrics(aggregated_episode_metrics, prefix)
+        if random_goal:
+            environment.reset_goal()
 
     def run_episode(self, environment, max_steps=None):
         """Run a single episode of the environment.

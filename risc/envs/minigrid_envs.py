@@ -64,32 +64,33 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
                     ),
                 }
             )
-            self.grid_obs = np.zeros((2, self.height, self.width), dtype=np.uint8)
-            self.goal_obs = np.zeros((1, self.height, self.width), dtype=np.uint8)
-            for i in range(self.width):
-                for j in range(self.height):
-                    cell = self.grid.get(i, j)
-                    if cell:
-                        if cell.type == "wall":
-                            self.grid_obs[1, j, i] = 255
-                        elif cell.type == "goal":
-                            self.goal_obs[0, j, i] = 255
+            self.gen_grid_obs()
+            self.gen_goal_obs()
 
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed, options=options)
-        self.grid_obs = np.zeros((2, self.height, self.width), dtype=np.uint8)
-        self.goal_obs = np.zeros((1, self.height, self.width), dtype=np.uint8)
+        self.gen_grid_obs()
+        self.gen_goal_obs()
+        #print("=== resetting")
+        return self.gen_obs(), {}
 
+    def gen_grid_obs(self):
+        self.grid_obs = np.zeros((2, self.height, self.width), dtype=np.uint8)
         for i in range(self.width):
             for j in range(self.height):
                 cell = self.grid.get(i, j)
                 if cell:
                     if cell.type == "wall":
                         self.grid_obs[1, j, i] = 255
-                    elif cell.type == "goal":
+
+    def gen_goal_obs(self):
+        self.goal_obs = np.zeros((1, self.height, self.width), dtype=np.uint8)
+        for i in range(self.width):
+            for j in range(self.height):
+                cell = self.grid.get(i, j)
+                if cell:
+                    if cell.type == "goal":
                         self.goal_obs[0, j, i] = 255
-        #print("=== resetting")
-        return self.gen_obs(), {}
 
     def gen_obs(self):
         if not self.symbolic:
@@ -111,11 +112,7 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
             self.goal_obs,
             (len(obs), *((1,) * len(self.goal_obs.shape))),
         )
-
-        return {
-            "observation": obs,
-            "desired_goal": goals,
-        }
+        return {"observation": obs, "desired_goal": goals}
 
     def step(self, action):
         self.step_count += 1
@@ -173,28 +170,28 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
 
         return obs, reward, terminated, truncated, {}
 
-    def place_agent_goal(self):
-        if self._agent_default_pos is not None:
-            self.agent_pos = self._agent_default_pos
-            self.grid.set(*self._agent_default_pos, None)
-            # assuming random start direction
-            self.agent_dir = self._rand_int(0, 4)
+    def place_agent(self, agent_pos=None):
+        if agent_pos is None:
+            super().place_agent()  # random position and orientation
         else:
-            # Randomize the agent start position and orientation
-            self.place_agent()
+            self.agent_pos = agent_pos
+            self.grid.set(*agent_pos, None)
+            self.agent_dir = self._rand_int(0, 4)  # random direction
 
-        if self._goal_default_pos is not None:
-            goal = Goal()
-            self.put_obj(goal, *self._goal_default_pos)
-            goal.init_pos = goal.cur_pos = self._goal_default_pos
+    def place_goal(self, goal_pos=None):
+        if goal_pos is None:
+            self.place_obj(Goal())  # random position
         else:
-            # Randomize the goal's position
-            self.place_obj(Goal())
+            self.put_obj(Goal(), *goal_pos)
+        self.gen_goal_obs()
 
-    def teleport(self, state):
-        pos = np.flip(np.argwhere(state[0] == 255)[..., -2:].squeeze(), axis=-1).tolist()
-        #print(f"=== teleporting to: {pos}")
-        self.agent_pos = pos
+    def reset_goal(self):
+        self.put_obj(Goal(), *self._goal_default_pos)
+        self.gen_goal_obs()
+
+    def teleport(self, agent_pos=None):
+        #print(f"=== teleporting to: {agent_pos}")
+        self.place_agent(agent_pos)
         return self.gen_obs()
 
     def render(self):
@@ -266,7 +263,8 @@ class TwoRoomsEnv(MiniGridEnv):
         pos = (room_w, self._rand_int(1, height))
         self.grid.set(*pos, None)
 
-        self.place_agent_goal()
+        self.place_agent(self._agent_default_pos)
+        self.place_goal(self._goal_default_pos)
 
 
 class TinyRoomEnv(MiniGridEnv):
@@ -310,7 +308,8 @@ class TinyRoomEnv(MiniGridEnv):
         self.grid.horz_wall(x=2, y=height - 4, length=width - 4)
         self.grid.vert_wall(x=width // 2, y=3, length=height - 6)
 
-        self.place_agent_goal()
+        self.place_agent(self._agent_default_pos)
+        self.place_goal(self._goal_default_pos)
 
 
 class BugTrapEnv(MiniGridEnv):
@@ -364,7 +363,8 @@ class BugTrapEnv(MiniGridEnv):
         # self.grid.vert_wall(3, height // 2 + 1, length=height // 2 - 4)
         # self.grid.vert_wall(width - 4, 3, length=height - 6)
 
-        self.place_agent_goal()
+        self.place_agent(self._agent_default_pos)
+        self.place_goal(self._goal_default_pos)
 
 
 class HallwayEnv(MiniGridEnv):
@@ -407,8 +407,8 @@ class HallwayEnv(MiniGridEnv):
         self.grid.horz_wall(9, 8, 1)
         self.grid.horz_wall(9, 10, 1)
 
-
-        self.place_agent_goal()
+        self.place_agent(self._agent_default_pos)
+        self.place_goal(self._goal_default_pos)
 
 
 class LockedDoorEnv(MiniGridEnv, _RoomGrid):
@@ -453,7 +453,8 @@ class LockedDoorEnv(MiniGridEnv, _RoomGrid):
         # Add a key to unlock the door
         self.add_object(0, 0, "key", door.color)
 
-        self.place_agent_goal()
+        self.place_agent(self._agent_default_pos)
+        self.place_goal(self._goal_default_pos)
 
 
 class EmptyEnv(MiniGridEnv, _EmptyEnv):

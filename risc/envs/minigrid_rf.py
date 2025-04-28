@@ -257,8 +257,26 @@ class MiniGridEnv(GymEnv):
                 self._logger.log_scalar("video", wandb.Video(frames), self._id)
         return super().reset()
 
-    def teleport(self, state):
-        return self._env.teleport(state)
+    def place_goal(self, state=None):
+        if state is None:
+            pos = None
+        else:
+            pos = np.flip(np.argwhere(state[0] == 255)[..., -2:].squeeze(), axis=-1).tolist()
+        self._env.place_goal(pos)
+
+    #def randomize_goal(self):
+    #    pos = (self._env.np_random.integers(0, self._width), self._env.np_random.integers(0, self._height))
+    #    self._env.place_goal(pos)
+
+    def reset_goal(self):
+        self._env.reset_goal()
+
+    def teleport(self, state=None):
+        if state is None:
+            pos = None
+        else:
+            pos = np.flip(np.argwhere(state[0] == 255)[..., -2:].squeeze(), axis=-1).tolist()
+        return self._env.teleport(pos)
 
     def save(self, folder_name):
         pass
@@ -316,10 +334,13 @@ def create_vis_fn(env_shape):
     return partial(vis_fn, width=width, height=height)
 
 
-def get_goals(desired_goal, all_obs):
-    goal = np.flip(np.argwhere(desired_goal != 0)).flatten().tolist()
-    # goal = tuple([dim - 2 for dim in env_shape])
-    return [g for g in all_obs["desired_goal"] if g[0, goal[1], goal[0]] == 255]
+def get_unique_states(obs):
+    positions = np.where(obs == 255)
+    n = len(positions[0])
+    unique_obs = np.zeros((n, 1, 19, 19), dtype=obs.dtype)
+    for m in range(n):
+        unique_obs[m, positions[0][m], positions[1][m], positions[2][m]] = 255
+    return unique_obs
 
 
 def get_distance_calculator(distance_type, initial_state):
@@ -388,7 +409,6 @@ def get_minigrid_envs(
     )
     initial_obs, _ = env.reset()
     all_obs = env.gen_all_obs()
-    env_shape = env._width, env._height
 
     return ResetFreeEnv(
         train_env=partial(
@@ -421,12 +441,10 @@ def get_minigrid_envs(
         reward_fn=reward_fn,
         replace_goal_fn=replace_goal_fn,
         all_states_fn=lambda: all_obs,
-        vis_fn=create_vis_fn(env_shape),
-        get_distance_fn=partial(
-            get_distance_calculator, initial_state=initial_obs["observation"]
-        ),
-        goal_states=get_goals(initial_obs["desired_goal"], all_obs),
-        initial_states=[initial_obs["observation"][0:1]],
+        vis_fn=create_vis_fn((env._width, env._height)),
+        get_distance_fn=partial(get_distance_calculator, initial_state=initial_obs["observation"]),
+        goal_states=get_unique_states(initial_obs['desired_goal']),
+        initial_states=get_unique_states(initial_obs['observation'][:1]),
         forward_demos=None,
         backward_demos=None,
         eval_every=eval_every,
