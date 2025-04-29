@@ -17,6 +17,7 @@ kwargs:
   test_frequency: 100
   test_episodes: 10
   test_max_steps: 100
+  test_random_goals: true
   seed: 0
   stack_size: 1
   eval_every: false
