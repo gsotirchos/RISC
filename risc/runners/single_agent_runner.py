@@ -330,14 +330,10 @@ class SingleAgentRunner(_SingleAgentRunner):
         aggregated_episode_metrics = self.create_episode_metrics().get_flat_dict()
         for _ in range(self._test_episodes):
             if random_goal:
-                #self._agents[0]._all_states_fn()
                 random_state = self._all_states_fn()['observation'][
                     self._rng.integers(len(self._all_states_fn()['observation']))
                 ]
-                print("TESTING RANDOM GOALS")
                 environment.place_goal(random_state)
-            else:
-                print("TESTING")
             episode_metrics = self.run_episode(environment, self._test_max_steps)
             for metric, value in episode_metrics.get_flat_dict().items():
                 aggregated_episode_metrics[metric] += value / self._test_episodes
