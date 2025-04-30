@@ -257,19 +257,16 @@ class MiniGridEnv(GymEnv):
                 self._logger.log_scalar("video", wandb.Video(frames), self._id)
         return super().reset()
 
-    def place_goal(self, state=None):
+    def set_goal(self, state=None):
         if state is None:
             pos = None
         else:
             pos = np.flip(np.argwhere(state[0] == 255)[..., -2:].squeeze(), axis=-1).tolist()
         self._env.place_goal(pos)
 
-    #def randomize_goal(self):
-    #    pos = (self._env.np_random.integers(0, self._width), self._env.np_random.integers(0, self._height))
-    #    self._env.place_goal(pos)
-
-    def reset_goal(self):
-        self._env.reset_goal()
+    def get_goal(self):
+        self._env.gen_goal_obs()
+        return self._env.goal_obs
 
     def teleport(self, state=None):
         if state is None:

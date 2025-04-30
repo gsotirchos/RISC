@@ -170,6 +170,14 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
 
         return obs, reward, terminated, truncated, {}
 
+    def place_goal(self, goal_pos=None):
+        if goal_pos is None:
+            self.place_obj(Goal())  # random position
+        else:
+            self.goal_pos = goal_pos
+            self._goal_default_pos = goal_pos
+            self.put_obj(Goal(), *goal_pos)
+
     def place_agent(self, agent_pos=None):
         if agent_pos is None:
             super().place_agent()  # random position and orientation
@@ -177,17 +185,6 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
             self.agent_pos = agent_pos
             self.grid.set(*agent_pos, None)
             self.agent_dir = self._rand_int(0, 4)  # random direction
-
-    def place_goal(self, goal_pos=None):
-        if goal_pos is None:
-            self.place_obj(Goal())  # random position
-        else:
-            self.put_obj(Goal(), *goal_pos)
-        self.gen_goal_obs()
-
-    def reset_goal(self):
-        self.put_obj(Goal(), *self._goal_default_pos)
-        self.gen_goal_obs()
 
     def teleport(self, agent_pos=None):
         #print(f"=== teleporting to: {agent_pos}")
@@ -229,8 +226,8 @@ class TwoRoomsEnv(MiniGridEnv):
         height=10,
         **kwargs,
     ):
-        self._agent_default_pos = agent_pos
-        self._goal_default_pos = goal_pos
+        self.agent_pos = agent_pos
+        self.goal_pos = goal_pos
         self.width = width
         self.height = height
 
