@@ -102,6 +102,7 @@ class FourRoomsOracle():
         return dist
 
     def _compute_distances(self):
+        print("Computing oracle's paths' distances... ", end='', flush=True)
         goal_dist = dict()
         for goal_cell in self._valid_cells:
             goal_dist[goal_cell] = self._bfs(goal_cell)
@@ -117,6 +118,7 @@ class FourRoomsOracle():
                         next_dist = current_dist
 
                     distances[cell, goal_cell][action] = next_dist
+        print("done.")
         return distances
 
     def _return(self, distances, discount_rate=None, step_reward=None, goal_reward=None):
