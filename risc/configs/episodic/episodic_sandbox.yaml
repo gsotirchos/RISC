@@ -14,7 +14,7 @@ kwargs:
   train_steps: 150000
   max_steps_per_episode: 500  # episodic
   #train_phase_steps: 2000 # reset-free
-  test_frequency: 1
+  test_frequency: 100
   test_episodes: 2
   test_max_steps: 20
   test_random_goals: true
@@ -84,14 +84,15 @@ kwargs:
           max_visitations: 10
           use_success_prob: false
           oracle: true
-      phase_step_limit: [5, 1, 10]
+      phase_step_limit: [5, 1, 20]
       goal_switcher:
         #name: BasicGoalSwitcher
         #name: SuccessProbabilityGoalSwitcher  # reset-free
         name: TimeoutGoalSwitcher
         kwargs:
-          novel_threshold: 1
-          familiar_threshold: 2
+          #novel_threshold: 1
+          #familiar_threshold: 2
+          switching_probability: 0.45
           oracle: false
       replay_buffer:
         name: CountsReplayBuffer

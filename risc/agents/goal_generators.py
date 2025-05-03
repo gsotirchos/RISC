@@ -368,9 +368,9 @@ class TimeoutGoalSwitcher(GoalSwitcher):
         logger: Logger,
         log_frequency: int = 25,
         threshold: float = 0.75,
-        novel_threshold: int = 10,
-        familiar_threshold: int = 1,
-        window_size: int = 5,
+        #novel_threshold: int = 10,
+        #familiar_threshold: int = 1,
+        switching_probability: float = 0.5,
         **kwargs,
     ):
         self._forward_agent = forward_agent
@@ -381,9 +381,10 @@ class TimeoutGoalSwitcher(GoalSwitcher):
         self._log_schedule = PeriodicSchedule(False, True, log_frequency)
         self._novel_observations = HashableKeyDict()
         self._threshold = threshold
-        self._novel_threshold = novel_threshold
-        self._familiar_threshold = familiar_threshold
-        self._familiar_obs_count = 0
+        #self._novel_threshold = novel_threshold
+        #self._familiar_threshold = familiar_threshold
+        #self._familiar_obs_count = 0
+        self._switching_prob = switching_probability
 
 
     def _is_novel(self, observation, agent):
@@ -396,33 +397,43 @@ class TimeoutGoalSwitcher(GoalSwitcher):
         current_direction = agent_traj_state.current_direction.removeprefix("teleport_")
         if current_direction != "lateral":
             return False, success_prob
-        if agent_traj_state.phase_steps == 1:
-            #print("=== Resetting goal switcher ===")
-            self._familiar_obs_count = 0
-            self._novel_observations = HashableKeyDict()
         next_observation = update_info.next_observation["observation"]
-        if self._is_novel(next_observation, agent):
-            #print("=== Novel obs ===")
-            #breakpoint()
-            self._novel_observations[next_observation] = 1
-        if len(self._novel_observations) < self._novel_threshold:
-            #print("=== Novel obs: Continuing ===")
-            #breakpoint()
+        if not self._is_novel(next_observation, agent):
             return False, success_prob
-        if len(self._novel_observations) > self._novel_threshold:
-            #print("=== Novel obs: Truncating ===")
-            #breakpoint()
-            return True, success_prob
-        if not self._is_novel(update_info.next_observation, agent):
-            #print("=== Familiar obs ===")
-            self._familiar_obs_count += 1
-        if self._familiar_obs_count >= self._familiar_threshold:
-            #print("=== Familiar obs: Resetting goal switcher ===")
-            self._novel_observations = HashableKeyDict()
-            self._familiar_obs_count = 0
-        #print("=== Familiar obs: Continuing ===")
+        should_switch = self._rng.random() < self._switching_prob
+        #if should_switch:
+        #    print("=== SWITCHING ===")
+        #else:
+        #    print("=== NOT SWITCHING ===")
         #breakpoint()
-        return False, success_prob
+        return should_switch, success_prob
+        #if agent_traj_state.phase_steps == 1:
+        #    #print("=== Resetting goal switcher ===")
+        #    self._familiar_obs_count = 0
+        #    self._novel_observations = HashableKeyDict()
+        #next_observation = update_info.next_observation["observation"]
+        #if self._is_novel(next_observation, agent):
+        #    #print("=== Novel obs ===")
+        #    #breakpoint()
+        #    self._novel_observations[next_observation] = 1
+        #if len(self._novel_observations) < self._novel_threshold:
+        #    #print("=== Novel obs: Continuing ===")
+        #    #breakpoint()
+        #    return False, success_prob
+        #if len(self._novel_observations) > self._novel_threshold:
+        #    #print("=== Novel obs: Truncating ===")
+        #    #breakpoint()
+        #    return True, success_prob
+        #if not self._is_novel(update_info.next_observation, agent):
+        #    #print("=== Familiar obs ===")
+        #    self._familiar_obs_count += 1
+        #if self._familiar_obs_count >= self._familiar_threshold:
+        #    #print("=== Familiar obs: Resetting goal switcher ===")
+        #    self._novel_observations = HashableKeyDict()
+        #    self._familiar_obs_count = 0
+        ##print("=== Familiar obs: Continuing ===")
+        ##breakpoint()
+        #return False, success_prob
 
 
 class SuccessProbabilityGoalSwitcher(GoalSwitcher):
