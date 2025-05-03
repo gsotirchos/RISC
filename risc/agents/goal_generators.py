@@ -381,9 +381,6 @@ class TimeoutGoalSwitcher(GoalSwitcher):
         self._log_schedule = PeriodicSchedule(False, True, log_frequency)
         self._novel_observations = HashableKeyDict()
         self._threshold = threshold
-        #self._window_size = window_size
-        #self._window = deque(np.zeros(window_size), maxlen=window_size)
-        #self._window_avg = 0
         self._novel_threshold = novel_threshold
         self._familiar_threshold = familiar_threshold
         self._familiar_obs_count = 0
@@ -399,17 +396,6 @@ class TimeoutGoalSwitcher(GoalSwitcher):
         current_direction = agent_traj_state.current_direction.removeprefix("teleport_")
         if current_direction != "lateral":
             return False, success_prob
-        #if agent_traj_state.phase_steps == 1:
-        #    self._window = deque(np.zeros(self._window_size), maxlen=self._window_size)
-        #    self._window_avg = 0
-        #    self._novel_observations = HashableKeyDict()
-        #next_observation = update_info.next_observation["observation"]
-        #obs_is_new = self._is_novel(next_observation, agent)
-        #if obs_is_new:
-        #    self._novel_observations[next_observation] = 1
-        #self._window_avg += (obs_is_new - self._window[0]) / self._window_size
-        #self._window.append(obs_is_new)
-        #return self._window_avg >= self._threshold, success_prob
         if agent_traj_state.phase_steps == 1:
             #print("=== Resetting goal switcher ===")
             self._familiar_obs_count = 0

@@ -90,8 +90,6 @@ kwargs:
         #name: SuccessProbabilityGoalSwitcher  # reset-free
         name: TimeoutGoalSwitcher
         kwargs:
-          #threshold: 0.75
-          #window_size: 5
           novel_threshold: 1
           familiar_threshold: 2
           oracle: false
