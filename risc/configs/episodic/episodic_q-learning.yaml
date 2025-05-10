@@ -14,7 +14,7 @@ kwargs:
   train_steps: 150000
   max_steps_per_episode: 500  # episodic
   #train_phase_steps: 2000 # reset-free
-  test_frequency: 100
+  test_frequency: 200
   test_episodes: 10
   test_max_steps: 100
   test_random_goals: true
