@@ -3,7 +3,7 @@ kwargs:
   experiment_manager:
     name: Experiment
     kwargs:
-      name: episodic_SIERL
+      name: episodic_q-learning
       save_dir: experiment
       saving_schedule:
         name: PeriodicSchedule
@@ -14,7 +14,7 @@ kwargs:
   train_steps: 150000
   max_steps_per_episode: 500  # episodic
   #train_phase_steps: 2000 # reset-free
-  test_frequency: 100
+  test_frequency: 200
   test_episodes: 10
   test_max_steps: 100
   test_random_goals: true
@@ -72,25 +72,10 @@ kwargs:
               period: 500
         name: GoalConditionedDQNAgent
       goal_generator:
-        #name: FBGoalGenerator  # RISC
-        name: OmniGoalGenerator
-        kwargs:
-          debug: false
-          vis_frequency: 50
-          weights: [1, 1, 1, 1]
-          max_visitations: 5
-          use_success_prob: false
-          oracle: false
-      phase_step_limit: [450, 1, 50]
+        name: FBGoalGenerator  # RISC
+      phase_step_limit: 500
       goal_switcher:
-        #name: BasicGoalSwitcher
-        #name: SuccessProbabilityGoalSwitcher  # reset-free
-        name: TimeoutGoalSwitcher
-        kwargs:
-          #novel_threshold: 5
-          #familiar_threshold: 1
-          switching_probability: 0.45
-          oracle: false
+        name: BasicGoalSwitcher
       replay_buffer:
         name: CountsReplayBuffer
         #name: HERReplayBuffer  # HER
@@ -100,11 +85,11 @@ kwargs:
       separate_agents: false
       local_visitation_vis_frequency: 100
       oracle: false
-      directions: [forward, teleport_backward, lateral]
+      directions: forward
   loggers:
   - name: WandbLogger
     kwargs:
-      name: episodic_SIERL
+      name: episodic_q-learning
       project: Debug
       resume: allow
       start_method: fork
