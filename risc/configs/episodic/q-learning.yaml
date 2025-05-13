@@ -71,6 +71,7 @@ kwargs:
               on_value: true
               period: 500
         name: GoalConditionedDQNAgent
+      novelty_bonus: false
       goal_generator:
         name: FBGoalGenerator  # RISC
       phase_step_limit: 500

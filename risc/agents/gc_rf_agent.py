@@ -56,6 +56,7 @@ class GCResetFree(Agent):
         logger: Logger,
         replay_buffer: BaseReplayBuffer,
         distance_type: str = "l2_cluster",
+        novelty_bonus: bool = False,
         phase_step_limit: int = 300,
         id=0,
         log_frequency=5,
@@ -210,6 +211,7 @@ class GCResetFree(Agent):
             self._id, PeriodicSchedule(False, True, log_frequency)
         )
         self._timescale = self.id
+        self._novelty_bonus = novelty_bonus
         self._phase_step_limit = np.roll(phase_step_limit, 1).flatten()
         self._use_termination_signal = use_termination_signal
         self._log_success = log_success
@@ -249,6 +251,9 @@ class GCResetFree(Agent):
         if not self._training:
             return agent_traj_state
 
+        agent = (
+            self._forward_agent if agent_traj_state.forward else self._backward_agent
+        )
         terminated, truncated, success = self.should_switch(
             update_info, agent_traj_state
         )
@@ -269,6 +274,8 @@ class GCResetFree(Agent):
             reward=self._reward_fn(
                 update_info.next_observation,
                 agent_traj_state.current_goal,
+                agent._replay_buffer,
+                self._novelty_bonus,
             ),
             terminated=success == 1,
             truncated=truncated,
@@ -279,9 +286,6 @@ class GCResetFree(Agent):
             if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
                 self._log_visualizations()
 
-        agent = (
-            self._forward_agent if agent_traj_state.forward else self._backward_agent
-        )
         subagent_traj_state = agent.update(
             update_info, agent_traj_state.subagent_traj_state
         )
