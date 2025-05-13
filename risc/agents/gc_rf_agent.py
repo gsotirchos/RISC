@@ -274,8 +274,8 @@ class GCResetFree(Agent):
             reward=self._reward_fn(
                 update_info.next_observation,
                 agent_traj_state.current_goal,
-                agent._replay_buffer,
                 self._novelty_bonus,
+                agent._replay_buffer,
             ),
             terminated=success == 1,
             truncated=truncated,

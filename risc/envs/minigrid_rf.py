@@ -358,10 +358,8 @@ def success_fn(observation, goal=None):
     return np.allclose(obs[0], goal[0])
 
 
-def reward_fn(observation, goal=None, novelty_bonus=False, replay_buffer=None):
-    bonus = 0
-    if novelty_bonus:
-        bonus = 0.15 / (1 + np.sqrt(replay_buffer.state_counts[observation['observation']]))
+def reward_fn(observation, goal=None, novelty_bonus=0, replay_buffer=None):
+    bonus = novelty_bonus / (1 + np.sqrt(replay_buffer.state_counts[observation['observation']]))
     return -1 + float(success_fn(observation, goal)) + bonus
 
 

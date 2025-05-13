@@ -74,7 +74,7 @@ kwargs:
               on_value: true
               period: 500
         name: GoalConditionedDQNAgent
-      novelty_bonus: true
+      novelty_bonus: 0.15
       goal_generator:
         #name: FBGoalGenerator  # RISC
         name: OmniGoalGenerator
