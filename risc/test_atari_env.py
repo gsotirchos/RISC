@@ -9,7 +9,7 @@ from hive.envs.gym.gym_wrappers import PermuteImageWrapper
 # import ale_py
 # gym.register_envs(ale_py)
 
-test_env_configs = [("ALE/Pong-v5", 4, 84), ("ALE/Asterix-v5", 1, 100)]
+test_env_configs = [("ALE/MontezumaRevenge-v5", 4, 84), ("ALE/Asterix-v5", 1, 100)]
 
 
 @pytest.mark.parametrize("env_name,frame_skip,screen_size", test_env_configs)

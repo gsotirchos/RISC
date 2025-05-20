@@ -103,9 +103,9 @@ kwargs:
       oracle: false
       directions: [forward, teleport_backward, lateral]
   loggers:
-  - name: WandbLogger
-    kwargs:
-      name: episodic_SIERL
-      project: Debug
-      resume: allow
-      start_method: fork
+    - name: WandbLogger
+      kwargs:
+        name: episodic_SIERL
+        project: Debug
+        resume: allow
+        start_method: fork
