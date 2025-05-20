@@ -24,16 +24,12 @@ kwargs:
   env_fn:
     name: minigrid_envs
     kwargs:
-      agent_pos: [1, 1]
       env_name: MiniGrid-FourRooms-v1
-      #env_name: MiniGrid-BugTrap-v1
       eval_max_steps: 100
-      goal_pos: [17,17]
       local_vis_period: 2000
       reset_free: true
       symbolic: true
       train_max_steps: 100000
-      #train_max_steps: 300000
       video_period: 1000
       vis_frequency: 2000
   agent:
