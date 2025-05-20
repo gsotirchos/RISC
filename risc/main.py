@@ -6,6 +6,7 @@ import envs
 import replays
 import runners
 import wandb_logger
+from hive.envs import GymEnv
 from hive.main import main
 
 logging.basicConfig(
