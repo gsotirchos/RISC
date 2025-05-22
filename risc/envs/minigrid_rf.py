@@ -98,7 +98,7 @@ def create_env_fn(env_name, seed, symbolic, **kwargs):
         if not symbolic:
             env = ImgObsWrapper(RGBImgObsWrapper(env, tile_size=5))
             env.action_space = gym.spaces.Discrete(3)
-        return env
+        return env.env.unwrapped
 
     return create_env
 
