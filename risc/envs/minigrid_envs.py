@@ -367,9 +367,17 @@ class BugTrapEnv(MiniGridEnv):
 class HallwayEnv(MiniGridEnv):
     """Hallway environment."""
 
-    def __init__(self, agent_pos=(14, 9), goal_pos=(9, 9), max_steps=100, **kwargs):
+    def __init__(
+            self,
+            agent_pos=(14, 9),
+            goal_pos=(9, 9), 
+            hallway_length=3,
+            max_steps=100,
+            **kwargs
+        ):
         self._agent_default_pos = agent_pos
         self._goal_default_pos = goal_pos
+        self._hallway_length = hallway_length
 
         self.width = self.height = 19
         mission_space = MissionSpace(mission_func=self._gen_mission)
@@ -397,7 +405,7 @@ class HallwayEnv(MiniGridEnv):
         self.grid.vert_wall(width - 1, 0)
 
         # Generate hallway walls
-        for i in [7, 8]:
+        for i in range(self._goal_default_pos[0] - self._hallway_length, self._goal_default_pos[0]):
            self.put_obj(Slide(3), i, 8)
            self.put_obj(Slide(1), i, 10)
         self.grid.vert_wall(10, 8, 3)
