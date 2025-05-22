@@ -80,9 +80,9 @@ kwargs:
           #her_batch_size: 64  # HER
       separate_agents: true
   loggers:
-  - name: WandbLogger
-    kwargs:
-      name: risc
-      project: Debug
-      resume: allow
-      start_method: fork
+    - name: WandbLogger
+      kwargs:
+        name: risc
+        project: Debug
+        resume: allow
+        start_method: fork

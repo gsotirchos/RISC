@@ -116,9 +116,9 @@ kwargs:
           minimum_steps: 225
           trajectory_proportion: 1.0
   loggers:
-  - name: WandbLogger
-    kwargs:
-      project: RF-IS
-      name: sd_risc
-      resume: allow
-      start_method: fork
+    - name: WandbLogger
+      kwargs:
+        project: RF-IS
+        name: sd_risc
+        resume: allow
+        start_method: fork

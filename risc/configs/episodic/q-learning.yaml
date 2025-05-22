@@ -88,9 +88,9 @@ kwargs:
       oracle: false
       directions: forward
   loggers:
-  - name: WandbLogger
-    kwargs:
-      name: episodic_q-learning
-      project: Debug
-      resume: allow
-      start_method: fork
+    - name: WandbLogger
+      kwargs:
+        name: episodic_q-learning
+        project: Debug
+        resume: allow
+        start_method: fork
