@@ -394,24 +394,22 @@ def get_minigrid_envs(
         eval_max_steps: The maximum number of steps in the evaluation environment.
         kwargs: Additional arguments to pass to the environment.
     """
-    try:
-        env = MiniGridEnv(
-            env_name=env_name,
-            seed=seed,
-            reset_free=reset_free,
-            eval=False,
-            symbolic=symbolic,
-            id="train_env",
-            eval_every=False,
-            video_period=-1,
-            max_steps=train_max_steps,
-            no_render=True,
-            **kwargs,
-        )
-        initial_obs, _ = env.reset()
-        all_obs = env.gen_all_obs()
-    finally:
-        env.close()
+    env = MiniGridEnv(
+        env_name=env_name,
+        seed=seed,
+        reset_free=reset_free,
+        eval=False,
+        symbolic=symbolic,
+        id="train_env",
+        eval_every=False,
+        video_period=-1,
+        max_steps=train_max_steps,
+        no_render=True,
+        **kwargs,
+    )
+    initial_obs, _ = env.reset()
+    all_obs = env.gen_all_obs()
+    env.close()
 
     return ResetFreeEnv(
         train_env=partial(
