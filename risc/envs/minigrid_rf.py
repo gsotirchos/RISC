@@ -119,23 +119,23 @@ class MiniGridEnv(GymEnv):
         vis_frequency=5000,
         video_period=-1,
         symbolic=True,
+        no_render=False,
         train_video=False,
         video_length=100,
         train_video_period=20,
         id="env",
-        render_mode=None,
         **kwargs,
     ):
         self._reset_free = reset_free
         self._eval = eval
         self._eval_every = eval_every
         kwargs = {k: tuple(v) if isinstance(v, list) else v for k, v in kwargs.items()}
-        # if self._eval:
-        #     render_mode = "rgb_array_list" if not eval_every else None
-        # else:
-        #     render_mode = "rgb_array_list" if train_video else None
-        # render_mode = None
-        self.render_mode = render_mode
+        if self._eval:
+            kwargs.setdefault("render_mode", "rgb_array_list" if not eval_every else None)
+        else:
+            kwargs.setdefault("render_mode", "rgb_array_list" if train_video else None)
+        if no_render:
+            kwargs["render_mode"] = None
         self._train_video = (not self._eval) and train_video
         self._video_reset_schedule = PeriodicSchedule(False, True, video_length)
         self._video_write_schedule = PeriodicSchedule(False, True, train_video_period)
@@ -145,7 +145,6 @@ class MiniGridEnv(GymEnv):
             num_players=num_players,
             seed=seed,
             symbolic=symbolic,
-            render_mode=self.render_mode,
             highlight=False,
             **kwargs,
         )
@@ -241,7 +240,7 @@ class MiniGridEnv(GymEnv):
                 self.visualize(self._id)
 
         if self._train_video and self._video_reset_schedule.update():
-            if self.render_mode == "rgb_array_list":
+            if self._env.render_mode == "rgb_array_list":
                 frames = np.array(self._env.render())
                 if self._video_write_schedule.update():
                     frames = frames.transpose(0, 3, 1, 2)
@@ -251,7 +250,7 @@ class MiniGridEnv(GymEnv):
     def reset(self):
         self._has_reset = True
         if not self._eval_every and self._video_schedule.update():
-            if self.render_mode == "rgb_array_list":
+            if self._env._render_mode == "rgb_array_list":
                 frames = np.array(self._env.render())
                 frames = frames.transpose(0, 3, 1, 2)
                 self._logger.log_scalar("video", wandb.Video(frames), self._id)
@@ -395,20 +394,24 @@ def get_minigrid_envs(
         eval_max_steps: The maximum number of steps in the evaluation environment.
         kwargs: Additional arguments to pass to the environment.
     """
-    env = MiniGridEnv(
-        env_name=env_name,
-        seed=seed,
-        reset_free=reset_free,
-        eval=False,
-        symbolic=symbolic,
-        id="train_env",
-        eval_every=False,
-        video_period=-1,
-        max_steps=train_max_steps,
-        **kwargs,
-    )
-    initial_obs, _ = env.reset()
-    all_obs = env.gen_all_obs()
+    try:
+        env = MiniGridEnv(
+            env_name=env_name,
+            seed=seed,
+            reset_free=reset_free,
+            eval=False,
+            symbolic=symbolic,
+            id="train_env",
+            eval_every=False,
+            video_period=-1,
+            max_steps=train_max_steps,
+            no_render=True,
+            **kwargs,
+        )
+        initial_obs, _ = env.reset()
+        all_obs = env.gen_all_obs()
+    finally:
+        env.close()
 
     return ResetFreeEnv(
         train_env=partial(
