@@ -3,7 +3,7 @@ kwargs:
   experiment_manager:
     name: Experiment
     kwargs:
-      name: episodic_q-learning
+      name: &run_name episodic_q-learning
       save_dir: experiment
       saving_schedule:
         name: PeriodicSchedule
@@ -90,7 +90,7 @@ kwargs:
   loggers:
     - name: WandbLogger
       kwargs:
-        name: episodic_q-learning
+        name: *run_name
         project: Debug
         resume: allow
         start_method: fork

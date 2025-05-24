@@ -84,7 +84,6 @@ kwargs:
       device: cpu
       log_frequency: 1000
   loggers:
-    # - name: ChompLogger
     - name: WandbLogger
       kwargs:
         name: *run_name

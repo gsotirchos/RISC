@@ -3,7 +3,7 @@ kwargs:
   experiment_manager:
     name: Experiment
     kwargs:
-      name: 4r-gc_fb_dqn_gs_fb-rf_et
+      name: &run_name risc
       save_dir: experiment
       saving_schedule:
         name: PeriodicSchedule
@@ -82,7 +82,7 @@ kwargs:
   loggers:
     - name: WandbLogger
       kwargs:
-        name: risc
+        name: *run_name
         project: Debug
         resume: allow
         start_method: fork
