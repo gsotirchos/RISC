@@ -249,7 +249,6 @@ class MiniGridEnv(GymEnv):
 
     def reset(self):
         self._has_reset = True
-        breakpoint()
         if not self._eval_every and self._video_schedule.update():
             if self._env.render_mode == "rgb_array_list":
                 frames = np.array(self._env.render())
