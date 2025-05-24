@@ -242,7 +242,10 @@ def get_earl_envs(
         reset_free=reset_free,
     )
     eval_env = EARLEnv(
-        env_name=env_name, env=eval_env, goal_size=goals[0].shape[0], reset_free=False
+        env_name=env_name,
+        env=eval_env,
+        goal_size=goals[0].shape[0],
+        reset_free=False
     )
     return ResetFreeEnv(
         train_env=lambda: train_env,
