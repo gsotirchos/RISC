@@ -63,6 +63,7 @@ class SingleAgentRunner(_SingleAgentRunner):
             agent,
             success_fn=reset_free_env.success_fn,
             reward_fn=reset_free_env.reward_fn,
+            replace_goal_fn=reset_free_env.replace_goal_fn,
             all_states_fn=reset_free_env.all_states_fn,
             vis_fn=reset_free_env.vis_fn,
             get_distance_fn=reset_free_env.get_distance_fn,
@@ -70,7 +71,6 @@ class SingleAgentRunner(_SingleAgentRunner):
             initial_states=reset_free_env.initial_states,
             forward_demos=reset_free_env.forward_demos,
             backward_demos=reset_free_env.backward_demos,
-            replace_goal_fn=reset_free_env.replace_goal_fn,
         )
         self._test_max_steps = test_max_steps
         self._early_terminal = early_terminal
@@ -322,6 +322,7 @@ class SingleAgentRunner(_SingleAgentRunner):
         self.test_and_log(self._eval_environment, prefix="test")
         if self._test_random_goals:
             self.test_and_log(self._eval_environment, random_goal=True, prefix="test_random_goals")
+        self._eval_environment.close()
         self._run_testing = False
         self._trigger_sync()
         self.train_mode(True)
@@ -348,7 +349,6 @@ class SingleAgentRunner(_SingleAgentRunner):
             def get_log_fn(metric_name, prefix):
                 def log_fn(x):
                     self._logger.log_scalar(metric_name, x, prefix)
-
                 return log_fn
 
             reward_plot, _ = self._vis_fn(
