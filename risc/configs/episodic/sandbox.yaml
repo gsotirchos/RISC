@@ -3,7 +3,7 @@ kwargs:
   experiment_manager:
     name: Experiment
     kwargs:
-      name: episodic_sandbox
+      name: &run_name episodic_sandbox
       save_dir: experiment
       saving_schedule:
         name: PeriodicSchedule
@@ -108,7 +108,7 @@ kwargs:
   loggers:
     #- name: WandbLogger
     #  kwargs:
-    #    name: episodic_sandbox
+    #    name: *run_name
     #    project: Debug
     #    resume: allow
     #    start_method: fork

@@ -3,7 +3,7 @@ kwargs:
   experiment_manager:
     name: Experiment
     kwargs:
-      name: FourRooms_FLBL_1.0_1.0_1.0_1.0
+      name: &run_name FourRooms_FLBL_1.0_1.0_1.0_1.0
       save_dir: experiment
       saving_schedule:
         name: PeriodicSchedule
@@ -102,7 +102,7 @@ kwargs:
   loggers:
     - name: WandbLogger
       kwargs:
-        name: FourRooms_FLBL_1.0_1.0_1.0_1.0
+        name: *run_name
         project: Debug
         resume: allow
         start_method: fork

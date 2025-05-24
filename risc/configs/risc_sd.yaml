@@ -3,7 +3,7 @@ kwargs:
   experiment_manager:
     name: Experiment
     kwargs:
-      name: sd_risc
+      name: &run_name sd_risc
       save_dir: experiment
       saving_schedule:
         name: PeriodicSchedule
@@ -118,7 +118,7 @@ kwargs:
   loggers:
     - name: WandbLogger
       kwargs:
+        name: *run_name
         project: RF-IS
-        name: sd_risc
         resume: allow
         start_method: fork

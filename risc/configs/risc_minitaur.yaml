@@ -3,7 +3,7 @@ kwargs:
   experiment_manager:
     name: Experiment
     kwargs:
-      name: minitaur_risc
+      name: &run_name minitaur_risc
       save_dir: experiment
       saving_schedule:
         name: PeriodicSchedule
@@ -118,7 +118,7 @@ kwargs:
   loggers:
     - name: WandbLogger
       kwargs:
+        name: *run_name
         project: RF-IS
-        name: minitaur_risc
         resume: allow
         start_method: fork
