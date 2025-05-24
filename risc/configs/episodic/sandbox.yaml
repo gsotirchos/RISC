@@ -11,12 +11,12 @@ kwargs:
           off_value: false
           on_value: true
           period: 1000000
-  train_steps: 150000
+  train_steps: 15
   max_steps_per_episode: 500  # episodic
   #train_phase_steps: 2000 # reset-free
   test_frequency: 1000
   test_episodes: 2
-  test_max_steps: 20
+  test_max_steps: 10
   test_random_goals: true
   seed: 0
   stack_size: 1
@@ -106,9 +106,9 @@ kwargs:
       oracle: false
       directions: [forward, teleport_backward, lateral]
   loggers:
-    #- name: WandbLogger
-    #  kwargs:
-    #    name: *run_name
-    #    project: Debug
-    #    resume: allow
-    #    start_method: fork
+    - name: WandbLogger
+      kwargs:
+        name: *run_name
+        project: Debug
+        resume: allow
+        start_method: fork
