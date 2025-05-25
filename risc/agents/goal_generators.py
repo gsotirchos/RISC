@@ -227,7 +227,6 @@ class OmniGoalGenerator(GoalGenerator):
         if self._weights[2] != 0:
             if initial_state.shape != agent._observation_space.shape:
                 initial_state = np.concatenate([initial_state, observation[1][None, ...]])
-            breakpoint()
             cost_to_come = self._cost(
                 initial_state,
                 frontier_states[:, None, 0],
