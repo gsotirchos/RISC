@@ -50,7 +50,7 @@ kwargs:
               alpha: .95
               eps: 0.00001
               centered: True
-          init_fn: 
+          init_fn:
             name: 'xavier_uniform'
           loss_fn:
             name: 'SmoothL1Loss'
@@ -88,10 +88,10 @@ kwargs:
         #name: FBGoalGenerator  # RISC
         name: OmniGoalGenerator
         kwargs:
-          debug: true
+          debug: false
           vis_frequency: 50
           weights: [1, 1, 1, 1]
-          max_visitations: 5
+          max_visitations: 3
           use_success_prob: false
           oracle: false
       phase_step_limit: [450, 1, 50]
@@ -100,12 +100,10 @@ kwargs:
         #name: SuccessProbabilityGoalSwitcher  # reset-free
         name: TimeoutGoalSwitcher
         kwargs:
-          #novel_threshold: 5
-          #familiar_threshold: 1
-          switching_probability: 0.45
+          switching_probability: 0.2
           oracle: false
       replay_buffer:
-        name: CountsReplayBuffer
+        # name: CountsReplayBuffer
         name: HERReplayBuffer  # HER
         kwargs:
           capacity: 100000
@@ -115,9 +113,9 @@ kwargs:
       oracle: false
       directions: [forward, teleport_backward, lateral]
   loggers:
-    # - name: WandbLogger
-    #   kwargs:
-    #     name: *run_name
-    #     project: Debug
-    #     resume: allow
-    #     start_method: fork
+    - name: WandbLogger
+      kwargs:
+        name: *run_name
+        project: Debug
+        resume: allow
+        start_method: fork
