@@ -15,78 +15,109 @@ kwargs:
   test_frequency: 250000
   test_episodes: 10
   max_steps_per_episode: 27000
-  stack_size: &stack_size 4
+  seed: 0
+  # stack_size: &stack_size 4
   env_fn:
-    name: GymEnv
+    name: atari_envs
     kwargs:
       env_name: ALE/MontezumaRevenge-v5
       repeat_action_probability: 0.25  # probality = 1 / sticky_action_number
-      frameskip: 1  # this is required to be set to expose frameskip in wrapper
-      env_wrappers:
-        - name: AtariPreprocessing
-          kwargs:
-            frame_skip: 4
-            grayscale_newaxis: True
-            screen_size: 84
-        # This wrapper converts image from the TF format (channels last)
-        # to the PyTorch format (channels first)
-        - name: PermuteImageWrapper
+      frame_skip: 4
+      screen_size: 32  # 84
+      grayscale_newaxis: True
+      seed: 0
+      # render_mode: human
   agent:
-    name: DQNAgent
+    name: GCResetFree
     kwargs:
-      representation_net:
-        name: ConvNetwork
+      base_agent:
+        name: GoalConditionedDQNAgent
         kwargs:
-          channels: [32, 64, 64]
-          kernel_sizes: [8, 4, 3]
-          strides: [4, 2, 1]
-          paddings: [2, 2, 1]
-          mlp_layers: [512]
-      optimizer_fn:
-        name: RMSpropTF
+          # batch_size: 128
+          device: cpu
+          representation_net:
+            name: 'ConvNetwork'
+            kwargs:
+              channels: [32, 64, 64]
+              kernel_sizes: [8, 4, 3]
+              strides: [4, 2, 1]
+              paddings: [2, 2, 1]
+              mlp_layers: [512]
+          optimizer_fn:
+            name: 'RMSpropTF'
+            kwargs:
+              lr: 0.00025
+              alpha: .95
+              eps: 0.00001
+              centered: True
+          init_fn: 
+            name: 'xavier_uniform'
+          loss_fn:
+            name: 'SmoothL1Loss'
+          replay_buffer:
+            name: 'CircularReplayBuffer'
+            kwargs:
+              capacity: 1000000
+              # stack_size: *stack_size
+              gamma: &gamma .99
+          discount_rate: *gamma
+          reward_clip: 1
+          update_period_schedule:
+            name: 'PeriodicSchedule'
+            kwargs:
+              off_value: False
+              on_value: True
+              period: 4
+          target_net_update_schedule:
+            name: 'PeriodicSchedule'
+            kwargs:
+              off_value: False
+              on_value: True
+              period: 8000
+          epsilon_schedule:
+            name: 'LinearSchedule'
+            kwargs:
+              init_value: 1.0
+              end_value: .01
+              steps: 250000
+          test_epsilon: .001
+          min_replay_history: 20000
+          log_frequency: 1000
+      novelty_bonus: 0
+      goal_generator:
+        #name: FBGoalGenerator  # RISC
+        name: OmniGoalGenerator
         kwargs:
-          lr: 0.00025
-          alpha: .95
-          eps: 0.00001
-          centered: True
-      init_fn:
-        name: xavier_uniform
-      loss_fn:
-        name: SmoothL1Loss
+          debug: true
+          vis_frequency: 50
+          weights: [1, 1, 1, 1]
+          max_visitations: 5
+          use_success_prob: false
+          oracle: false
+      phase_step_limit: [450, 1, 50]
+      goal_switcher:
+        #name: BasicGoalSwitcher
+        #name: SuccessProbabilityGoalSwitcher  # reset-free
+        name: TimeoutGoalSwitcher
+        kwargs:
+          #novel_threshold: 5
+          #familiar_threshold: 1
+          switching_probability: 0.45
+          oracle: false
       replay_buffer:
-        name: CircularReplayBuffer
+        name: CountsReplayBuffer
+        name: HERReplayBuffer  # HER
         kwargs:
-          capacity: 1000000
-          stack_size: *stack_size
-          gamma: &gamma .99
-      discount_rate: *gamma
-      reward_clip: 1
-      update_period_schedule:
-        name: PeriodicSchedule
-        kwargs:
-          off_value: False
-          on_value: True
-          period: 4
-      target_net_update_schedule:
-        name: PeriodicSchedule
-        kwargs:
-          off_value: False
-          on_value: True
-          period: 8000
-      epsilon_schedule:
-        name: LinearSchedule
-        kwargs:
-          init_value: 1.0
-          end_value: .01
-          steps: 250000
-      test_epsilon: .001
-      min_replay_history: 20000
-      device: cpu
-      log_frequency: 1000
+          capacity: 100000
+          her_batch_size: 16  # HER
+      separate_agents: false
+      local_visitation_vis_frequency: 2000
+      oracle: false
+      directions: [forward, teleport_backward, lateral]
   loggers:
-    - name: WandbLogger
-      kwargs:
-        name: *run_name
-        project: Debug
-        resume: allow
-        start_method: fork
+    # - name: WandbLogger
+    #   kwargs:
+    #     name: *run_name
+    #     project: Debug
+    #     resume: allow
+    #     start_method: fork
