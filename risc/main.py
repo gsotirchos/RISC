@@ -1,4 +1,5 @@
 import logging
+import ale_py
 
 # Imports needed to register experiment components
 import agents

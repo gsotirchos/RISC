@@ -58,7 +58,6 @@ class AtariEnv(GymEnv):
     #     return super().reset()
 
     def teleport(self, _):
-        print("=== TELEPORTING")
         observation, _ = super().reset()
         return observation
 
