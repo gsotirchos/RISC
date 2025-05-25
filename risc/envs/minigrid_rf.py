@@ -357,11 +357,13 @@ def success_fn(observation, goal=None):
     return np.allclose(obs[0], goal[0])
 
 
-def reward_fn(observation, goal=None, novelty_bonus=0, replay_buffer=None):
-    bonus = 0
+def reward_fn(observation, goal=None, novelty_bonus=0, replay_buffer=None, **kwargs):
+    reward = 0
+    bonus = -1 + float(success_fn(observation, goal))
     if novelty_bonus != 0:
-        bonus += novelty_bonus / (1 + np.sqrt(replay_buffer.state_counts[observation['observation']]))
-    return -1 + float(success_fn(observation, goal)) + bonus
+        counts = replay_buffer.state_counts
+        bonus += novelty_bonus / (1 + np.sqrt(counts[observation['observation']]))
+    return reward + bonus
 
 
 def replace_goal_fn(obs, goal):

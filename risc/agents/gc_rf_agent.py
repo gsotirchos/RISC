@@ -188,7 +188,9 @@ class GCResetFree(Agent):
                 self._local_metrics[direction] = {}
                 self._global_metrics[direction] = {}
                 for metric in ["observation", "desired_goal"]:
-                    self._local_metrics[direction][metric] = deque(maxlen=local_visitation_vis_frequency)
+                    self._local_metrics[direction][metric] = deque(
+                        maxlen=local_visitation_vis_frequency
+                    )
                     self._global_metrics[direction][metric] = 0
             self._local_metrics_vis_frequency = local_visitation_vis_frequency
             self._vis_schedule = PeriodicSchedule(
@@ -238,7 +240,8 @@ class GCResetFree(Agent):
         )
         if agent_traj_state.next_action is not None:
             if not isinstance(agent_traj_state.next_action, (int, np.integer)):
-                print(f"WARNING: action {agent_traj_state.next_action} ({type(agent_traj_state.next_action)}) is not an integer")
+                print(f"WARNING: action {agent_traj_state.next_action} "
+                      f"({type(agent_traj_state.next_action)}) is not an integer")
             action = agent_traj_state.next_action
             agent_traj_state = replace(agent_traj_state, next_action=None)
         return action, replace(
@@ -273,9 +276,10 @@ class GCResetFree(Agent):
             ),
             reward=self._reward_fn(
                 update_info.next_observation,
-                agent_traj_state.current_goal,
-                self._novelty_bonus,
-                agent._replay_buffer,
+                goal=agent_traj_state.current_goal,
+                novelty_bonus=self._novelty_bonus,
+                replay_buffer=agent._replay_buffer,
+                env_reward=update_info.reward,
             ),
             terminated=success == 1,
             truncated=truncated,
