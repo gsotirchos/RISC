@@ -76,7 +76,7 @@ def success_fn(observation, goal=None):
 
 
 def reward_fn(observation, goal=None, env_reward=-1, **kwargs):
-    bonus = -1 + float(success_fn(observation, goal))
+    bonus = -10 + float(success_fn(observation, goal))
     return env_reward + bonus
 
 
