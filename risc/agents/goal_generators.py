@@ -28,7 +28,7 @@ def heatmap(states, metric, **kwargs):
         print(f"Warning: Inf values in {metric}")
         metric[np.isinf(metric)] = 0
     height, width = states.shape[-2:]
-    _, y, x = np.nonzero(states[:, 0])
+    _, y, x = np.nonzero(states[:, 0])  # TODO fix for other types of states
     counts = np.zeros((height, width))
     np.add.at(counts, (np.array(y), np.array(x)), metric)
     try:
@@ -132,8 +132,8 @@ class OmniGoalGenerator(GoalGenerator):
         self._oracle = oracle
         self._logger = logger
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_switcher"))
-        self._log_schedule = PeriodicSchedule(False, True, log_frequency)
-        self._vis_schedule = PeriodicSchedule(False, True, vis_frequency)
+        self._log_schedule = PeriodicSchedule(False, log_frequency > 0, max(log_frequency, 1))
+        self._vis_schedule = PeriodicSchedule(False, vis_frequency > 0, max(vis_frequency, 1))
         self._initial_states = initial_states
         self._goal_states = goal_states
         self._weights = weights

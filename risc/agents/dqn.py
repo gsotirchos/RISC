@@ -370,6 +370,7 @@ class DQNAgent(_DQNAgent):
         ).unsqueeze(0)
         next_observation = torch.cat((next_observation, desired_goal), dim=1)
         if self._use_oracle:
+            # TODO: fix to use the oracle's goal if in MiniGrid
             optimal_qval = DQNAgent._oracle.value(observation.cpu().numpy())
         else:
             optimal_qval = 0
