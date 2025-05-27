@@ -88,8 +88,8 @@ kwargs:
         #name: FBGoalGenerator  # RISC
         name: OmniGoalGenerator
         kwargs:
-          debug: false
-          vis_frequency: 50
+          debug: true
+          vis_frequency: 1
           weights: [1, 1, 1, 1]
           max_visitations: 3
           use_success_prob: false
