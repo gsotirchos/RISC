@@ -80,7 +80,7 @@ kwargs:
         name: OmniGoalGenerator
         kwargs:
           debug: true
-          vis_frequency: 50
+          vis_frequency: 1
           weights: [1, 1, 1, 1]
           max_visitations: 10
           use_success_prob: false
@@ -106,9 +106,9 @@ kwargs:
       oracle: false
       directions: [forward, teleport_backward, lateral]
   loggers:
-   #- name: WandbLogger
-   #   kwargs:
-   #     name: *run_name
-   #     project: Debug
-   #     resume: allow
-   #     start_method: fork
+    #- name: WandbLogger
+    #  kwargs:
+    #    name: *run_name
+    #    project: Debug
+    #    resume: allow
+    #    start_method: fork
