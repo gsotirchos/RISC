@@ -306,12 +306,12 @@ class SingleAgentRunner(_SingleAgentRunner):
 
             # Save experiment state
             if self._save_experiment:
-                # self._experiment_manager.save()  # TODO
+                self._experiment_manager.save()
                 self._save_experiment = False
 
         # Run a final test episode and save the experiment.
         self.run_testing()
-        # self._experiment_manager.save()  # TODO
+        self._experiment_manager.save()
 
     def run_testing(self):
         """Run a testing phase."""
