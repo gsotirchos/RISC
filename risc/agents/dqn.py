@@ -32,7 +32,6 @@ class FourRoomsOracle():
     def __init__(
         self,
         observation_shape,
-        goal_shape,
         discount_rate=1,
         step_reward=0,
         goal_reward=1,
@@ -45,21 +44,21 @@ class FourRoomsOracle():
         self._walls = None
         self._process_observation(observation)
 
-    class Actions(IntEnum):
+    class _Actions(IntEnum):
         right = 0
         down = 1
         left = 2
         up = 3
 
-        @classmethod
-        def move(cls, action, cell=(0, 0)):
-            movements = {
-                cls.right: (1, 0),
-                cls.down: (0, 1),
-                cls.left: (-1, 0),
-                cls.up: (0, -1),
-            }
-            return cell[0] + movements[action][0], cell[1] + movements[action][1]
+    _movements = {
+        _Actions.right: (1, 0),
+        _Actions.down: (0, 1),
+        _Actions.left: (-1, 0),
+        _Actions.up: (0, -1),
+    }
+
+    def _move(self, action, cell=(0, 0)):
+        return cell[0] + self._movements[action][0], cell[1] + self._movements[action][1]
 
     def _process_observation(self, *args):
         if not args:
@@ -94,8 +93,8 @@ class FourRoomsOracle():
         queue = deque([goal])
         while queue:
             cell = queue.popleft()
-            for action in self.Actions:
-                next_cell = self.Actions.move(action, cell)
+            for action in self._Actions:
+                next_cell = self._move(action, cell)
                 if next_cell in self._valid_cells and dist[next_cell] == -1:
                     dist[next_cell] = dist[cell] + 1
                     queue.append(next_cell)
@@ -110,8 +109,8 @@ class FourRoomsOracle():
         for cell in self._valid_cells:
             for goal_cell in self._valid_cells:
                 current_dist = goal_dist[goal_cell][cell]
-                for action in self.Actions:
-                    next_cell = self.Actions.move(action, cell)
+                for action in self._Actions:
+                    next_cell = self._move(action, cell)
                     if next_cell in self._valid_cells:
                         next_dist = goal_dist[goal_cell][next_cell]
                     else:
@@ -142,7 +141,7 @@ class FourRoomsOracle():
 
     @processobservation
     def next_state(self, observation, action):
-        next_cell = self.Actions.move(action, self._agent_cell)
+        next_cell = self._move(action, self._agent_cell)
         if next_cell not in self._valid_cells:
             return observation
         next_observation = np.copy(observation)

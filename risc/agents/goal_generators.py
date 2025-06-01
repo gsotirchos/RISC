@@ -379,13 +379,13 @@ class TimeoutGoalSwitcher(GoalSwitcher):
         self._logger = logger
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_switcher"))
         self._log_schedule = PeriodicSchedule(False, True, log_frequency)
-        self._novel_observations = HashableKeyDict()
+        self._novel_observations = HashableKeyDict(int)
         self._threshold = threshold
         self._switching_prob = switching_probability
 
 
     def _is_novel(self, observation, agent):
-        observation_counts = agent._replay_buffer.state_counts.get(observation, 0)
+        observation_counts = agent._replay_buffer.state_counts[observation]
         return observation_counts == 0 or observation in self._novel_observations
 
     def should_switch(self, update_info, agent_traj_state):
@@ -394,9 +394,12 @@ class TimeoutGoalSwitcher(GoalSwitcher):
         current_direction = agent_traj_state.current_direction.removeprefix("teleport_")
         if current_direction != "lateral":
             return False, success_prob
+        if agent_traj_state.phase_steps == 1:
+            self._novel_observations.clear()
         next_observation = update_info.next_observation["observation"]
         if not self._is_novel(next_observation, agent):
             return False, success_prob
+        self._novel_observations[next_observation] += 1
         should_switch = self._rng.random() < self._switching_prob
         return should_switch, success_prob
 
