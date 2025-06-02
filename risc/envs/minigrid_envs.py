@@ -375,7 +375,7 @@ class HallwayEnv(MiniGridEnv):
             self,
             agent_pos=(14, 9),
             goal_pos=(9, 9),
-            hallway_length=4,
+            hallway_length=5,
             max_steps=100,
             **kwargs
         ):
@@ -410,13 +410,27 @@ class HallwayEnv(MiniGridEnv):
         self.grid.vert_wall(0, 0)
         self.grid.vert_wall(width - 1, 0)
 
-        # Generate hallway walls
+        # Generate main hallway walls
         for i in range(self._hallway_start_x, self._hallway_end_x):
            self.put_obj(Slide(3), i, 8)
            self.put_obj(Slide(1), i, 10)
         self.grid.vert_wall(10, 8, 3)
         self.grid.horz_wall(9, 8, 1)
         self.grid.horz_wall(9, 10, 1)
+
+        # Generate decoy hallway walls
+        for i in range(self._hallway_start_x, self._hallway_end_x):
+           self.put_obj(Slide(3), i, 3)
+           self.put_obj(Slide(1), i, 5)
+        self.grid.vert_wall(10, 3, 3)
+        self.grid.horz_wall(9, 3, 1)
+        self.grid.horz_wall(9, 5, 1)
+        for i in range(self._hallway_start_x, self._hallway_end_x):
+           self.put_obj(Slide(3), i, 13)
+           self.put_obj(Slide(1), i, 15)
+        self.grid.vert_wall(10, 13, 3)
+        self.grid.horz_wall(9, 13, 1)
+        self.grid.horz_wall(9, 15, 1)
 
         self.place_agent(self._agent_default_pos)
         self.place_goal(self._goal_default_pos)
