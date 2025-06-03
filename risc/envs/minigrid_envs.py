@@ -375,7 +375,7 @@ class HallwayEnv(MiniGridEnv):
             self,
             agent_pos=(14, 9),
             goal_pos=(9, 9),
-            hallway_length=5,
+            hallway_length=6,
             max_steps=100,
             **kwargs
         ):
