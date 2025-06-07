@@ -137,8 +137,6 @@ class SingleAgentRunner(_SingleAgentRunner):
                     f"{self._total_steps} environment training steps completed\n"
                     + "\n".join([f"{k}: {v}" for k, v in metrics.items()])
                 )
-                # if self._total_steps == 2000:
-                #     raise Exception
                 self._phase_steps = 0
                 self._train_timer.start()
             self._save_experiment = (
@@ -192,9 +190,7 @@ class SingleAgentRunner(_SingleAgentRunner):
             info=other_info,
         )
         if self._training:
-            agent_traj_state = agent.update(
-                copy.deepcopy(update_info), agent_traj_state
-            )
+            agent_traj_state = agent.update(copy.deepcopy(update_info), agent_traj_state)
 
         transition_info.record_info(agent, asdict(update_info))
         episode_metrics[agent.id]["reward"] += update_info.reward * active
@@ -266,9 +262,7 @@ class SingleAgentRunner(_SingleAgentRunner):
             info=other_info,
         )
         if self._training:
-            agent_traj_state = agent.update(
-                copy.deepcopy(update_info), agent_traj_state
-            )
+            agent_traj_state = agent.update(copy.deepcopy(update_info), agent_traj_state)
 
         transition_info.record_info(agent, asdict(update_info))
         episode_metrics[agent.id]["reward"] += update_info.reward * active
