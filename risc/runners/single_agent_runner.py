@@ -18,6 +18,13 @@ from hive.utils.loggers import ScheduledLogger, NullLogger
 from hive.utils.utils import seeder
 from wandb_osh.hooks import TriggerWandbSyncHook
 
+# import gc
+# import psutil
+# import tracemalloc
+# tracemalloc.start()
+# s = None
+# t = 0
+
 
 class Timer:
     def __init__(self):
@@ -410,6 +417,25 @@ class SingleAgentRunner(_SingleAgentRunner):
             self.update_step()
             if self._eval_every and not self._training:
                 terminated, truncated = np.all(terminated), np.all(truncated)
+            # global t
+            # if t % 200 == 0:
+            #     global s
+            #     if not s:
+            #         s = tracemalloc.take_snapshot()
+            #         print(f"====== ({t}) taken snapshot ======")
+            #     else:
+            #         gc.collect()
+            #         top_stats = tracemalloc.take_snapshot().compare_to(s, 'lineno')
+            #         lines = [str(stat) for stat in top_stats[:10]]
+            #         print(f"====== ({t}) RESULTS ======")
+            #         print("Total memory:")
+            #         print(f"{psutil.Process(os.getpid()).memory_info().rss / (1024 ** 2)} MiB")
+            #         print(f"{psutil.Process(os.getpid()).memory_info().vms / (1024 ** 2)} MiB")
+            #         print('\n'.join(lines))
+            #         breakpoint()
+            # else:
+            #     print(f"{t}", end=", ", flush=True)
+            # t += 1
         if not (terminated or truncated):
             self.run_end_step(
                 environment,
