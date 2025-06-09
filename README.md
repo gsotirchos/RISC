@@ -12,15 +12,14 @@ conda env create -f environment.yaml
 
 ## Running the code
 
-The configs for running the RISC agents described in the paper can be found in the
-folder `risc/configs/`. To launch an agent, go to the `risc/` directory and run:
+The configs for running the experiments described in the paper can be found in the folder `risc/configs/`. To launch an agent, go to the `risc/` directory and run:
 
 ```
 cd risc/
 python main.py -c configs/episodic/sierl.yaml
 ```
 
-We provide SIERL configs for Minigrid and the Atari game Montezuma's Revenge.
+We provide SIERL configurations for Minigrid and the Atari game Montezuma's Revenge.
 
 
 <!--
@@ -41,10 +40,14 @@ To create just one of the figures, run:
 cd visualization
 python create_figures.py -c <"figure_3_top" | "figure_3_bottom" | "figure_4_left" | "figure_4_right" | "figure_5" | "figure_6">
 ```
+-->
 
 
 ## Bibtex
 
+TBD
+
+<!--
 If you found our work useful, please cite our paper.
 
 ```
