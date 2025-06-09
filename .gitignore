@@ -1,4 +1,4 @@
-**/pyproject.toml
+earl_benchmark/
 **/experiment/
 **/__pycache__/
 *.pyc
@@ -7,6 +7,6 @@
 **/npdir
 **/wandb
 **/Doxyfile
-earl_benchmark/
+**/pyproject.toml
 **/template.yaml
 **/sandbox.py

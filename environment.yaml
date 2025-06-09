@@ -1,0 +1,51 @@
+name: rlhive
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - conda>=4.6.7
+  - python=3.9
+  - pip=21.0
+  - setuptools=65.5.0
+  - gcc=12.1.0
+  - gxx=12.1.0
+  - ipython=8.18.1
+  - wandb=0.19.11
+  - scipy=1.11.2
+  - seaborn=0.12.1
+  - pytorch=2.0.0
+  - numpy=1.23.0
+  - matplotlib=3.4.2
+  - termcolor=1.1.0
+  - shimmy=0.2.1
+  - cython=0.29.32
+  #- patchelf=0.17.2
+  - mujoco-python=2.2.0
+  - gymnasium=0.28.1  # Minigrid and Atari use Gymnasium
+  #- gymnasium-atari=0.28.1  # for Atari games
+  #- gymnasium-other=0.28.1  # for Atari games
+  - ale-py=0.8.1
+  - pip:
+    - wheel==0.38.0
+    - opencv-python==4.9.0.80
+    - gymnasium[atari,accept-rom-license]  # Atari ROMs
+    #- gymnasium-robotics==1.2.2
+    - Minigrid==2.1.0
+    #- mujoco==2.2.0
+    #- mujoco-py==2.1.2.14
+    - rliable==1.0.8
+    - wandb-osh==1.0.4
+    - git+https://github.com/chandar-lab/RLHive.git@de8f0a20a4e4760b532f244a84761e8609e34fea
+    - git+https://github.com/dapatil211/earl_benchmark.git@da7b902b64e7347a857f9b66eca0b0367d325e83
+    #- git+https://github.com/rlworkgroup/metaworld.git@04be337a12305e393c0caf0cbf5ec7755c7c8feb
+
+variables:
+  MUJOCO_GL: osmesa
+
+# 0. `pip uninstall gym`
+# 1. Download and install MuJoCo.app from:
+# 2. Install according to: https://github.com/openai/mujoco-py/issues/662#issuecomment-996081734
+# 3. `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.mujoco/mujoco210/bin`
+# 4. `export CC="$(command -v clang)"`
+# 5. `git clone https://github.com/dapatil211/earl_benchmark \
+#         && mv ./earl_benchmark/earl_benchmark ${CONDA_PREFIX}/lib/python3.9/site-packages/earl_benchmark`
