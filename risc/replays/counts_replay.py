@@ -220,16 +220,21 @@ class CountsReplayBuffer(CircularReplayBuffer):
         overwritten_next_state = self._storage["next_observation"][self._cursor]
         if not np.all(overwritten_state == 0):
             self.action_counts[overwritten_state, overwritten_action] -= 1
+            if self.action_counts.get((overwritten_state, overwritten_action), 0) == 0:
+                if self.state_counts.get(overwritten_state, 0) == 0:
+                    del self.action_counts[overwritten_state, overwritten_action]
+            elif self.action_counts.get((overwritten_state, overwritten_action), 0) < 0:
+                print(f"WARNING: negative action count for action {overwritten_action} in state {overwritten_state}")
             self.state_counts[overwritten_next_state] -= 1
-            if self.state_counts[overwritten_next_state] == 0:
+            if self.state_counts.get(overwritten_next_state, 0) == 0:
                 del self.state_counts[overwritten_next_state]
                 for action in range(self._action_n):
-                    if self.action_counts[overwritten_next_state, action] == 0:
-                        del self.action_counts[overwritten_state, action]
-                    elif self.action_counts[overwritten_next_state, action] < 0:
+                    if self.action_counts.get((overwritten_next_state, action), 0) == 0:
+                        del self.action_counts[overwritten_next_state, action]
+                    elif self.action_counts.get((overwritten_next_state, action), 0) < 0:
                         print(f"WARNING: negative action count for action {action} in state {overwritten_state}")
                 # del self.distances[overwrittan_state]
-            elif self.state_counts[overwritten_next_state] < 0:
+            elif self.state_counts.get(overwritten_next_state, 0) < 0:
                 print(f"WARNING: negative state count for state {overwritten_next_state}")
         new_state = transition["observation"]
         new_action = transition["action"]
