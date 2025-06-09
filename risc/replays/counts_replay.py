@@ -201,7 +201,6 @@ class CountsReplayBuffer(CircularReplayBuffer):
     def __init__(self, *args, action_n: int, **kwargs):
         super().__init__(*args, **kwargs)
         self._action_n = action_n
-        # self.action_counts = HashableKeyDict(dict(int))
         self.action_counts = HashableKeyDict(int)
         self.state_counts = HashableKeyDict(int)
         # self.distances = SymmetricMatrix()
@@ -220,30 +219,28 @@ class CountsReplayBuffer(CircularReplayBuffer):
         overwritten_action = self._storage["action"][self._cursor]
         overwritten_next_state = self._storage["next_observation"][self._cursor]
         if not np.all(overwritten_state == 0):
-            # self.action_counts[overwritten_state][overwritten_action] -= 1
-            # if self.action_counts[overwritten_state][overwritten_action] <= 0:
-            #     del self.action_counts[overwritten_state][overwritten_action]
-            # if len(self.action_counts[overwritten_state]) <= 0:
-            #     del self.action_counts[overwritten_state]
             self.action_counts[overwritten_state, overwritten_action] -= 1
-            if self.action_counts[overwritten_state, overwritten_action] <= 0:
-                del self.action_counts[overwritten_state, overwritten_action]
             self.state_counts[overwritten_next_state] -= 1
-            if self.state_counts[overwritten_next_state] <= 0:
+            if self.state_counts[overwritten_next_state] == 0:
                 del self.state_counts[overwritten_next_state]
-                # del self.distances[overwrittan_next_state]
+                for action in range(self._action_n):
+                    if self.action_counts[overwritten_next_state, action] == 0:
+                        del self.action_counts[overwritten_state, action]
+                    elif self.action_counts[overwritten_next_state, action] < 0:
+                        print(f"WARNING: negative action count for action {action} in state {overwritten_state}")
+                # del self.distances[overwrittan_state]
+            elif self.state_counts[overwritten_next_state] < 0:
+                print(f"WARNING: negative state count for state {overwritten_next_state}")
         new_state = transition["observation"]
         new_action = transition["action"]
         new_next_state = transition["next_observation"]
         if not np.all(new_state == 0):
-            # self.action_counts[new_state][new_action] += 1
-            # _ = self.action_counts[new_next_state]
-            if (new_state, new_action) not in self.action_counts:
-                for action in range(self._action_n):
-                    self.action_counts[new_state, action] += 0
             self.action_counts[new_state, new_action] += 1
             self.state_counts[new_next_state] += 1
-            # self._update_distances(new_next_state)
+            if self.state_counts[new_next_state] == 1:
+                for action in range(self._action_n):
+                    self.action_counts[new_next_state, action] += 0
+            # self._update_distances(new_state)
 
     def _add_transition(self, **transition):
         self._update_metadata(**transition)

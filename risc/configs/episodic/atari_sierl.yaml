@@ -54,13 +54,7 @@ kwargs:
             name: 'xavier_uniform'
           loss_fn:
             name: 'SmoothL1Loss'
-          replay_buffer:
-            name: 'CircularReplayBuffer'
-            kwargs:
-              capacity: 1000000
-              # stack_size: *stack_size
-              gamma: &gamma .99
-          discount_rate: *gamma
+          discount_rate: &gamma .99
           reward_clip: 1
           update_period_schedule:
             name: 'PeriodicSchedule'
@@ -106,8 +100,10 @@ kwargs:
         # name: CountsReplayBuffer
         name: HERReplayBuffer  # HER
         kwargs:
-          capacity: 100000
+          capacity: 1000000
           her_batch_size: 16  # HER
+          # stack_size: *stack_size
+          gamma: *gamma
       separate_agents: false
       local_visitation_vis_frequency: 2000
       oracle: false
