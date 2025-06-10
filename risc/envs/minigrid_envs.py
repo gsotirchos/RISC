@@ -12,7 +12,7 @@ from minigrid.core.mission import MissionSpace
 from minigrid.core.world_object import Goal, WorldObj
 from minigrid.core.roomgrid import RoomGrid as _RoomGrid
 from minigrid.envs.empty import EmptyEnv as _EmptyEnv
-from minigrid.envs.fourrooms import FourRoomsEnv as _FourRoomsEnv
+# from minigrid.envs.fourrooms import FourRoomsEnv as _FourRoomsEnv
 from minigrid.utils.rendering import fill_coords, point_in_rect
 
 
@@ -174,8 +174,6 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
         if goal_pos is None:
             self.place_obj(Goal())  # random position
         else:
-            self.goal_pos = goal_pos
-            self._goal_default_pos = goal_pos
             self.put_obj(Goal(), *goal_pos)
 
     def place_agent(self, agent_pos=None):
@@ -199,23 +197,57 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
         super().close()
 
 
-class FourRoomsEnv(MiniGridEnv, _FourRoomsEnv):
+class FourRoomsEnv(MiniGridEnv):  #, _FourRoomsEnv):
     """Four rooms environment."""
 
     def __init__(self, agent_pos=(1, 1), goal_pos=(17, 17), max_steps=100, **kwargs):
         self._agent_default_pos = agent_pos
         self._goal_default_pos = goal_pos
 
-        self.size = 19
+        self.width = 19
+        self.height = 19
         mission_space = MissionSpace(mission_func=self._gen_mission)
 
         super().__init__(
             mission_space=mission_space,
-            width=self.size,
-            height=self.size,
+            width=self.width,
+            height=self.height,
             max_steps=max_steps,
             **kwargs,
         )
+
+    @staticmethod
+    def _gen_mission():
+        return "reach the goal"
+
+    def _gen_grid(self, width, height):
+        # Create the grid
+        self.grid = Grid(width, height)
+
+        # Generate the surrounding walls
+        self.grid.horz_wall(0, 0)
+        self.grid.horz_wall(0, height - 1)
+        self.grid.vert_wall(0, 0)
+        self.grid.vert_wall(width - 1, 0)
+
+        room_w = width // 2
+        room_h = height // 2
+
+        self.grid.vert_wall(room_w, 0, height)
+        self.grid.horz_wall(0, room_h, width)
+
+        doors_pos = (
+                (room_w, 7),
+                (room_w, 12),
+                (6, room_h),
+                (14, room_h),
+        )
+
+        for door_pos in doors_pos:
+            self.grid.set(*door_pos, None)
+
+        self.place_agent(self._agent_default_pos)
+        self.place_goal(self._goal_default_pos)
 
 
 class TwoRoomsEnv(MiniGridEnv):

@@ -321,15 +321,10 @@ class SingleAgentRunner(_SingleAgentRunner):
         self.train_mode(True)
 
     def test_and_log(self, environment, random_goal=False, prefix="test"):
-        if random_goal:
-            original_goal = environment.get_goal()
         aggregated_episode_metrics = self.create_episode_metrics().get_flat_dict()
         for _ in range(self._test_episodes):
             if random_goal:
-                random_state = self._all_states_fn()['observation'][
-                    self._rng.integers(len(self._all_states_fn()['observation']))
-                ]
-                environment.set_goal(random_state)
+                environment.randomize_goal()
             episode_metrics = self.run_episode(environment, self._test_max_steps)
             for metric, value in episode_metrics.get_flat_dict().items():
                 aggregated_episode_metrics[metric] += value / self._test_episodes
@@ -371,7 +366,7 @@ class SingleAgentRunner(_SingleAgentRunner):
             self._logger.log_metrics(eval_every_metrics, "eval_every")
         self._logger.log_metrics(aggregated_episode_metrics, prefix)
         if random_goal:
-            environment.set_goal(original_goal)
+            environment.reset_goal()
 
     def run_episode(self, environment, max_steps=None):
         """Run a single episode of the environment.

@@ -94,11 +94,11 @@ def create_env_fn(env_name, seed, symbolic, **kwargs):
             kwargs["agent_pos"] = starting_pos
 
         env = gym.make(env_name, symbolic=symbolic, **kwargs)
-        env = ReseedWrapper(env, seeds=[seed])
+        # env = ReseedWrapper(env, seeds=[seed])
         if not symbolic:
             env = ImgObsWrapper(RGBImgObsWrapper(env, tile_size=5))
             env.action_space = gym.spaces.Discrete(3)
-        return env.env.unwrapped
+        return env
 
     return create_env
 
@@ -165,6 +165,7 @@ class MiniGridEnv(GymEnv):
         env_fn = create_env_fn(env_name, seed, symbolic, **kwargs)
         env = env_fn()
         self._width, self._height = env.width, env.height
+        self._goal_default_pos = env.unwrapped._goal_default_pos
         if self._eval_every:
             self._env, self._initial_states = create_every_eval_env(env, env_fn)
         else:
@@ -256,16 +257,11 @@ class MiniGridEnv(GymEnv):
                 self._logger.log_scalar("video", wandb.Video(frames), self._id)
         return super().reset()
 
-    def set_goal(self, state=None):
-        if state is None:
-            pos = None
-        else:
-            pos = np.flip(np.argwhere(state[0] == 255)[..., -2:].squeeze(), axis=-1).tolist()
-        self._env.place_goal(pos)
+    def randomize_goal(self):
+        self._env.unwrapped._goal_default_pos = None
 
-    def get_goal(self):
-        self._env.gen_goal_obs()
-        return self._env.goal_obs
+    def reset_goal(self):
+        self._env.unwrapped._goal_default_pos = self._goal_default_pos
 
     def teleport(self, state=None):
         if state is None:
