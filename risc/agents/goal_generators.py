@@ -312,6 +312,8 @@ class OmniGoalGenerator(GoalGenerator):
         self._dbg_print(f"goal state: {self._dbg_format(goal[0])}", "   ")
         self._dbg_print(f"goal action: {goal[1]}", "   ")
         if self._debug and isinstance(self._logger, NullLogger):
+            print(f"state counts: {len(agent._replay_buffer.state_counts.keys())}")
+            # if len(agent._replay_buffer.state_counts.keys()) > 240:
             breakpoint()
         return goal
 
