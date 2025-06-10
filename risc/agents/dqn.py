@@ -321,7 +321,12 @@ class DQNAgent(_DQNAgent):
             else:
                 epsilon = self._epsilon_schedule.update()
             if self._logger.update_step(self._timescale):
-                self._logger.log_scalar("epsilon", epsilon, self._timescale)
+                metrics={}
+                metrics["epsilon"] = epsilon
+                metrics["replay_buffer_size"] = self._replay_buffer.size()
+                metrics["state-action_counts_size"] = len(self._replay_buffer.action_counts)
+                metrics["state_counts_size"] = len(self._replay_buffer.state_counts)
+                self._logger.log_metrics(metrics, self._timescale)
         else:
             epsilon = self._test_epsilon
         observation = torch.tensor(observation, device=self._device).float()
