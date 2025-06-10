@@ -10,7 +10,7 @@ kwargs:
         kwargs:
           off_value: false
           on_value: true
-          period: 1000000
+          period: 10000
   train_steps: 150000
   max_steps_per_episode: 500  # episodic
   #train_phase_steps: 2000 # reset-free
@@ -78,11 +78,11 @@ kwargs:
       goal_switcher:
         name: BasicGoalSwitcher
       replay_buffer:
-        name: CountsReplayBuffer
-        #name: HERReplayBuffer  # HER
+        #name: CountsReplayBuffer
+        name: HERReplayBuffer  # HER
         kwargs:
           capacity: 100000
-          #her_batch_size: 16  # HER
+          her_batch_size: 16  # HER
       separate_agents: false
       local_visitation_vis_frequency: 2000
       oracle: false

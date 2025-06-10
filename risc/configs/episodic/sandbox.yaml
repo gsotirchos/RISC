@@ -11,17 +11,14 @@ kwargs:
           off_value: false
           on_value: true
           period: 1000000
-  # train_steps: 25
-  train_steps: 25000
+  train_steps: 25
   max_steps_per_episode: 500  # episodic
   #train_phase_steps: 2000 # reset-free
-  # test_frequency: 10
-  test_frequency: 100000000
+  test_frequency: 10
   test_episodes: 2
   test_max_steps: 10
   test_random_goals: true
-  # seed: 0
-  seed: 71729146
+  seed: 0
   stack_size: 1
   eval_every: false
   early_terminal: true
@@ -29,8 +26,7 @@ kwargs:
   env_fn:
     name: minigrid_envs
     kwargs:
-      # env_name: MiniGrid-Hallway-v1
-      env_name: MiniGrid-FourRooms-v1
+      env_name: MiniGrid-Hallway-v1
       eval_max_steps: 100
       local_vis_period: 2000
       reset_free: false  # episodic
@@ -89,15 +85,12 @@ kwargs:
           max_visitations: 10
           use_success_prob: false
           oracle: true
-      # phase_step_limit: [5, 1, 20]
-      phase_step_limit: [455, 1, 50]
+      phase_step_limit: [5, 1, 20]
       goal_switcher:
         #name: BasicGoalSwitcher
         #name: SuccessProbabilityGoalSwitcher  # reset-free
         name: TimeoutGoalSwitcher
         kwargs:
-          #novel_threshold: 1
-          #familiar_threshold: 2
           switching_probability: 0.45
           oracle: false
       replay_buffer:

@@ -88,12 +88,10 @@ kwargs:
         #name: SuccessProbabilityGoalSwitcher  # reset-free
         name: TimeoutGoalSwitcher
         kwargs:
-          #novel_threshold: 5
-          #familiar_threshold: 1
           switching_probability: 0.45
           oracle: false
       replay_buffer:
-        name: CountsReplayBuffer
+        #name: CountsReplayBuffer
         name: HERReplayBuffer  # HER
         kwargs:
           capacity: 100000
