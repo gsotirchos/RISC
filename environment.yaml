@@ -17,6 +17,7 @@ dependencies:
   - numpy=1.23.0
   - matplotlib=3.4.2
   - termcolor=1.1.0
+  - moviepy=1.0.3
   - shimmy=0.2.1
   - cython=0.29.32
   #- patchelf=0.17.2

@@ -32,7 +32,7 @@ kwargs:
       reset_free: false  # episodic
       symbolic: true
       train_max_steps: 500  # episodic
-      video_period: 100
+      video_period: -1
       vis_frequency: 2000
       #render_mode: human
   agent:
