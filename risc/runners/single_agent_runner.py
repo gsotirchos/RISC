@@ -215,7 +215,7 @@ class SingleAgentRunner(_SingleAgentRunner):
         # dump memory
         rss = psutil.Process(os.getpid()).memory_info().rss
         if rss > 5 * 1024 ** 3:
-            print("=== DUMPING MEMORY")
+            print(f"=== DUMPING MEMORY ({rss=})")
             self.memory_dump()
             print("=== DONE")
 
@@ -446,7 +446,7 @@ class SingleAgentRunner(_SingleAgentRunner):
         """
         Load with:
         with open("memory.pickle", 'rb') as dump:
-            objs = cPickle.load(dump)
+            objs = pickle.load(dump)
         """
         dump = open("memory.pickle", 'wb')
         xs = []
