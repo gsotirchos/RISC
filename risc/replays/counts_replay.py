@@ -224,7 +224,8 @@ class CountsReplayBuffer(CircularReplayBuffer):
                 if self.state_counts.get(overwritten_state, 0) == 0:
                     del self.action_counts[overwritten_state, overwritten_action]
             elif self.action_counts.get((overwritten_state, overwritten_action), 0) < 0:
-                print(f"WARNING: negative action count for action {overwritten_action} in state {overwritten_state}")
+                print(f"WARNING: negative action count for action {overwritten_action}"
+                      f" in state {overwritten_state}")
             self.state_counts[overwritten_next_state] -= 1
             if self.state_counts.get(overwritten_next_state, 0) == 0:
                 del self.state_counts[overwritten_next_state]
@@ -232,7 +233,8 @@ class CountsReplayBuffer(CircularReplayBuffer):
                     if self.action_counts.get((overwritten_next_state, action), 0) == 0:
                         del self.action_counts[overwritten_next_state, action]
                     elif self.action_counts.get((overwritten_next_state, action), 0) < 0:
-                        print(f"WARNING: negative action count for action {action} in state {overwritten_state}")
+                        print(f"WARNING: negative action count for action {action}"
+                              f" in state {overwritten_state}")
                 # del self.distances[overwrittan_state]
             elif self.state_counts.get(overwritten_next_state, 0) < 0:
                 print(f"WARNING: negative state count for state {overwritten_next_state}")

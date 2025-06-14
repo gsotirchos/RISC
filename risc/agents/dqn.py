@@ -221,7 +221,8 @@ class DQNAgent(_DQNAgent):
         oracle: bool = False,
         **kwargs,
     ):
-        #device = "cuda"
+        if device == "cuda" and not torch.cuda.is_available():
+            device = "cpu"
         self._compute_success_probability = compute_success_probability
         self._only_add_low_confidence = only_add_low_confidence
         self._success_prob_threshold = success_prob_threshold
@@ -325,7 +326,7 @@ class DQNAgent(_DQNAgent):
                 metrics={}
                 metrics["epsilon"] = epsilon
                 metrics["replay_buffer_size"] = self._replay_buffer.size()
-                metrics["replay_buffer_size (MB)"] = sys.getsizeof(self._replay_buffer._storage) / 1e6
+                # print(sum([sys.getsizeof(i) for i in self._replay_buffer._storage.values()]) / 1e6)
                 metrics["state-action_counts_size"] = len(self._replay_buffer.action_counts)
                 metrics["state-action_counts_size (MB)"] = sys.getsizeof(self._replay_buffer.action_counts) / 1e6
                 metrics["state_counts_size"] = len(self._replay_buffer.state_counts)

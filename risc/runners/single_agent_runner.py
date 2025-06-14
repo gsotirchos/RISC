@@ -2,6 +2,10 @@ import copy
 import logging
 import os
 import time
+import sys
+import gc
+import pickle
+import psutil
 from dataclasses import asdict
 from functools import partial
 from typing import List
@@ -207,6 +211,13 @@ class SingleAgentRunner(_SingleAgentRunner):
                 observation, transition_info, agent_traj_state = self.teleport_to_goal(
                     environment, agent_traj_state
                 )
+
+        # dump memory
+        rss = psutil.Process(os.getpid()).memory_info().rss
+        if rss > 5 * 1024 ** 3:
+            print("=== DUMPING MEMORY")
+            self.memory_dump()
+            print("=== DONE")
 
         return (
             terminated,
@@ -430,3 +441,30 @@ class SingleAgentRunner(_SingleAgentRunner):
         transition_info = TransitionInfo(self._agents, self._stack_size)
         agent_traj_state = replace(agent_traj_state, current_goal=None)
         return observation, transition_info, agent_traj_state
+
+    def memory_dump(self):
+        """
+        Load with:
+        with open("memory.pickle", 'rb') as dump:
+            objs = cPickle.load(dump)
+        """
+        dump = open("memory.pickle", 'wb')
+        xs = []
+        for obj in gc.get_objects():
+            if hasattr(obj, '__class__'):
+                # name = TODO
+                i = id(obj)
+                size = sys.getsizeof(obj, 0)
+                cls = str(obj.__class__)
+                referrers = [id(o) for o in gc.get_referrers(obj)]
+                referents = [id(o) for o in gc.get_referents(obj)]
+                xs.append({
+                    # 'name': name,
+                    'size': size,
+                    'class': cls,
+                    'id': i,
+                    'referents': len(referents),
+                    'referrers': len(referrers),
+                })
+        pickle.dump(xs, dump)
+
