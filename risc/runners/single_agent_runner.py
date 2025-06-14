@@ -218,6 +218,7 @@ class SingleAgentRunner(_SingleAgentRunner):
             print(f"=== DUMPING MEMORY ({rss=})")
             self.memory_dump()
             print("=== DONE")
+            exit()
 
         return (
             terminated,
@@ -452,19 +453,17 @@ class SingleAgentRunner(_SingleAgentRunner):
         xs = []
         for obj in gc.get_objects():
             if hasattr(obj, '__class__'):
-                # name = TODO
                 i = id(obj)
                 size = sys.getsizeof(obj, 0)
                 cls = str(obj.__class__)
-                referrers = [id(o) for o in gc.get_referrers(obj)]
                 referents = [id(o) for o in gc.get_referents(obj)]
+                # referrers = [id(o) for o in gc.get_referrers(obj)]
                 xs.append({
-                    # 'name': name,
                     'size': size,
                     'class': cls,
                     'id': i,
                     'referents': len(referents),
-                    'referrers': len(referrers),
+                    # 'referrers': len(referrers),
                 })
         pickle.dump(xs, dump)
 
