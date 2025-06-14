@@ -24,7 +24,7 @@ kwargs:
       repeat_action_probability: 0.25  # probality = 1 / sticky_action_number
       frame_skip: 4
       screen_size: 32  # 84
-      grayscale_newaxis: True
+      resolution: 8
       seed: 0
       # render_mode: human
   agent:
