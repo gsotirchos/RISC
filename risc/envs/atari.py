@@ -3,9 +3,11 @@ from enum import Enum
 from functools import partial
 
 import numpy as np
+import cv2
 import gymnasium as gym
 from hive.envs import GymEnv
 from envs.reset_free_envs import ResetFreeEnv
+from gymnasium.spaces import Box
 from gymnasium.wrappers.atari_preprocessing import AtariPreprocessing
 from hive.envs.gym.gym_wrappers import PermuteImageWrapper
 
@@ -21,20 +23,33 @@ class DistanceType(str, Enum):
 class GCObsWrapper(gym.ObservationWrapper):
     """Wrapper for Atari environments that adds a desired goal to the observation."""
 
-    def __init__(self, env
-                 #, goal_size
-                 ):
+    def __init__(self, env, screen_size, resolution):
         super().__init__(env)
+        self.screen_size = screen_size
+        self.resolution_ratio = 256.0 / resolution
+        observation_space = Box(
+            low=0,
+            high=255,
+            shape=(1, screen_size, screen_size),
+            dtype=np.uint8,
+        )
         self.observation_space = gym.spaces.Dict(
             {
-                "observation": env.observation_space,
-                "desired_goal": env.observation_space,
+                "observation": observation_space,
+                "desired_goal": observation_space,
             }
         )
-        self.goal = np.zeros(env.observation_space.shape, dtype=env.observation_space.dtype)
+        self.goal = np.zeros(observation_space.shape, dtype=observation_space.dtype)
 
     def observation(self, observation):
-        return {"observation": observation, "desired_goal": self.goal}
+        obs = cv2.resize(
+            observation[-160:],
+            self.observation_space['observation'].shape[1:],
+            interpolation=cv2.INTER_NEAREST
+        )
+        obs = (obs / self.resolution_ratio).astype(np.uint8) * int(self.resolution_ratio)
+        obs = np.expand_dims(obs, axis=0)
+        return {"observation": obs, "desired_goal": self.goal}
 
 
 class AtariEnv(GymEnv):
@@ -153,25 +168,30 @@ def get_atari_envs(
         env_name,
         repeat_action_probability,
         frame_skip,
-        screen_size,
-        grayscale_newaxis,
+        screen_size=32,
+        resolution=8,
         eval_every=False,
         seed=None,
         **kwargs
 ):
     train_env = AtariEnv(
         env_name,
+        obs_type="grayscale",
         repeat_action_probability=repeat_action_probability,
-        frameskip=1,
+        frameskip=frame_skip,
         env_wrappers=[
+            # partial(
+            #     AtariPreprocessing,
+            #     frame_skip=frame_skip,
+            #     screen_size=screen_size,
+            #     grayscale_newaxis=grayscale_newaxis,
+            # ),
+            # PermuteImageWrapper,
             partial(
-                AtariPreprocessing,
-                frame_skip=frame_skip,
+                GCObsWrapper,
                 screen_size=screen_size,
-                grayscale_newaxis=grayscale_newaxis,
-            ),
-            PermuteImageWrapper,
-            GCObsWrapper,
+                resolution=resolution,
+            )
         ],
         seed=seed,
         **kwargs
