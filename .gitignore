@@ -10,3 +10,5 @@ earl_benchmark/
 **/pyproject.toml
 **/template.yaml
 **/sandbox.py
+**/*.pickle
+**/*.pkl
