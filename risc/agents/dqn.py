@@ -1,3 +1,4 @@
+import sys
 import copy
 from dataclasses import asdict
 from functools import partial
@@ -324,8 +325,11 @@ class DQNAgent(_DQNAgent):
                 metrics={}
                 metrics["epsilon"] = epsilon
                 metrics["replay_buffer_size"] = self._replay_buffer.size()
+                metrics["replay_buffer_size (MB)"] = sys.getsizeof(self._replay_buffer._storage) / 1e6
                 metrics["state-action_counts_size"] = len(self._replay_buffer.action_counts)
+                metrics["state-action_counts_size (MB)"] = sys.getsizeof(self._replay_buffer.action_counts) / 1e6
                 metrics["state_counts_size"] = len(self._replay_buffer.state_counts)
+                metrics["state_counts_size (MB)"] = sys.getsizeof(self._replay_buffer.state_counts) / 1e6
                 self._logger.log_metrics(metrics, self._timescale)
         else:
             epsilon = self._test_epsilon
@@ -452,7 +456,6 @@ class DQNAgent(_DQNAgent):
                     metrics["trajectory_success_prob_max"] = np.amax(
                         self._success_probs
                     )
-                    metrics["buffer_size"] = self._replay_buffer.size()
                     self._success_probs = []
             else:
                 self._replay_buffer.add(**transition)
