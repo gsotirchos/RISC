@@ -214,12 +214,12 @@ class SingleAgentRunner(_SingleAgentRunner):
                 )
 
         # dump memory
-        rss = psutil.Process(os.getpid()).memory_info().rss
-        if rss > 5 * 1024 ** 3:
-            print(f"=== DUMPING MEMORY ({rss=})")
-            self.memory_dump()
-            print("=== DONE")
-            exit()
+        # rss = psutil.Process(os.getpid()).memory_info().rss
+        # if rss > 5 * 1024 ** 3:
+        #     print(f"=== DUMPING MEMORY ({rss=})")
+        #     self.memory_dump()
+        #     print("=== DONE")
+        #     exit()
 
         return (
             terminated,
