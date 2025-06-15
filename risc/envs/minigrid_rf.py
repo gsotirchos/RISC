@@ -164,7 +164,7 @@ class MiniGridEnv(GymEnv):
     def create_env(self, env_name, env_wrappers, seed, symbolic, **kwargs):
         env_fn = create_env_fn(env_name, seed, symbolic, **kwargs)
         env = env_fn()
-        self._width, self._height = env.width, env.height
+        self._width, self._height = env.unwrapped.width, env.unwrapped.height
         self._goal_default_pos = env.unwrapped._goal_default_pos
         if self._eval_every:
             self._env, self._initial_states = create_every_eval_env(env, env_fn)
@@ -173,8 +173,8 @@ class MiniGridEnv(GymEnv):
 
     def gen_all_obs(self):
         if not self._has_reset:
-            self._env.reset()
-        return self._env.gen_all_obs()
+            self._env.unwrapped.reset()
+        return self._env.unwrapped.gen_all_obs()
 
     def visualize(self, prefix):
         fig1, ax1 = plt.subplots()
@@ -229,7 +229,7 @@ class MiniGridEnv(GymEnv):
             truncated, terminated = False, False
         reward = reward != 0
         if not self._eval_every:
-            pos_x, pos_y = self._env.agent_pos
+            pos_x, pos_y = self._env.unwrapped.agent_pos
 
             self._visitation_counts[pos_y][pos_x] += 1
             self._local_visitation_counts[pos_y][pos_x] += 1
@@ -241,8 +241,8 @@ class MiniGridEnv(GymEnv):
                 self.visualize(self._id)
 
         if self._train_video and self._video_reset_schedule.update():
-            if self._env.render_mode == "rgb_array_list":
-                frames = np.array(self._env.render())
+            if self._env.unwrapped.render_mode == "rgb_array_list":
+                frames = np.array(self._env.unwrapped.render())
                 if self._video_write_schedule.update():
                     frames = frames.transpose(0, 3, 1, 2)
                     self._logger.log_scalar("video", wandb.Video(frames), self._id)
@@ -251,8 +251,8 @@ class MiniGridEnv(GymEnv):
     def reset(self):
         self._has_reset = True
         if not self._eval_every and self._video_schedule.update():
-            if self._env.render_mode == "rgb_array_list":
-                frames = np.array(self._env.render())
+            if self._env.unwrapped.render_mode == "rgb_array_list":
+                frames = np.array(self._env.unwrapped.render())
                 frames = frames.transpose(0, 3, 1, 2)
                 self._logger.log_scalar("video", wandb.Video(frames), self._id)
         return super().reset()
@@ -268,7 +268,7 @@ class MiniGridEnv(GymEnv):
             pos = None
         else:
             pos = np.flip(np.argwhere(state[0] == 255)[..., -2:].squeeze(), axis=-1).tolist()
-        return self._env.teleport(pos)
+        return self._env.unwrapped.teleport(pos)
 
     def save(self, folder_name):
         pass
