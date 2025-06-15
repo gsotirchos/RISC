@@ -135,6 +135,7 @@ class SingleAgentRunner(_SingleAgentRunner):
                     "eval_time": self._eval_timer.get_time(),
                     "total_fps": self._total_steps / self._overall_timer.get_time(),
                     "total_time": self._overall_timer.get_time(),
+                    "total_memory (MB)": psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2,
                 }
                 self._logger.log_metrics(metrics, "progress")
                 logging.info(
@@ -428,6 +429,7 @@ class SingleAgentRunner(_SingleAgentRunner):
             )
             self.update_step()
 
+        gc.collect()
         return episode_metrics
 
     def reset_environment(self, environment):
@@ -466,4 +468,3 @@ class SingleAgentRunner(_SingleAgentRunner):
                     # 'referrers': len(referrers),
                 })
         pickle.dump(xs, dump)
-
