@@ -222,6 +222,10 @@ class DQNAgent(_DQNAgent):
         **kwargs,
     ):
         if device == "cuda" and not torch.cuda.is_available():
+            print("Warning: CUDA backend requested but not availble, using CPU")
+            device = "cpu"
+        elif device == "mps" and not torch.backends.mps.is_available():
+            print("Warning: MPS backend requested but not availble, using CPU")
             device = "cpu"
         self._compute_success_probability = compute_success_probability
         self._only_add_low_confidence = only_add_low_confidence
