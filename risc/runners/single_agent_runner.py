@@ -429,7 +429,7 @@ class SingleAgentRunner(_SingleAgentRunner):
             )
             self.update_step()
 
-        gc.collect()
+        # gc.collect()
         return episode_metrics
 
     def reset_environment(self, environment):
