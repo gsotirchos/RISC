@@ -1,8 +1,8 @@
-from collections import deque
+# from collections import deque
 from dataclasses import replace
 
 import matplotlib.pyplot as plt
-#import torch
+# import torch
 import numpy as np
 import wandb
 from envs.utils import heatmap as _heatmap
@@ -14,6 +14,7 @@ from hive.utils.utils import seeder
 from replays.counts_replay import HashableKeyDict
 from scipy.special import expit as sigmoid
 from scipy.special import softmax
+from scipy.stats import norm
 
 np.set_printoptions(precision=3)
 
@@ -138,6 +139,7 @@ class OmniGoalGenerator(GoalGenerator):
         self._goal_states = goal_states
         self._weights = weights
         self._max_visitations = max_visitations
+        self._novelty_cost_dist = norm(loc=max_visitations, scale=weights[0])
         self._use_success_prob = use_success_prob
         self._debug = debug
 
@@ -188,6 +190,11 @@ class OmniGoalGenerator(GoalGenerator):
         novelties = np.array([1 / (counts[state] + epsilon) for state in states])
         return novelties
 
+    def _novelty_cost(self, *args, **kwargs):
+        return self._novelty_cost_dist.pdf(self._novelty(*args, **kwargs))
+        # return sigmoid(self._novelty(*args, **kwargs))
+        # return sigmoid(zscore(1 / (self._novelty(*args, **kwargs) + epsilon)))
+
     def _confidence(self, observations, goals, agent):
         if self._oracle:
             agent = agent._oracle
@@ -199,7 +206,7 @@ class OmniGoalGenerator(GoalGenerator):
 
     def _cost(self, *args, **kwargs):
         return 1 / (self._confidence(*args, **kwargs) + epsilon)
-        #return self._confidence(*args, **kwargs)  # alt. cost
+        # return self._confidence(*args, **kwargs)  # alt. cost
 
     def _calculate_priority(
         self,
@@ -215,9 +222,7 @@ class OmniGoalGenerator(GoalGenerator):
         cost_to_come = np.zeros(len(frontier_states))
         cost_to_go = np.zeros(len(frontier_states))
         if self._weights[0] != 0:
-            # TODO: use a distribution
-            novelty_cost = sigmoid(self._novelty(frontier_states, frontier_actions, agent))
-            #novelty_cost = sigmoid(zscore(1 / (self._novelty(frontier_states, frontier_actions, agent) + epsilon)))
+            novelty_cost = self._novelty_cost(frontier_states, frontier_actions, agent)
         if self._weights[1] != 0:
             cost_to_reach = self._cost(
                 observation,
@@ -239,7 +244,7 @@ class OmniGoalGenerator(GoalGenerator):
                 agent
             )
         priority = softmin(
-            novelty_cost ** self._weights[0]
+            novelty_cost  # ** self._weights[0]
             * (
                 + cost_to_reach * self._weights[1]
                 + cost_to_come * self._weights[2]
@@ -256,7 +261,8 @@ class OmniGoalGenerator(GoalGenerator):
         current_direction = agent_traj_state.current_direction.removeprefix("teleport_")
         if current_direction == "lateral":
             frontier_states, frontier_actions = self._get_frontier(agent)
-            self._dbg_print(f"frontier state-actions: {self._dbg_format(frontier_states[:, 0], frontier_actions)}")
+            self._dbg_print("frontier state-actions:"
+                            f"{self._dbg_format(frontier_states[:, 0], frontier_actions)}")
             if frontier_states is None:
                 self._dbg_print("no frontier states yet", "   ")
                 self._dbg_print(f"goal state: {self._dbg_format(initial_state)}", "   ")
@@ -281,8 +287,16 @@ class OmniGoalGenerator(GoalGenerator):
             )
             goal_idx = self._rng.choice(len(priority), p=priority)  # np.argmin(priority)
             goal = frontier_states[goal_idx, 0][None, ...], frontier_actions[goal_idx]
-            #self._dbg_print(f"visitations: {(1 / self._novelty(frontier_states, frontier_actions, agent)).astype(int)}", "   ")
-            #self._dbg_print(f"stdzed vis.: {zscore(1 / self._novelty(frontier_states, frontier_actions, agent))}", "   ")
+            # self._dbg_print(
+            #     "visitations:
+            #     f"{(1 / self._novelty(frontier_states, frontier_actions, agent)).astype(int)}",
+            #     "   "
+            # )
+            # self._dbg_print(
+            #     "stdzed vis.:"
+            #     f"{zscore(1 / self._novelty(frontier_states, frontier_actions, agent))}",
+            #     "   "
+            # )
             self._dbg_print(f"novelty costs: {novelty_cost}", "   ")
             self._dbg_print(f"priority: {np.round(priority, 3)}", "   ")
             if self._log_schedule.update() and not isinstance(self._logger, NullLogger):
@@ -299,8 +313,8 @@ class OmniGoalGenerator(GoalGenerator):
                 self._logger.log_metrics(
                     {
                         # TODO:
-                        #"novelty_cost": heatmap(frontier_states, novelty_cost, logscale=True),
-                        "cost_to_reach": heatmap(frontier_states[:, None, 0], cost_to_reach, vmin=0),
+                        # "novelty_cost": heatmap(frontier_states, novelty_cost, logscale=True),
+                        "cost_to_reach": heatmap(frontier_states[:, None, 0], cost_to_reach,vmin=0),
                         "cost_to_come": heatmap(frontier_states[:, None, 0], cost_to_come, vmin=0),
                         "cost_to_go": heatmap(frontier_states[:, None, 0], cost_to_go, vmin=0),
                         "priority": heatmap(frontier_states[:, None, 0], priority, logscale=True),
