@@ -51,12 +51,16 @@ def heatmap(states, metric, **kwargs):
     return image
 
 
-def softmin(x):
-    return softmax(-x)
+def softmin(x, temperature=1, **kwargs):
+    return softmax(-np.array(x) / temperature, **kwargs)
 
 
 def zscore(x):
     return (x - np.mean(x)) / (np.std(x) + epsilon)
+
+
+def normalize(x):
+    return np.array(x) / np.sum(x)
 
 
 class GoalGenerator(Registrable):
@@ -119,6 +123,7 @@ class OmniGoalGenerator(GoalGenerator):
         initial_states,
         goal_states,
         weights,
+        temperature: float = 20,
         max_visitations: int = 0,
         use_success_prob: bool = False,
         oracle: bool = False,
@@ -138,8 +143,9 @@ class OmniGoalGenerator(GoalGenerator):
         self._initial_states = initial_states
         self._goal_states = goal_states
         self._weights = weights
+        self._temperature = temperature
         self._max_visitations = max_visitations
-        self._novelty_cost_dist = norm(loc=max_visitations, scale=weights[0])
+        self._novelty_mask_dist = norm(loc=max_visitations, scale=weights[0])
         self._use_success_prob = use_success_prob
         self._debug = debug
 
@@ -190,8 +196,16 @@ class OmniGoalGenerator(GoalGenerator):
         novelties = np.array([1 / (counts[state] + epsilon) for state in states])
         return novelties
 
+    def _counts(self, states, actions, agent):
+        if states.ndim == len(agent._observation_space.shape):
+            states = np.expand_dims(states, axis=0)
+        if actions is not None:
+            states = list(zip(states.tolist(), actions.tolist()))
+        counts = agent._replay_buffer.action_counts
+        return np.array([counts[state] for state in states])
+
     def _novelty_cost(self, *args, **kwargs):
-        return self._novelty_cost_dist.pdf(self._novelty(*args, **kwargs))
+        return softmax(self._novelty_mask_dist.pdf(self._counts(*args, **kwargs)))
         # return sigmoid(self._novelty(*args, **kwargs))
         # return sigmoid(zscore(1 / (self._novelty(*args, **kwargs) + epsilon)))
 
@@ -217,7 +231,7 @@ class OmniGoalGenerator(GoalGenerator):
         frontier_states,
         frontier_actions
     ):
-        novelty_cost = np.zeros(len(frontier_states))
+        novelty_cost = 1 + np.zeros(len(frontier_states))
         cost_to_reach = np.zeros(len(frontier_states))
         cost_to_come = np.zeros(len(frontier_states))
         cost_to_go = np.zeros(len(frontier_states))
@@ -243,14 +257,26 @@ class OmniGoalGenerator(GoalGenerator):
                 goal_state,
                 agent
             )
-        priority = softmin(
-            novelty_cost  # ** self._weights[0]
-            * (
+        priority = normalize(
+            novelty_cost * \
+            softmin(
                 + cost_to_reach * self._weights[1]
                 + cost_to_come * self._weights[2]
-                + cost_to_go * self._weights[3]
+                + cost_to_go * self._weights[3],
+                self._temperature
             )
         )
+        #     softmin(novelty_cost) * softmin(
+        #         + cost_to_reach * self._weights[1]
+        #         + cost_to_come * self._weights[2]
+        #         + cost_to_go * self._weights[3]
+        #     )
+        #     softmin(novelty_cost * (
+        #         + cost_to_reach * self._weights[1]
+        #         + cost_to_come * self._weights[2]
+        #         + cost_to_go * self._weights[3]
+        #     )
+        # )
         return priority, novelty_cost, cost_to_reach, cost_to_come, cost_to_go
 
     def generate_goal(self, observation, agent_traj_state):

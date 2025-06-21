@@ -81,7 +81,7 @@ kwargs:
         kwargs:
           debug: true
           vis_frequency: 1
-          weights: [1, 1, 1, 1]
+          weights: [3, 1, 1, 1]
           max_visitations: 10
           use_success_prob: false
           oracle: true
