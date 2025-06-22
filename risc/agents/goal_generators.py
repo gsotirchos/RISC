@@ -205,7 +205,7 @@ class OmniGoalGenerator(GoalGenerator):
         return np.array([counts[state] for state in states])
 
     def _novelty_cost(self, *args, **kwargs):
-        return softmax(self._novelty_mask_dist.pdf(self._counts(*args, **kwargs)))
+        return self._novelty_mask_dist.pdf(self._counts(*args, **kwargs))
         # return sigmoid(self._novelty(*args, **kwargs))
         # return sigmoid(zscore(1 / (self._novelty(*args, **kwargs) + epsilon)))
 
