@@ -144,8 +144,8 @@ class OmniGoalGenerator(GoalGenerator):
         self._goal_states = goal_states
         self._weights = weights
         self._temperature = temperature
-        self._max_visitations = max_visitations
         self._novelty_mask_dist = norm(loc=max_visitations, scale=weights[0])
+        self._max_visitations = 0  # max_visitations
         self._use_success_prob = use_success_prob
         self._debug = debug
 
