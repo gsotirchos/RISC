@@ -1,17 +1,20 @@
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
 from functools import wraps
+import os
+import pickle
 
 import numpy as np
+from hive.utils.utils import create_folder
 
 from replays.circular_replay import CircularReplayBuffer
 
 
 class HashableKeyDict(defaultdict):
     def __init__(self, default=None, **kwargs):
-        if isinstance(default, type):
-            super().__init__(lambda: default(), **kwargs)
-        elif isinstance(default, Iterable):
+        # if isinstance(default, type):
+        #     super().__init__(lambda: default(), **kwargs)
+        if isinstance(default, Iterable):
             super().__init__(**kwargs)
             self.update(other=default)
         else:
@@ -252,3 +255,18 @@ class CountsReplayBuffer(CircularReplayBuffer):
     def _add_transition(self, **transition):
         self._update_metadata(**transition)
         super()._add_transition(**transition)
+
+    def save(self, dname):
+        super().save(dname)
+        breakpoint()
+        with open(os.path.join(dname, "action_counts.pkl"), "wb") as f:
+            pickle.dump(self.action_counts, f)
+        with open(os.path.join(dname, "state_counts.pkl"), "wb") as f:
+            pickle.dump(self.state_counts, f)
+
+    def load(self, dname):
+        super().load(dname)
+        with open(os.path.join(dname, "action_counts.pkl"), "rb") as f:
+            self.action_counts = pickle.load(f)
+        with open(os.path.join(dname, "state_counts.pkl"), "rb") as f:
+            self.state_counts = pickle.load(f)
