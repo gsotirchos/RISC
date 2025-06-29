@@ -264,22 +264,24 @@ class SymmetricMatrix(Mapping):
         return self._views.__clear__()
 
 
-def distance(state1, state2):
-    """Compute distance for both symbolic and continuous states."""
-    state1, state2 = np.squeeze(state1), np.squeeze(state2)
-    if state1.ndim == state2.ndim == 3:
-        state1 = np.argwhere(state1[0] == 255).flatten()
-        state2 = np.argwhere(state2[0] == 255).flatten()
-    return np.linalg.norm(state1 - state2)
+# def distance(state1, state2):
+#     """Compute distance for both symbolic and continuous states."""
+#     state1, state2 = np.squeeze(state1), np.squeeze(state2)
+#     if state1.ndim == state2.ndim == 3:
+#         state1 = np.argwhere(state1[0] == 255).flatten()
+#         state2 = np.argwhere(state2[0] == 255).flatten()
+#     return np.linalg.norm(state1 - state2)
 
 
 class CountsReplayBuffer(CircularReplayBuffer):
     def __init__(self, *args, action_n: int, **kwargs):
         super().__init__(*args, **kwargs)
         self._action_n = action_n
-        self.action_counts = HashableKeyDict(int)
         self.state_counts = HashableKeyDict(int)
+        self.action_counts = HashableKeyDict(int)
+        self.action_familiarities = HashableKeyDict(int)
         # self.distances = SymmetricMatrix()
+        self._trajectory_familiarity = 1.0
 
     # def _update_distances(self, state):
     #     if self.action_counts[state] > 1:
@@ -288,42 +290,61 @@ class CountsReplayBuffer(CircularReplayBuffer):
     #         if (state, other_state) not in self.distances:
     #             self.distances[state, other_state] = distance(state, other_state)
 
-    def _update_metadata(self, **transition):
-        """ If an observation will be overwritten decrement its counts,
-        and if an item has no counts left remove its state entry entirely. """
-        overwritten_state = self._storage["observation"][self._cursor]
-        overwritten_action = self._storage["action"][self._cursor]
-        overwritten_next_state = self._storage["next_observation"][self._cursor]
-        if not np.all(overwritten_state == 0):
-            self.action_counts[overwritten_state, overwritten_action] -= 1
-            if self.action_counts.get((overwritten_state, overwritten_action), 0) == 0:
-                if self.state_counts.get(overwritten_state, 0) == 0:
-                    del self.action_counts[overwritten_state, overwritten_action]
-            elif self.action_counts.get((overwritten_state, overwritten_action), 0) < 0:
-                print(f"WARNING: negative action count for action {overwritten_action}"
-                      f" in state {overwritten_state}")
-            self.state_counts[overwritten_next_state] -= 1
-            if self.state_counts.get(overwritten_next_state, 0) == 0:
-                del self.state_counts[overwritten_next_state]
-                for action in range(self._action_n):
-                    if self.action_counts.get((overwritten_next_state, action), 0) == 0:
-                        del self.action_counts[overwritten_next_state, action]
-                    elif self.action_counts.get((overwritten_next_state, action), 0) < 0:
-                        print(f"WARNING: negative action count for action {action}"
-                              f" in state {overwritten_state}")
-                # del self.distances[overwrittan_state]
-            elif self.state_counts.get(overwritten_next_state, 0) < 0:
-                print(f"WARNING: negative state count for state {overwritten_next_state}")
+    def _familiarity(self, state, action):
+        counts = self.action_counts.get((state, action), 1)
+        f = 1 - 1 / (1 + counts)
+        return min(self.action_familiarities.get((state, action), 0), f)
+
+    def _increment_transition_metadata(self, transition):
         new_state = transition["observation"]
         new_action = transition["action"]
         new_next_state = transition["next_observation"]
         if not np.all(new_state == 0):
             self.action_counts[new_state, new_action] += 1
             self.state_counts[new_next_state] += 1
+            # insert 0-count state-count entries for each action in the observed next state
             if self.state_counts[new_next_state] == 1:
                 for action in range(self._action_n):
                     self.action_counts[new_next_state, action] += 0
             # self._update_distances(new_state)
+            self._trajectory_familiarity *= self._familiarity(new_state, new_action)
+            # print(self._trajectory_familiarity)
+            # breakpoint()
+            self.action_familiarities[new_state, new_action] = self._trajectory_familiarity
+
+    def _decrement_overwritten_transition_metadata(self):
+        overwritten_state = self._storage["observation"][self._cursor]
+        overwritten_action = self._storage["action"][self._cursor]
+        overwritten_next_state = self._storage["next_observation"][self._cursor]
+        if not np.all(overwritten_state == 0):
+            self._decrement_state_metadata(overwritten_state, overwritten_action)
+            self._decrement_state_metadata(overwritten_next_state)
+
+    def _decrement_state_metadata(self, state, action=None):
+        if action is not None:
+            self.action_counts[state, action] -= 1
+            if self.action_counts.get((state, action), 0) == 0:
+                # keep 0-count state-action entries unless their state entries have been deleted
+                if state not in self.state_counts:
+                    del self.action_counts[state, action]
+                    del self.action_familiarities[state, action]
+        else:
+            self.state_counts[state] -= 1
+            if self.state_counts.get(state, 0) == 0:
+                del self.state_counts[state]
+                for action in range(self._action_n):
+                    # delete any 0-count state-action entries for newly deleted (next) state entries
+                    if self.action_counts.get((state, action), 0) == 0:
+                        del self.action_counts[state, action]
+                        del self.action_familiarities[state, action]
+                # del self.distances[state]
+
+    def _update_metadata(self, **transition):
+        """ Decrement the overwritten observation's metadata, increment those of the new one. """
+        self._decrement_overwritten_transition_metadata()
+        self._increment_transition_metadata(transition)
+        if transition['terminated'] or transition['done']:
+            self.trajectory_familiarity = 1.0
 
     def _add_transition(self, **transition):
         self._update_metadata(**transition)
