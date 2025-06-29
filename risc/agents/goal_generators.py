@@ -181,7 +181,6 @@ class OmniGoalGenerator(GoalGenerator):
             def satisfies_condition(_): return True
         else:
             def satisfies_condition(count): return count <= self._max_visitations
-        breakpoint()
         frontier_state_actions = [
             state_action for state_action, count in counts.items() if satisfies_condition(count)
         ]
