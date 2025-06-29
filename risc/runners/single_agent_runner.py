@@ -205,14 +205,6 @@ class SingleAgentRunner(_SingleAgentRunner):
         episode_metrics[agent.id]["episode_length"] += active
         episode_metrics["full_episode_length"] += active
 
-
-        # handle teleport requests
-        if hasattr(agent_traj_state, 'current_direction'):
-            if agent_traj_state.current_direction.startswith("teleport"):
-                observation, transition_info, agent_traj_state = self.teleport_to_goal(
-                    environment, agent_traj_state
-                )
-
         # dump memory
         # rss = psutil.Process(os.getpid()).memory_info().rss
         # if rss > 5 * 1024 ** 3:
@@ -416,6 +408,12 @@ class SingleAgentRunner(_SingleAgentRunner):
             )
             steps += 1
             self.update_step()
+            # handle teleport requests
+            if hasattr(agent_traj_state, 'current_direction'):
+                if agent_traj_state.current_direction.startswith("teleport"):
+                    observation, transition_info, agent_traj_state = self.teleport_to_goal(
+                        environment, agent_traj_state
+                    )
             if self._eval_every and not self._training:
                 terminated, truncated = np.all(terminated), np.all(truncated)
         if not (terminated or truncated):
