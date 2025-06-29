@@ -29,7 +29,7 @@ class CircularReplayBuffer(_CircularReplayBuffer):
         observation_shape=(),
         observation_dtype=np.uint8,
         action_shape=(),
-        action_dtype=np.int8,
+        action_dtype=np.uint8,
         reward_shape=(),
         reward_dtype=np.float32,
         extra_storage_types=None,

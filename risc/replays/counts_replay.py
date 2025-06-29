@@ -1,13 +1,54 @@
 from collections import defaultdict
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, KeysView, ItemsView
 from functools import wraps
 import os
 import pickle
 
 import numpy as np
-from hive.utils.utils import create_folder
 
 from replays.circular_replay import CircularReplayBuffer
+
+
+class UnhashingKeysView(KeysView):
+    def __init__(self, mapping):
+        self._mapping = mapping
+        self._mapping_keys = super(type(self._mapping), self._mapping).keys
+
+    def __len__(self):
+        return len(self._mapping_keys())
+
+    def __iter__(self):
+        for key in self._mapping_keys():
+            yield self._mapping.to_unhashable(key)
+
+    def __contains__(self, key):
+        return key in self._mapping_keys()
+
+    def __repr__(self):
+        return str(self._mapping_keys())
+
+
+class UnhashingItemsView(ItemsView):
+    def __init__(self, mapping):
+        self._mapping = mapping
+        self._mapping_items = super(type(self._mapping), self._mapping).items
+
+    def __len__(self):
+        return len(self._mapping)
+
+    def __iter__(self):
+        for key, value in self._mapping_items():
+            yield (self._mapping.to_unhashable(key), value)
+
+    def __contains__(self, item):
+        key, value = item
+        try:
+            return self._mapping[key] == value
+        except KeyError:
+            return False
+
+    def __repr__(self):
+        return str(self._mapping_items())
 
 
 class HashableKeyDict(defaultdict):
@@ -21,9 +62,29 @@ class HashableKeyDict(defaultdict):
             super().__init__(default, **kwargs)
 
     #@staticmethod
+    def to_unhashable(self, obj):
+        def _to_hashable(obj):
+            if isinstance(obj, bytes):
+                return np.reshape(
+                    np.frombuffer(obj, dtype=self._key_dtype),
+                    newshape=self._key_shape
+                )
+            elif isinstance(obj, (np.number, str, int, float, bool)) or obj is None:
+                return obj
+            elif isinstance(obj, Iterable):
+                return tuple(_to_hashable(sub_obj) for sub_obj in obj)
+            else:
+                raise KeyError(f"Key {obj} cannot be converted to hashable type")
+        return _to_hashable(obj)
+
+    #@staticmethod
     def to_hashable(self, obj):
         def _to_hashable(obj):
-            if isinstance(obj, (np.number, str, int, float, bool, bytes)) or obj is None:
+            if isinstance(obj, np.ndarray):
+                self._key_dtype = obj.dtype
+                self._key_shape = obj.shape
+                return obj.tobytes()
+            elif isinstance(obj, (np.number, str, int, float, bool, bytes)) or obj is None:
                 return obj
             elif isinstance(obj, Iterable):
                 return tuple(_to_hashable(sub_obj) for sub_obj in obj)
@@ -75,6 +136,18 @@ class HashableKeyDict(defaultdict):
                     self.__setitem__(k, v)
         for k, v in kwargs.items():
             self.__setitem__(k, v)
+
+    def keys(self):
+        if hasattr(self, '_key_shape'):
+            return UnhashingKeysView(self)
+        else:
+            return super().keys()
+
+    def items(self):
+        if hasattr(self, '_key_shape'):
+            return UnhashingItemsView(self)
+        else:
+            return super().items()
 
 
 class SymmetricHashableKeyDict(HashableKeyDict):
@@ -269,3 +342,21 @@ class CountsReplayBuffer(CircularReplayBuffer):
             self.action_counts = pickle.load(f)
         with open(os.path.join(dname, "state_counts.pkl"), "rb") as f:
             self.state_counts = pickle.load(f)
+
+
+def main():
+    counts = HashableKeyDict(int)
+    counts[np.array([[1, 1]])] = 1
+    counts[(np.array([[1, 1]]), 0)] = 2
+    print(counts.keys())
+    for key in counts.keys():
+        print(key)
+    print(counts.items())
+    for item in counts.items():
+        print(item)
+    print(counts.values())
+    for value in counts.values():
+        print(value)
+
+if __name__ == "__main__":
+    main()
