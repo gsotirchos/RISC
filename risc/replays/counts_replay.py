@@ -310,13 +310,8 @@ class CountsReplayBuffer(CircularReplayBuffer):
             # self._update_distances(new_state)
             if self._is_new_phase:
                 if not np.all(new_state == self._prev_next_state):
-                    print("=== AND IS NOT CONTINUING ===")
-                    breakpoint()
                     self._trajectory_familiarity = 1.0
                     self._prev_next_state = None
-                else:
-                    print("=== BUT IS CONTINUING ===")
-                    breakpoint()
                 self._is_new_phase = False
             self._trajectory_familiarity *= self._familiarity(new_state, new_action)
             print(f"{self._trajectory_familiarity=}")
