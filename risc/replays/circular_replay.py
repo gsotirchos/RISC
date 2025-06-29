@@ -177,8 +177,8 @@ class CircularReplayBuffer(_CircularReplayBuffer):
             )
             if not np.can_cast(obj_type, self._specs[key][0], casting="same_kind"):
                 raise ValueError(
-                    f"Key {key} has wrong dtype. Expected {self._specs[key][0]},"
-                    f"received {type(transition[key])}."
+                    f"Key {key} has wrong dtype. Expected {self._specs[key][0]}, "
+                    f"received {obj_type}."
                 )
         if not self._commit_at_done:
             if self._episode_start:

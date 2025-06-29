@@ -200,7 +200,7 @@ class OmniGoalGenerator(GoalGenerator):
         if states.ndim == len(agent._observation_space.shape):
             states = np.expand_dims(states, axis=0)
         if actions is not None:
-            states = list(zip(states.tolist(), actions.tolist()))
+            states = list(zip(states, actions))
         counts = agent._replay_buffer.action_counts
         return np.array([counts[state] for state in states])
 
