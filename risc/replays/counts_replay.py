@@ -128,7 +128,7 @@ class HashableKeyDict(defaultdict):
 
     def update(self, other=None, **kwargs):
         if other is not None:
-            if hasattr(other, 'items'):
+            if hasattr(other, "items"):
                 for k, v in other.items():
                     self.__setitem__(k, v)
             else:
@@ -138,13 +138,13 @@ class HashableKeyDict(defaultdict):
             self.__setitem__(k, v)
 
     def keys(self):
-        if hasattr(self, '_key_shape'):
+        if hasattr(self, "_key_shape"):
             return UnhashingKeysView(self)
         else:
             return super().keys()
 
     def items(self):
-        if hasattr(self, '_key_shape'):
+        if hasattr(self, "_key_shape"):
             return UnhashingItemsView(self)
         else:
             return super().items()
@@ -282,6 +282,8 @@ class CountsReplayBuffer(CircularReplayBuffer):
         self.action_familiarities = HashableKeyDict(int)
         # self.distances = SymmetricMatrix()
         self._trajectory_familiarity = 1.0
+        self._is_new_phase = False
+        self._prev_next_state = None
 
     # def _update_distances(self, state):
     #     if self.action_counts[state] > 1:
@@ -292,8 +294,7 @@ class CountsReplayBuffer(CircularReplayBuffer):
 
     def _familiarity(self, state, action):
         counts = self.action_counts.get((state, action), 1)
-        f = 1 - 1 / (1 + counts)
-        return min(self.action_familiarities.get((state, action), 0), f)
+        return 1 - 1 / (1 + counts)
 
     def _increment_transition_metadata(self, transition):
         new_state = transition["observation"]
@@ -307,8 +308,18 @@ class CountsReplayBuffer(CircularReplayBuffer):
                 for action in range(self._action_n):
                     self.action_counts[new_next_state, action] += 0
             # self._update_distances(new_state)
+            if self._is_new_phase:
+                if not np.all(new_state == self._prev_next_state):
+                    print("=== AND IS NOT CONTINUING ===")
+                    breakpoint()
+                    self._trajectory_familiarity = 1.0
+                    self._prev_next_state = None
+                else:
+                    print("=== BUT IS CONTINUING ===")
+                    breakpoint()
+                self._is_new_phase = False
             self._trajectory_familiarity *= self._familiarity(new_state, new_action)
-            # print(self._trajectory_familiarity)
+            print(f"{self._trajectory_familiarity=}")
             # breakpoint()
             self.action_familiarities[new_state, new_action] = self._trajectory_familiarity
 
@@ -343,8 +354,10 @@ class CountsReplayBuffer(CircularReplayBuffer):
         """ Decrement the overwritten observation's metadata, increment those of the new one. """
         self._decrement_overwritten_transition_metadata()
         self._increment_transition_metadata(transition)
-        if transition['terminated'] or transition['done']:
-            self.trajectory_familiarity = 1.0
+        if transition["terminated"] or transition["done"]:
+            print("=== NEW PHASE ===")
+            self._is_new_phase = True
+            self._prev_next_state = transition["next_observation"]
 
     def _add_transition(self, **transition):
         self._update_metadata(**transition)
