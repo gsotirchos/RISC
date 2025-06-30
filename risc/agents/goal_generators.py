@@ -12,9 +12,10 @@ from hive.utils.registry import Registrable
 from hive.utils.schedule import PeriodicSchedule
 from hive.utils.utils import seeder
 from replays.counts_replay import HashableKeyDict
-from scipy.special import expit as sigmoid
+# from scipy.special import expit as sigmoid
 from scipy.special import softmax
 from scipy.stats import norm
+from math import ceil
 
 np.set_printoptions(precision=3)
 
@@ -145,7 +146,7 @@ class OmniGoalGenerator(GoalGenerator):
         self._weights = weights
         self._temperature = temperature
         self._novelty_mask_dist = norm(loc=max_visitations, scale=weights[0])
-        self._max_visitations = 0  # max_visitations
+        self._max_visitations = max_visitations
         self._use_success_prob = use_success_prob
         self._debug = debug
 
@@ -169,45 +170,58 @@ class OmniGoalGenerator(GoalGenerator):
         else:
             return self._backward_agent, forward_goal_state, forward_initial_state
 
-    def _get_frontier(self, agent):
+    def array_from_space(self, length, space):
+        return np.zeros((length,) + tuple(space.shape), dtype=space.dtype)
+
+    def _get_frontier(self, agent, condition_fn):
         counts = agent._replay_buffer.action_counts
-        if len(counts) == 0:
+        filtered_counts_length = sum(1 for item in counts.items() if condition_fn(*item))
+        frontier_length = ceil(self._max_visitations * filtered_counts_length)
+        if frontier_length == 0:
             return None, None
-        if (
-            self._max_visitations == 0
-            or self._max_visitations < min(counts.values())
-            or self._max_visitations >= max(counts.values())
-        ):
-            def satisfies_condition(_): return True
+        # if (
+        #     self._max_visitations == 0
+        #     or self._max_visitations < min(counts.values())
+        #     or self._max_visitations >= max(counts.values())
+        # ):
+        #     def condition_fn(*_): return True
+        frontier_states = self.array_from_space(frontier_length, agent._observation_space)
+        frontier_actions = self.array_from_space(frontier_length, agent._action_space)
+        frontier_counts = np.zeros((frontier_length,), dtype=np.uint64)
+        next_empty_idx = 0
+        for state_action, count in counts.items():
+            if not condition_fn(state_action, count):
+                continue
+            if next_empty_idx < frontier_length:
+                frontier_states[next_empty_idx] = np.array(state_action[0])  # TODO: check dtype
+                frontier_actions[next_empty_idx] = np.array(state_action[1])  # TODO: check dtype
+                frontier_counts[next_empty_idx] = count
+                next_empty_idx += 1
+            else:
+                if count > np.min(frontier_counts):
+                    min_count_idx = np.argmin(frontier_counts)
+                    frontier_states[min_count_idx] = np.array(state_action[0])  # TODO: check dtype
+                    frontier_actions[min_count_idx] = np.array(state_action[1])  # TODO: check dtype
+                    frontier_counts[min_count_idx] = count
+        return frontier_states, frontier_actions
+
+    def _get_counts(self, states, actions, agent):
+        if states.ndim == len(agent._observation_space.shape):
+            states = np.expand_dims(states, axis=0)
+        if actions is not None:
+            states = zip(states, actions)
+            counts = agent._replay_buffer.action_counts
         else:
-            def satisfies_condition(count): return count <= self._max_visitations
-        frontier_state_actions = [
-            state_action for state_action, count in counts.items() if satisfies_condition(count)
-        ]
-        frontier_states, frontier_actions = zip(*frontier_state_actions)
-        return np.array(frontier_states), np.array(frontier_actions)
-
-    def _novelty(self, states, actions, agent):
-        if states.ndim == len(agent._observation_space.shape):
-            states = np.expand_dims(states, axis=0)
-        if actions is not None:
-            states = zip(states, actions)
-        counts = agent._replay_buffer.action_counts
-        novelties = np.array([1 / (counts[state] + epsilon) for state in states])
-        return novelties
-
-    def _counts(self, states, actions, agent):
-        if states.ndim == len(agent._observation_space.shape):
-            states = np.expand_dims(states, axis=0)
-        if actions is not None:
-            states = zip(states, actions)
-        counts = agent._replay_buffer.action_counts
+            counts = agent._replay_buffer.state_counts
         return np.array([counts[state] for state in states])
 
     def _novelty_cost(self, *args, **kwargs):
-        return self._novelty_mask_dist.pdf(self._counts(*args, **kwargs))
-        # return sigmoid(self._novelty(*args, **kwargs))
-        # return sigmoid(zscore(1 / (self._novelty(*args, **kwargs) + epsilon)))
+        counts = self._get_counts(*args, **kwargs)
+        return softmax(counts)
+        # return self._novelty_mask_dist.pdf(counts)
+        # novelties = 1 / (counts + epsilon)
+        # return sigmoid(novelties(*args, **kwargs))
+        # return sigmoid(zscore(counts))
 
     def _confidence(self, observations, goals, agent):
         if self._oracle:
@@ -220,7 +234,6 @@ class OmniGoalGenerator(GoalGenerator):
 
     def _cost(self, *args, **kwargs):
         return 1 / (self._confidence(*args, **kwargs) + epsilon)
-        # return self._confidence(*args, **kwargs)  # alt. cost
 
     def _calculate_priority(
         self,
@@ -286,7 +299,12 @@ class OmniGoalGenerator(GoalGenerator):
         agent, initial_state, goal_state = self._get_agent_init_goal_states(agent_traj_state)
         current_direction = agent_traj_state.current_direction.removeprefix("teleport_")
         if current_direction == "lateral":
-            frontier_states, frontier_actions = self._get_frontier(agent)
+            frontier_states, frontier_actions = self._get_frontier(
+                agent,
+                # lambda _, count: count <= self._max_visitations  # Nmax filtering
+                (lambda state_action, _:
+                 agent._replay_buffer.action_familiarities[state_action] <= 0.8)
+            )
             self._dbg_print("frontier state-actions:"
                             f"{self._dbg_format(frontier_states[:, 0], frontier_actions)}")
             if frontier_states is None:
@@ -302,7 +320,8 @@ class OmniGoalGenerator(GoalGenerator):
                 priority,
                 novelty_cost,
                 cost_to_reach,
-                cost_to_come,cost_to_go
+                cost_to_come,
+                cost_to_go
             ) = self._calculate_priority(
                 agent,
                 observation,
@@ -315,15 +334,16 @@ class OmniGoalGenerator(GoalGenerator):
             goal = frontier_states[goal_idx, 0][None, ...], frontier_actions[goal_idx]
             # self._dbg_print(
             #     "visitations:
-            #     f"{(1 / self._novelty(frontier_states, frontier_actions, agent)).astype(int)}",
+            #     f"{(1 / self._get_counts(frontier_states, frontier_actions, agent)).astype(int)}",
             #     "   "
             # )
             # self._dbg_print(
             #     "stdzed vis.:"
-            #     f"{zscore(1 / self._novelty(frontier_states, frontier_actions, agent))}",
+            #     f"{zscore(1 / self._get_counts(frontier_states, frontier_actions, agent))}",
             #     "   "
             # )
             self._dbg_print(f"novelty costs: {novelty_cost}", "   ")
+            self._dbg_print(f"path costs: {softmin(cost_to_reach * self._weights[1] + cost_to_come * self._weights[2] + cost_to_go * self._weights[3], self._temperature)}", "   ")
             self._dbg_print(f"priority: {np.round(priority, 3)}", "   ")
             if self._log_schedule.update() and not isinstance(self._logger, NullLogger):
                 self._logger.log_metrics(

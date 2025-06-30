@@ -314,8 +314,6 @@ class CountsReplayBuffer(CircularReplayBuffer):
                     self._prev_next_state = None
                 self._is_new_phase = False
             self._trajectory_familiarity *= self._familiarity(new_state, new_action)
-            print(f"{self._trajectory_familiarity=}")
-            # breakpoint()
             self.action_familiarities[new_state, new_action] = self._trajectory_familiarity
 
     def _decrement_overwritten_transition_metadata(self):
@@ -350,7 +348,6 @@ class CountsReplayBuffer(CircularReplayBuffer):
         self._decrement_overwritten_transition_metadata()
         self._increment_transition_metadata(transition)
         if transition["terminated"] or transition["done"]:
-            print("=== NEW PHASE ===")
             self._is_new_phase = True
             self._prev_next_state = transition["next_observation"]
 
