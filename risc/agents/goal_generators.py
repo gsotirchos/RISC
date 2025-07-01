@@ -12,7 +12,7 @@ from hive.utils.registry import Registrable
 from hive.utils.schedule import PeriodicSchedule
 from hive.utils.utils import seeder
 from replays.counts_replay import HashableKeyDict
-# from scipy.special import expit as sigmoid
+from scipy.special import expit as sigmoid
 from scipy.special import softmax
 from scipy.stats import norm
 from math import ceil
@@ -217,11 +217,11 @@ class OmniGoalGenerator(GoalGenerator):
 
     def _novelty_cost(self, *args, **kwargs):
         counts = self._get_counts(*args, **kwargs)
-        return softmax(counts)
+        # return softmax(counts)
         # return self._novelty_mask_dist.pdf(counts)
         # novelties = 1 / (counts + epsilon)
         # return sigmoid(novelties(*args, **kwargs))
-        # return sigmoid(zscore(counts))
+        return sigmoid(zscore(counts))
 
     def _confidence(self, observations, goals, agent):
         if self._oracle:
@@ -442,7 +442,6 @@ class TimeoutGoalSwitcher(GoalSwitcher):
         self._novel_observations = HashableKeyDict(int)
         self._threshold = threshold
         self._switching_prob = switching_probability
-
 
     def _is_novel(self, observation, agent):
         observation_counts = agent._replay_buffer.state_counts[observation]
