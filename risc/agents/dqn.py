@@ -219,6 +219,7 @@ class DQNAgent(_DQNAgent):
         only_add_low_confidence: bool = False,
         success_prob_threshold: float = 0.1,
         oracle: bool = False,
+        inference_batch_size_bytes: int = 1024 ** 3,
         **kwargs,
     ):
         if device == "cuda" and not torch.cuda.is_available():
@@ -277,6 +278,7 @@ class DQNAgent(_DQNAgent):
         self._td_log_frequency = td_log_frequency
         self._td_error = 0
         self._steps = 0
+        self._inference_batch_size_bytes = inference_batch_size_bytes
         self._use_oracle = oracle
         DQNAgent._oracle = FourRoomsOracle(
             observation_space.shape,
@@ -581,22 +583,31 @@ class DQNAgent(_DQNAgent):
         else:
             self._target_success_net.load_state_dict(self._success_net.state_dict())
 
+    def _num_inference_batches(self, input):
+        num_batches = int(
+            np.clip(
+                np.ceil(sys.getsizeof(input)/self._inference_batch_size_bytes),
+                1,
+                len(input)
+            )
+        )
+        return num_batches
+
+    @torch.no_grad()
+    def _inference(self, net, input):
+        output = []
+        for batch in np.array_split(input, self._num_inference_batches(input)):
+            batch = torch.as_tensor(batch, device=self._device)
+            output = np.append(output, net(batch).amax(dim=1).detach().cpu().numpy())
+        return output
+
     @torch.no_grad()
     def compute_value(self, states):
-        states = torch.as_tensor(states, device=self._device)
-        # return np.array([self._qnet(state).max().detach().cpu().numpy() for state in states])
-        try:
-            return self._qnet(states).amax(dim=1).detach().cpu().numpy()
-        except:
-            print(f"{len(states)=}")
-            print(f"{torch.cuda.memory_summary()=}")
-            print(f"{torch.cuda.memory_stats()=}")
+        return self._inference(self._qnet, states)
 
     @torch.no_grad()
     def compute_success_prob(self, states):
-        states = torch.as_tensor(states, device=self._device)
-        # return np.array([self._success_net(state).max().detach().cpu().numpy() for state in states])
-        return self._success_net(states).amax(dim=1).detach().cpu().numpy()
+        return self._inference(self._success_net, states)
 
     @torch.no_grad()
     def get_stats(self, *args):
