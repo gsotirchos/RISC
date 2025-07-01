@@ -581,10 +581,12 @@ class DQNAgent(_DQNAgent):
         else:
             self._target_success_net.load_state_dict(self._success_net.state_dict())
 
+    @torch.no_grad()
     def compute_value(self, states):
         states = torch.as_tensor(states, device=self._device)
         return self._qnet(states).amax(dim=1).detach().cpu().numpy()
 
+    @torch.no_grad()
     def compute_success_prob(self, states):
         states = torch.as_tensor(states, device=self._device)
         return self._success_net(states).amax(dim=1).detach().cpu().numpy()
