@@ -584,12 +584,12 @@ class DQNAgent(_DQNAgent):
     @torch.no_grad()
     def compute_value(self, states):
         states = torch.as_tensor(states, device=self._device)
-        return self._qnet(states).amax(dim=1).detach().cpu().numpy()
+        return np.array([self._qnet(state).max().detach().cpu().numpy() for state in states])
 
     @torch.no_grad()
     def compute_success_prob(self, states):
         states = torch.as_tensor(states, device=self._device)
-        return self._success_net(states).amax(dim=1).detach().cpu().numpy()
+        return np.array([self._success_net(state).max().detach().cpu().numpy() for state in states])
 
     @torch.no_grad()
     def get_stats(self, *args):
