@@ -176,6 +176,7 @@ class OmniGoalGenerator(GoalGenerator):
     def _get_frontier(self, agent, condition_fn):
         counts = agent._replay_buffer.action_counts
         filtered_counts_length = sum(1 for item in counts.items() if condition_fn(*item))
+        assert self._max_visitations <= 1, "max_fisitations must be between 0 and 1"
         frontier_length = ceil(self._max_visitations * filtered_counts_length)
         if frontier_length == 0:
             return None, None
@@ -219,8 +220,7 @@ class OmniGoalGenerator(GoalGenerator):
         counts = self._get_counts(*args, **kwargs)
         # return softmax(counts)
         # return self._novelty_mask_dist.pdf(counts)
-        # novelties = 1 / (counts + epsilon)
-        # return sigmoid(novelties(*args, **kwargs))
+        # return sigmoid(zscore(1 / (counts + epsilon)))
         return sigmoid(zscore(counts))
 
     def _confidence(self, observations, goals, agent):
@@ -270,14 +270,14 @@ class OmniGoalGenerator(GoalGenerator):
                 goal_state,
                 agent
             )
-        priority = normalize(
-            novelty_cost * \
-            softmin(
+        priority = softmin(
+            novelty_cost ** self._weights[0] \
+            * sigmoid(zscore(
                 + cost_to_reach * self._weights[1]
                 + cost_to_come * self._weights[2]
-                + cost_to_go * self._weights[3],
-                self._temperature
-            )
+                + cost_to_go * self._weights[3]
+            )),
+            self._temperature
         )
         #     softmin(novelty_cost) * softmin(
         #         + cost_to_reach * self._weights[1]
@@ -303,7 +303,7 @@ class OmniGoalGenerator(GoalGenerator):
                 agent,
                 # lambda _, count: count <= self._max_visitations  # Nmax filtering
                 (lambda state_action, _:
-                 agent._replay_buffer.action_familiarities[state_action] <= 0.8)
+                 agent._replay_buffer.action_familiarities[state_action] <= 0.9)
             )
             self._dbg_print("frontier state-actions:"
                             f"{self._dbg_format(frontier_states[:, 0], frontier_actions)}")
@@ -343,7 +343,7 @@ class OmniGoalGenerator(GoalGenerator):
             #     "   "
             # )
             self._dbg_print(f"novelty costs: {novelty_cost}", "   ")
-            self._dbg_print(f"path costs: {softmin(cost_to_reach * self._weights[1] + cost_to_come * self._weights[2] + cost_to_go * self._weights[3], self._temperature)}", "   ")
+            self._dbg_print(f"path costs: {sigmoid(zscore(cost_to_reach * self._weights[1] + cost_to_come * self._weights[2] + cost_to_go * self._weights[3]))}", "   ")
             self._dbg_print(f"priority: {np.round(priority, 3)}", "   ")
             if self._log_schedule.update() and not isinstance(self._logger, NullLogger):
                 self._logger.log_metrics(
