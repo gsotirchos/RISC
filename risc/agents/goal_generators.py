@@ -303,7 +303,7 @@ class OmniGoalGenerator(GoalGenerator):
                 agent,
                 # lambda _, count: count <= self._max_visitations  # Nmax filtering
                 (lambda state_action, _:
-                 agent._replay_buffer.action_familiarities[state_action] <= 0.9)
+                 agent._replay_buffer.action_familiarities[state_action] <= 0.5)
             )
             self._dbg_print("frontier state-actions:"
                             f"{self._dbg_format(frontier_states[:, 0], frontier_actions)}")

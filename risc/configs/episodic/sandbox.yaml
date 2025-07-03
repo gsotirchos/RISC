@@ -81,8 +81,9 @@ kwargs:
         kwargs:
           debug: true
           vis_frequency: 1
-          weights: [3, 1, 1, 1]
-          max_visitations: 10
+          weights: [1, 1, 1, 1]
+          max_visitations: 0.9
+          temperature: 1
           use_success_prob: false
           oracle: true
       phase_step_limit: [5, 1, 20]
