@@ -279,7 +279,7 @@ class CountsReplayBuffer(CircularReplayBuffer):
         self._action_n = action_n
         self.state_counts = HashableKeyDict(int)
         self.action_counts = HashableKeyDict(int)
-        self.action_familiarities = HashableKeyDict(int)
+        self.familiarities = HashableKeyDict(int)
         # self.distances = SymmetricMatrix()
         self._trajectory_familiarity = 1.0
         self._is_new_phase = False
@@ -314,7 +314,7 @@ class CountsReplayBuffer(CircularReplayBuffer):
                     self._prev_next_state = None
                 self._is_new_phase = False
             self._trajectory_familiarity *= self._familiarity(new_state, new_action)
-            self.action_familiarities[new_state, new_action] = self._trajectory_familiarity
+            self.familiarities[new_state, new_action] = self._trajectory_familiarity
 
     def _decrement_overwritten_transition_metadata(self):
         overwritten_state = self._storage["observation"][self._cursor]
@@ -331,7 +331,7 @@ class CountsReplayBuffer(CircularReplayBuffer):
                 # keep 0-count state-action entries unless their state entries have been deleted
                 if state not in self.state_counts:
                     del self.action_counts[state, action]
-                    del self.action_familiarities[state, action]
+                    del self.familiarities[state, action]
         else:
             self.state_counts[state] -= 1
             if self.state_counts.get(state, 0) == 0:
@@ -340,7 +340,7 @@ class CountsReplayBuffer(CircularReplayBuffer):
                     # delete any 0-count state-action entries for newly deleted (next) state entries
                     if self.action_counts.get((state, action), 0) == 0:
                         del self.action_counts[state, action]
-                        del self.action_familiarities[state, action]
+                        del self.familiarities[state, action]
                 # del self.distances[state]
 
     def _update_metadata(self, **transition):

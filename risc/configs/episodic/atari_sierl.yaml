@@ -82,16 +82,16 @@ kwargs:
         #name: FBGoalGenerator  # RISC
         name: OmniGoalGenerator
         kwargs:
-          # debug: true
+          debug: true
           vis_frequency: 0
           weights: [1, 1, 1, 1]
-          max_visitations: 0.8
+          frontier_proportion: 0.5
+          max_familiarity: 0.8
+          temperature: 0.5
           use_success_prob: false
           oracle: false
       phase_step_limit: [25000, 1, 2000]
       goal_switcher:
-        #name: BasicGoalSwitcher
-        #name: SuccessProbabilityGoalSwitcher  # reset-free
         name: TimeoutGoalSwitcher
         kwargs:
           switching_probability: 0.2

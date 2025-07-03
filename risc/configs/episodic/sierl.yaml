@@ -79,17 +79,16 @@ kwargs:
           debug: false
           vis_frequency: 50
           weights: [1, 1, 1, 1]
-          max_visitations: 0.9
+          frontier_proportion: 0.5
+          max_familiarity: 0.9
           temperature: 0.5
           use_success_prob: false
           oracle: false
       phase_step_limit: [470, 1, 30]
       goal_switcher:
-        #name: BasicGoalSwitcher
-        #name: SuccessProbabilityGoalSwitcher  # reset-free
         name: TimeoutGoalSwitcher
         kwargs:
-          switching_probability: 0.45
+          switching_probability: 0.7
           oracle: false
       replay_buffer:
         #name: CountsReplayBuffer

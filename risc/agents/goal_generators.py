@@ -125,7 +125,8 @@ class OmniGoalGenerator(GoalGenerator):
         goal_states,
         weights,
         temperature: float = 20,
-        max_visitations: int = 0,
+        max_familiarity: float = 0.5,
+        frontier_proportion: float = 0.9,
         use_success_prob: bool = False,
         oracle: bool = False,
         log_frequency: int = 10,
@@ -145,8 +146,9 @@ class OmniGoalGenerator(GoalGenerator):
         self._goal_states = goal_states
         self._weights = weights
         self._temperature = temperature
-        self._novelty_mask_dist = norm(loc=max_visitations, scale=weights[0])
-        self._max_visitations = max_visitations
+        self._masking_dist = norm(loc=max_familiarity, scale=max_familiarity/3)
+        self._max_familiarity = max_familiarity
+        self._frontier_proportion = frontier_proportion
         self._use_success_prob = use_success_prob
         self._debug = debug
 
@@ -162,6 +164,21 @@ class OmniGoalGenerator(GoalGenerator):
             return
         print(prefix + f"\033[{color_code}{text}\033[0m")
 
+    def _flatten_unique(self, states, values):
+        _, unique_indices = np.unique(states, axis=0, return_index=True)
+        if len(unique_indices) == len(states):
+            return states[:, None, 0], values
+        return states[unique_indices, None, 0], values[unique_indices]
+
+    def _flatten_over_actions(self, states, actions, values, default=0):
+        unique_states = np.unique(states, axis=0)
+        if len(unique_states) == len(states):
+            return states[:, None, 0], values
+        flattened_metric = HashableKeyDict(lambda: type(values[0])(default))
+        for state, _, value in zip(states, actions, values):
+            flattened_metric[state] += value / self._forward_agent._action_space.n
+        return unique_states[:, None, 0], np.array(list(flattened_metric.values()))
+
     def _get_agent_init_goal_states(self, agent_traj_state):
         forward_initial_state = self._initial_states[self._rng.integers(len(self._initial_states))]
         forward_goal_state = self._goal_states[self._rng.integers(len(self._goal_states))]
@@ -176,16 +193,13 @@ class OmniGoalGenerator(GoalGenerator):
     def _get_frontier(self, agent, condition_fn):
         counts = agent._replay_buffer.action_counts
         filtered_counts_length = sum(1 for item in counts.items() if condition_fn(*item))
-        assert self._max_visitations <= 1, "max_fisitations must be between 0 and 1"
-        frontier_length = ceil(self._max_visitations * filtered_counts_length)
+        assert self._frontier_proportion <= 1, "frontier_proportion must be between 0 and 1"
+        frontier_length = ceil(self._frontier_proportion * filtered_counts_length)
         if frontier_length == 0:
             return None, None
-        # if (
-        #     self._max_visitations == 0
-        #     or self._max_visitations < min(counts.values())
-        #     or self._max_visitations >= max(counts.values())
-        # ):
-        #     def condition_fn(*_): return True
+        if frontier_length == len(counts):
+            frontier_states, frontier_actions = list(zip(*counts.keys()))
+            return np.array(frontier_states), np.array(frontier_actions)
         frontier_states = self.array_from_space(frontier_length, agent._observation_space)
         frontier_actions = self.array_from_space(frontier_length, agent._action_space)
         frontier_counts = np.zeros((frontier_length,), dtype=np.uint64)
@@ -194,15 +208,15 @@ class OmniGoalGenerator(GoalGenerator):
             if not condition_fn(state_action, count):
                 continue
             if next_empty_idx < frontier_length:
-                frontier_states[next_empty_idx] = np.array(state_action[0])  # TODO: check dtype
-                frontier_actions[next_empty_idx] = np.array(state_action[1])  # TODO: check dtype
+                frontier_states[next_empty_idx] = np.array(state_action[0])
+                frontier_actions[next_empty_idx] = np.array(state_action[1])
                 frontier_counts[next_empty_idx] = count
                 next_empty_idx += 1
             else:
                 if count > np.min(frontier_counts):
                     min_count_idx = np.argmin(frontier_counts)
-                    frontier_states[min_count_idx] = np.array(state_action[0])  # TODO: check dtype
-                    frontier_actions[min_count_idx] = np.array(state_action[1])  # TODO: check dtype
+                    frontier_states[min_count_idx] = np.array(state_action[0])
+                    frontier_actions[min_count_idx] = np.array(state_action[1])
                     frontier_counts[min_count_idx] = count
         return frontier_states, frontier_actions
 
@@ -218,22 +232,22 @@ class OmniGoalGenerator(GoalGenerator):
 
     def _novelty_cost(self, *args, **kwargs):
         counts = self._get_counts(*args, **kwargs)
-        # return softmax(counts)
-        # return self._novelty_mask_dist.pdf(counts)
-        # return sigmoid(zscore(1 / (counts + epsilon)))
         return sigmoid(zscore(counts))
+        # return self._masking_dist.pdf(counts)
+        # return sigmoid(zscore(1 / (counts + epsilon)))
+        # return softmax(counts)
 
-    def _confidence(self, observations, goals, agent):
+    def _cost(self, observations, goals, agent):
         if self._oracle:
             agent = agent._oracle
         if self._use_success_prob:
-            confidence = agent.compute_success_prob(observations, goals).squeeze()
+            cost = 1 / agent.compute_success_prob(observations, goals).squeeze()
         else:  # use Q-values
-            confidence = -1 / agent.compute_value(observations, goals).squeeze()
-        return confidence
+            cost = - agent.compute_value(observations, goals).squeeze()
+        return cost
 
-    def _cost(self, *args, **kwargs):
-        return 1 / (self._confidence(*args, **kwargs) + epsilon)
+    def _path_cost(self, costs, weights):
+        return sigmoid(zscore(costs.dot(weights)))
 
     def _calculate_priority(
         self,
@@ -271,25 +285,13 @@ class OmniGoalGenerator(GoalGenerator):
                 agent
             )
         priority = softmin(
-            novelty_cost ** self._weights[0] \
-            * sigmoid(zscore(
-                + cost_to_reach * self._weights[1]
-                + cost_to_come * self._weights[2]
-                + cost_to_go * self._weights[3]
-            )),
+            novelty_cost ** self._weights[0] *
+            self._path_cost(
+                np.transpose([cost_to_come, cost_to_go, cost_to_reach]),
+                self._weights[1:4]
+            ),
             self._temperature
         )
-        #     softmin(novelty_cost) * softmin(
-        #         + cost_to_reach * self._weights[1]
-        #         + cost_to_come * self._weights[2]
-        #         + cost_to_go * self._weights[3]
-        #     )
-        #     softmin(novelty_cost * (
-        #         + cost_to_reach * self._weights[1]
-        #         + cost_to_come * self._weights[2]
-        #         + cost_to_go * self._weights[3]
-        #     )
-        # )
         return priority, novelty_cost, cost_to_reach, cost_to_come, cost_to_go
 
     def generate_goal(self, observation, agent_traj_state):
@@ -299,11 +301,11 @@ class OmniGoalGenerator(GoalGenerator):
         agent, initial_state, goal_state = self._get_agent_init_goal_states(agent_traj_state)
         current_direction = agent_traj_state.current_direction.removeprefix("teleport_")
         if current_direction == "lateral":
+            assert self._max_familiarity <= 1, "max_familiarity must be between 0 and 1"
             frontier_states, frontier_actions = self._get_frontier(
                 agent,
-                # lambda _, count: count <= self._max_visitations  # Nmax filtering
                 (lambda state_action, _:
-                 agent._replay_buffer.action_familiarities[state_action] <= 0.5)
+                 agent._replay_buffer.familiarities[state_action] <= self._max_familiarity)
             )
             self._dbg_print("frontier state-actions:"
                             f"{self._dbg_format(frontier_states[:, 0], frontier_actions)}")
@@ -343,7 +345,7 @@ class OmniGoalGenerator(GoalGenerator):
             #     "   "
             # )
             self._dbg_print(f"novelty costs: {novelty_cost}", "   ")
-            self._dbg_print(f"path costs: {sigmoid(zscore(cost_to_reach * self._weights[1] + cost_to_come * self._weights[2] + cost_to_go * self._weights[3]))}", "   ")
+            self._dbg_print(f"path costs: {self._path_cost(np.transpose([cost_to_come, cost_to_go, cost_to_reach]), self._weights[1:4])}", "   ")
             self._dbg_print(f"priority: {np.round(priority, 3)}", "   ")
             if self._log_schedule.update() and not isinstance(self._logger, NullLogger):
                 self._logger.log_metrics(
@@ -352,18 +354,37 @@ class OmniGoalGenerator(GoalGenerator):
                         "goal/cost_to_reach": cost_to_reach[goal_idx],
                         "goal/cost_to_come": cost_to_come[goal_idx],
                         "goal/cost_to_go": cost_to_go[goal_idx],
+                        "goal/familiarity": agent._replay_buffer.familiarities[
+                            np.concatenate([goal[0], observation[1][None, ...]]),
+                            goal[1]
+                        ],
                     },
                     f"{agent._id.removesuffix('_agent')}_goal_generator",
                 )
             if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
                 self._logger.log_metrics(
                     {
-                        # TODO:
-                        # "novelty_cost": heatmap(frontier_states, novelty_cost, logscale=True),
-                        "cost_to_reach": heatmap(frontier_states[:, None, 0], cost_to_reach,vmin=0),
-                        "cost_to_come": heatmap(frontier_states[:, None, 0], cost_to_come, vmin=0),
-                        "cost_to_go": heatmap(frontier_states[:, None, 0], cost_to_go, vmin=0),
-                        "priority": heatmap(frontier_states[:, None, 0], priority, logscale=True),
+                        "novelty_cost": heatmap(*self._flatten_over_actions(
+                            frontier_states,
+                            frontier_actions,
+                            novelty_cost
+                        ), logscale=True),
+                        "cost_to_reach": heatmap(*self._flatten_unique(
+                            frontier_states,
+                            cost_to_reach
+                        ), vmin=0),
+                        "cost_to_come": heatmap(*self._flatten_unique(
+                            frontier_states,
+                            cost_to_come
+                        ), vmin=0),
+                        "cost_to_go": heatmap(*self._flatten_unique(
+                            frontier_states,
+                            cost_to_go
+                        ), vmin=0),
+                        "priority": heatmap(*self._flatten_unique(
+                            frontier_states,
+                            priority
+                        ), logscale=True),
                     },
                     f"{agent._id.removesuffix('_agent')}_goal_generator",
                 )

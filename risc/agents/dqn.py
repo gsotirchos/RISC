@@ -595,11 +595,12 @@ class DQNAgent(_DQNAgent):
 
     @torch.no_grad()
     def _inference(self, net, input):
-        output = []
-        for batch in np.array_split(input, self._num_inference_batches(input)):
+        unique_input, inverse_indices = np.unique(input, axis=0, return_inverse=True)
+        unique_output = []
+        for batch in np.array_split(unique_input, self._num_inference_batches(unique_input)):
             batch = torch.as_tensor(batch, device=self._device)
-            output = np.append(output, net(batch).amax(dim=1).detach().cpu().numpy())
-        return output
+            unique_output = np.append(unique_output, net(batch).amax(dim=1).detach().cpu().numpy())
+        return unique_output[inverse_indices]
 
     @torch.no_grad()
     def compute_value(self, states):
