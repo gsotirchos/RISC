@@ -285,7 +285,7 @@ class OmniGoalGenerator(GoalGenerator):
                 agent
             )
         priority = softmin(
-            novelty_cost # ** self._weights[0]
+            novelty_cost ** self._weights[0]
             * self._path_cost(
                 np.transpose([cost_to_come, cost_to_go, cost_to_reach]),
                 self._weights[1:4]
@@ -301,7 +301,7 @@ class OmniGoalGenerator(GoalGenerator):
         agent, initial_state, goal_state = self._get_agent_init_goal_states(agent_traj_state)
         current_direction = agent_traj_state.current_direction.removeprefix("teleport_")
         if current_direction == "lateral":
-            # assert self._max_familiarity <= 1, "max_familiarity must be between 0 and 1"
+            assert self._max_familiarity <= 1, "max_familiarity must be between 0 and 1"
             frontier_states, frontier_actions = self._get_frontier(
                 agent,
                 (
