@@ -305,9 +305,9 @@ class OmniGoalGenerator(GoalGenerator):
             frontier_states, frontier_actions = self._get_frontier(
                 agent,
                 (
-                    lambda _, counts:
-                    counts <= self._max_familiarity
-                    # agent._replay_buffer.familiarities[state_action] <= self._max_familiarity
+                    lambda state_action, counts:
+                    # counts <= self._max_familiarity
+                    agent._replay_buffer.familiarities[state_action] <= self._max_familiarity
                 )
             )
             self._dbg_print("frontier state-actions:"
@@ -347,6 +347,7 @@ class OmniGoalGenerator(GoalGenerator):
             #     f"{zscore(1 / self._get_counts(frontier_states, frontier_actions, agent))}",
             #     "   "
             # )
+            self._dbg_print(f"counts: {self._get_counts(frontier_states, frontier_actions, agent)}", "   ")
             self._dbg_print(f"novelty costs: {novelty_cost}", "   ")
             self._dbg_print(f"path costs: {self._path_cost(np.transpose([cost_to_come, cost_to_go, cost_to_reach]), self._weights[1:4])}", "   ")
             self._dbg_print(f"priority: {np.round(priority, 3)}", "   ")
