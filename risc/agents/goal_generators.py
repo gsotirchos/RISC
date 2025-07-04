@@ -232,7 +232,7 @@ class OmniGoalGenerator(GoalGenerator):
 
     def _novelty_cost(self, *args, **kwargs):
         counts = self._get_counts(*args, **kwargs)
-        return sigmoid(zscore(counts))
+        return sigmoid(-zscore(counts))
         # return self._masking_dist.pdf(counts)
         # return sigmoid(zscore(1 / (counts + epsilon)))
         # return softmax(counts)
