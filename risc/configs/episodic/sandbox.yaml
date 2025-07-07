@@ -81,9 +81,9 @@ kwargs:
         kwargs:
           debug: true
           vis_frequency: 1
-          weights: [1, 1, 1, 1]
+          weights: [1, 0, 2, 1]
           frontier_proportion: 0.9
-          max_familiarity: 0.5
+          max_familiarity: 0.5  # familiarity_threshold
           temperature: 0.5
           # use_success_prob: true
           # oracle: true
