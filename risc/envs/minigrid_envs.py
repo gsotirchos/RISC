@@ -414,6 +414,9 @@ class HallwayEnv(MiniGridEnv):
         self._agent_default_pos = agent_pos
         self._goal_default_pos = goal_pos
         self._hallway_length = hallway_length
+        self._hallway_start_x = goal_pos[0] - hallway_length
+        self._hallway_end_x = goal_pos[0]
+        self._hallway_y = goal_pos[1]
 
         self.width = self.height = 19
         mission_space = MissionSpace(mission_func=self._gen_mission)
@@ -441,17 +444,13 @@ class HallwayEnv(MiniGridEnv):
         self.grid.vert_wall(width - 1, 0)
 
         # Generate main and decoy hallway walls
-        hallway_start_x = self._goal_default_pos[0] - self._hallway_length
-        hallway_end_x = self._goal_default_pos[0]
-        hallway_y = self._goal_default_pos[1]
-        up_action, down_action = 3, 1
         for step in [-5, 0, 5]:
-            for i in range(hallway_start_x, hallway_end_x):
-                self.put_obj(Slide(up_action), i, hallway_y - 1 + step)
-                self.put_obj(Slide(down_action), i, hallway_y + 1 + step)
-            self.grid.vert_wall(hallway_end_x + 1, hallway_y - 1 + step, 3)
-            self.grid.horz_wall(hallway_end_x, hallway_y - 1 + step, 1)
-            self.grid.horz_wall(hallway_end_x, hallway_y + 1 + step, 1)
+            for i in range(self._hallway_start_x, self._hallway_end_x):
+                self.put_obj(Slide(self.actions.up), i, self._hallway_y - 1 + step)
+                self.put_obj(Slide(self.actions.down), i, self._hallway_y + 1 + step)
+            self.grid.vert_wall(self._hallway_end_x + 1, self._hallway_y - 1 + step, 3)
+            self.grid.horz_wall(self._hallway_end_x, self._hallway_y - 1 + step, 1)
+            self.grid.horz_wall(self._hallway_end_x, self._hallway_y + 1 + step, 1)
 
         self.place_agent(self._agent_default_pos)
         self.place_goal(self._goal_default_pos)
