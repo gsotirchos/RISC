@@ -10,7 +10,7 @@ kwargs:
         kwargs:
           off_value: false
           on_value: true
-          period: 10000
+          period: 50000
   train_steps: 1000000
   max_steps_per_episode: 500  # episodic
   #train_phase_steps: 2000 # reset-free
