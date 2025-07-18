@@ -126,7 +126,7 @@ class OmniGoalGenerator(GoalGenerator):
         weights,
         temperature: float = 20,
         max_familiarity: float = 0.5,
-        frontier_proportion: float = 0.9,
+        frontier_proportion: float = 0.2,
         use_success_prob: bool = False,
         oracle: bool = False,
         log_frequency: int = 10,
@@ -306,20 +306,21 @@ class OmniGoalGenerator(GoalGenerator):
                 agent,
                 (
                     lambda state_action, counts:
-                    # counts <= self._max_familiarity
+                    # counts <= self._max_visitations
                     agent._replay_buffer.familiarities[state_action] <= self._max_familiarity
                 )
             )
-            self._dbg_print("frontier state-actions:"
-                            f"{self._dbg_format(frontier_states[:, 0], frontier_actions)}")
+            self._dbg_print(
+              f"frontier state-actions: {self._dbg_format(frontier_states[:, 0], frontier_actions)}"
+            )
             if frontier_states is None:
                 self._dbg_print("no frontier states yet", "   ")
                 self._dbg_print(f"goal state: {self._dbg_format(initial_state)}", "   ")
                 self._dbg_print(f"goal action: {None}", "   ")
                 return (goal_state, None) if agent_traj_state.forward else (initial_state, None)
             if len(frontier_states) == 1:
-                self._dbg_print(f"goal state: {self._dbg_format(frontier_states[:, 0])}","   ")
-                self._dbg_print(f"goal action: {None}", "   ")
+                self._dbg_print(f"goal state: {self._dbg_format(frontier_states[:, 0])}", "   ")
+                self._dbg_print(f"goal action: {frontier_actions[0]}", "   ")
                 return frontier_states[:, 0], frontier_actions[0]
             (
                 priority,
@@ -337,20 +338,16 @@ class OmniGoalGenerator(GoalGenerator):
             )
             goal_idx = self._rng.choice(len(priority), p=priority)  # np.argmin(priority)
             goal = frontier_states[goal_idx, 0][None, ...], frontier_actions[goal_idx]
-            # self._dbg_print(
-            #     "visitations:
-            #     f"{(1 / self._get_counts(frontier_states, frontier_actions, agent)).astype(int)}",
-            #     "   "
-            # )
-            # self._dbg_print(
-            #     "stdzed vis.:"
-            #     f"{zscore(1 / self._get_counts(frontier_states, frontier_actions, agent))}",
-            #     "   "
-            # )
-            self._dbg_print(f"counts: {self._get_counts(frontier_states, frontier_actions, agent)}", "   ")
-            self._dbg_print(f"novelty costs: {novelty_cost}", "   ")
-            self._dbg_print(f"path costs: {self._path_cost(np.transpose([cost_to_come, cost_to_go, cost_to_reach]), self._weights[1:4])}", "   ")
-            self._dbg_print(f"priority: {np.round(priority, 3)}", "   ")
+            if self._debug:
+                counts = self._get_counts(frontier_states, frontier_actions, agent)
+                self._dbg_print(f"counts: {counts}", "   ")
+                self._dbg_print(f"novelty costs: {novelty_cost}", "   ")
+                path_costs = self._path_cost(
+                    np.transpose([cost_to_come, cost_to_go, cost_to_reach]),
+                    self._weights[1:4]
+                )
+                self._dbg_print(f"path costs: {path_costs}", "   ")
+                self._dbg_print(f"priority: {np.round(priority, 3)}", "   ")
             if self._log_schedule.update() and not isinstance(self._logger, NullLogger):
                 self._logger.log_metrics(
                     {

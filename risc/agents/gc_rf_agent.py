@@ -232,18 +232,14 @@ class GCResetFree(Agent):
             agent_traj_state = self.get_new_direction(agent_traj_state)
             agent_traj_state = self.get_new_goal(observation, agent_traj_state)
         observation = self._replace_goal_fn(observation, agent_traj_state.current_goal)
-        agent = (
-            self._forward_agent if agent_traj_state.forward else self._backward_agent
-        )
-        action, subagent_traj_state = agent.act(
-            observation, agent_traj_state.subagent_traj_state
-        )
-        if agent_traj_state.next_action is not None:
-            if not isinstance(agent_traj_state.next_action, (int, np.integer)):
-                print(f"WARNING: action {agent_traj_state.next_action} "
-                      f"({type(agent_traj_state.next_action)}) is not an integer")
-            action = agent_traj_state.next_action
-            agent_traj_state = replace(agent_traj_state, next_action=None)
+        agent = (self._forward_agent if agent_traj_state.forward else self._backward_agent)
+        action, subagent_traj_state = agent.act(observation, agent_traj_state.subagent_traj_state)
+        # if agent_traj_state.next_action is not None:
+        #     if not isinstance(agent_traj_state.next_action, (int, np.integer)):
+        #         print(f"WARNING: action {agent_traj_state.next_action} "
+        #               f"({type(agent_traj_state.next_action)}) is not an integer")
+        #     action = agent_traj_state.next_action
+        #     agent_traj_state = replace(agent_traj_state, next_action=None)
         return action, replace(
             agent_traj_state,
             subagent_traj_state=subagent_traj_state,
@@ -417,7 +413,6 @@ class GCResetFree(Agent):
         self._directions = np.roll(self._directions, -1)
         self._phase_step_limit = np.roll(self._phase_step_limit, -1)
         next_direction = self._directions[0]
-        #forward = (not agent_traj_state.forward)
         forward = (next_direction == "forward") if current_direction == "lateral" \
             else (current_direction == "forward")
         return replace(

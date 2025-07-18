@@ -352,9 +352,7 @@ class DQNAgent(_DQNAgent):
         else:
             greedy_actions = torch.argmax(qvals, dim=1).cpu().numpy()
 
-        actions = np.where(
-            self._rng.random(batch_size) < epsilon, random_actions, greedy_actions
-        )
+        actions = np.where(self._rng.random(batch_size) < epsilon, random_actions, greedy_actions)
         if unsqueezed:
             actions = actions[0]
 
