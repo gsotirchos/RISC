@@ -126,7 +126,7 @@ class OmniGoalGenerator(GoalGenerator):
         weights,
         temperature: float = 20,
         max_familiarity: float = 0.5,
-        frontier_proportion: float = 0.2,
+        frontier_proportion: float = 1.0,
         use_success_prob: bool = False,
         oracle: bool = False,
         log_frequency: int = 10,
