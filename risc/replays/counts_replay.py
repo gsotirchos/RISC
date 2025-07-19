@@ -313,7 +313,10 @@ class CountsReplayBuffer(CircularReplayBuffer):
                     self._trajectory_familiarity = 1.0
                     self._prev_next_state = None
                 self._is_new_phase = False
-            self._trajectory_familiarity *= self._familiarity(new_state, new_action)
+            # self._trajectory_familiarity *= self._familiarity(new_state, new_action)
+            self._trajectory_familiarity = (
+                0.5 * self._trajectory_familiarity + 0.5 * self._familiarity(new_state, new_action)
+            )
             self.familiarities[new_state, new_action] = self._trajectory_familiarity
 
     def _decrement_overwritten_transition_metadata(self):
