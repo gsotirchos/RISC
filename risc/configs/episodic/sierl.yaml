@@ -78,9 +78,9 @@ kwargs:
         kwargs:
           debug: false
           vis_frequency: 50
-          weights: [1, 1, 1, 1]
-          frontier_proportion: 0.9
-          max_familiarity: 0.5
+          weights: [1, 0, 1, 1]
+          frontier_proportion: 1.0
+          max_familiarity: 0.8
           temperature: 0.5
           use_success_prob: false
           oracle: false
