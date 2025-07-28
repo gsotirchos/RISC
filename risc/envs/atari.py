@@ -8,8 +8,6 @@ import gymnasium as gym
 from hive.envs import GymEnv
 from envs.reset_free_envs import ResetFreeEnv
 from gymnasium.spaces import Box
-from gymnasium.wrappers.atari_preprocessing import AtariPreprocessing
-from hive.envs.gym.gym_wrappers import PermuteImageWrapper
 
 from functools import partial
 
@@ -180,13 +178,6 @@ def get_atari_envs(
         repeat_action_probability=repeat_action_probability,
         frameskip=frame_skip,
         env_wrappers=[
-            # partial(
-            #     AtariPreprocessing,
-            #     frame_skip=frame_skip,
-            #     screen_size=screen_size,
-            #     grayscale_newaxis=grayscale_newaxis,
-            # ),
-            # PermuteImageWrapper,
             partial(
                 GCObsWrapper,
                 screen_size=screen_size,
