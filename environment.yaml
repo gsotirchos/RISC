@@ -13,8 +13,8 @@ dependencies:
   - gcc=12.1.0
   - gxx=12.1.0
   - mkl=2024.0  # crucial for pytorch CUDA
-  - pytorch=2.0.0
   - cuda=11.8
+  - pytorch=2.0.0
   - ipython=8.18.1
   - wandb=0.19.11
   - scipy=1.11.2
@@ -27,14 +27,13 @@ dependencies:
   - cython=0.29.32
   #- patchelf=0.17.2
   - mujoco-python=2.2.0
-  - gymnasium=0.28.1  # Minigrid and Atari use Gymnasium
   #- gymnasium-atari=0.28.1  # for Atari games
   #- gymnasium-other=0.28.1  # for Atari games
   - ale-py=0.8.1
   - pip:
     - wheel==0.38.0
     - opencv-python==4.9.0.80
-    - gymnasium[atari,accept-rom-license]  # Atari ROMs
+    - gymnasium[atari,accept-rom-license]==1.1.1  # Atari ROMs
     #- gymnasium-robotics==1.2.2
     - Minigrid==2.1.0
     #- mujoco==2.2.0
