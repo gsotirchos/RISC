@@ -234,12 +234,12 @@ class GCResetFree(Agent):
         observation = self._replace_goal_fn(observation, agent_traj_state.current_goal)
         agent = (self._forward_agent if agent_traj_state.forward else self._backward_agent)
         action, subagent_traj_state = agent.act(observation, agent_traj_state.subagent_traj_state)
-        # if agent_traj_state.next_action is not None:
-        #     if not isinstance(agent_traj_state.next_action, (int, np.integer)):
-        #         print(f"WARNING: action {agent_traj_state.next_action} "
-        #               f"({type(agent_traj_state.next_action)}) is not an integer")
-        #     action = agent_traj_state.next_action
-        #     agent_traj_state = replace(agent_traj_state, next_action=None)
+        if (agent_traj_state.current_direction == "forward"
+            and agent_traj_state.next_action is not None):
+            if agent_traj_state.forward_success:
+                # execute subgoal action if subgoal state was reached
+                action = agent_traj_state.next_action
+            agent_traj_state = replace(agent_traj_state, next_action=None)
         return action, replace(
             agent_traj_state,
             subagent_traj_state=subagent_traj_state,
@@ -310,6 +310,7 @@ class GCResetFree(Agent):
                 )
 
             agent_traj_state = GCAgentState(
+                next_action=agent_traj_state.next_action,
                 forward_success=agent_traj_state.forward_success,
                 forward_goal_idx=agent_traj_state.forward_goal_idx,
                 backward_success=agent_traj_state.backward_success,
@@ -402,6 +403,7 @@ class GCResetFree(Agent):
         goal = self._goal_generator.generate_goal(observation, agent_traj_state)
         if isinstance(goal, tuple):
             goal, action = goal
+            action = action or agent_traj_state.next_action
         else:
             action = None
         return replace(agent_traj_state, current_goal=goal, next_action=action)
