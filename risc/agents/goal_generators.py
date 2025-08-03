@@ -349,16 +349,16 @@ class OmniGoalGenerator(GoalGenerator):
                 self._dbg_print(f"path costs: {path_costs}", "   ")
                 self._dbg_print(f"priority: {np.round(priority, 3)}", "   ")
             if self._log_schedule.update() and not isinstance(self._logger, NullLogger):
+                goal_state = goal[0]
+                if goal_state.shape != agent._observation_space.shape:
+                    goal_state = np.concatenate([goal_state, observation[1][None, ...]])
                 self._logger.log_metrics(
                     {
                         "goal/novelty_cost": novelty_cost[goal_idx],
                         "goal/cost_to_reach": cost_to_reach[goal_idx],
                         "goal/cost_to_come": cost_to_come[goal_idx],
                         "goal/cost_to_go": cost_to_go[goal_idx],
-                        "goal/familiarity": agent._replay_buffer.familiarities[
-                            np.concatenate([goal[0], observation[1][None, ...]]),
-                            goal[1]
-                        ],
+                        "goal/familiarity": agent._replay_buffer.familiarities[goal_state],
                     },
                     f"{agent._id.removesuffix('_agent')}_goal_generator",
                 )
