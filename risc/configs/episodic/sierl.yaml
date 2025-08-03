@@ -28,7 +28,7 @@ kwargs:
     kwargs:
       env_name: MiniGrid-Hallway-v1
       goal_pos: [9, 9]
-      hallway_length: 4
+      hallway_length: 3
       eval_max_steps: 100
       local_vis_period: 2000
       reset_free: false  # episodic
