@@ -41,8 +41,6 @@ class HERReplayBuffer(CountsReplayBuffer):
                 batch["next_observation"][i], hindsight_goal
             )
 
-        if self.size() >= 128:
-            breakpoint()
         return batch
 
     def _compute_her_reward(self, achieved_goal, desired_goal):
