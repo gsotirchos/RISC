@@ -12,12 +12,16 @@ class HERReplayBuffer(CountsReplayBuffer):
     def sample(self, batch_size):
         # Get a batch from the parent class's sampler
         batch = super().sample(batch_size)
+
+        indices = batch["indices"]
         num_her_samples = int(batch_size * self._her_ratio)
-        her_indices_in_batch = self._rng.choice(batch["indices"], num_her_samples, replace=False)
+        her_indices_in_batch = self._rng.choice(
+            batch_size, num_her_samples, replace=False
+        )
 
         for i in her_indices_in_batch:
             # The hindsight goal will be the final observation of the current trajectory
-            hindsight_goal_index = i
+            hindsight_goal_index = indices[i]
             tries_left = self.size()
             while tries_left > 0:
                 hindsight_goal_index = (hindsight_goal_index + 1) % (
@@ -37,6 +41,8 @@ class HERReplayBuffer(CountsReplayBuffer):
                 batch["next_observation"][i], hindsight_goal
             )
 
+        if self.size() >= 128:
+            breakpoint()
         return batch
 
     def _compute_her_reward(self, achieved_goal, desired_goal):
