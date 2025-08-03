@@ -5,48 +5,35 @@ from replays.counts_replay import CountsReplayBuffer
 
 class HERReplayBuffer(CountsReplayBuffer):
     """Replay buffer with Hindsight Experience Replay (HER)."""
-    def __init__(self, *args, her_batch_size=64, **kwargs):
+    def __init__(self, *args, her_ratio=0.5, **kwargs):
         super().__init__(*args, **kwargs)
-        self._her_batch_size = her_batch_size
+        self._her_ratio = her_ratio
 
     def sample(self, batch_size):
-        # Get the regular batch
+        # Get a batch from the parent class's sampler
         batch = super().sample(batch_size)
 
-        # Sample HER trajectories from the buffer
-        her_batch = self._sample_with_her(batch_size)
+        indices = batch["indices"]
+        trajectory_lengths = batch["trajectory_lengths"]
 
-        # Mix HER samples with the original batch
-        mixed_batch = self._mix_batches(batch, her_batch)
-
-        return mixed_batch
-
-    def _mix_batches(self, batch, her_batch):
-        mixed_batch = {}
-
-        for key in batch:
-            # Combine regular transitions with HER ones
-            mixed_batch[key] = np.concatenate([batch[key], her_batch[key]], axis=0)
-
-        return mixed_batch
-
-    def _sample_with_her(self, batch_size):
-        batch = super().sample(batch_size)
-
-        # Select random indices for HER in the batch
-        her_indices = np.random.choice(
-            batch_size, self._her_batch_size, replace=False
+        num_her_samples = int(batch_size * self._her_ratio)
+        her_indices_in_batch = self._rng.choice(
+            batch_size, num_her_samples, replace=False
         )
 
-        for i in her_indices:
-            # Select a future state from the episode as hindsight goal
-            future_goal_index = np.random.randint(i, self.size())
-            batch["desired_goal"][i] = self._get_from_storage(
-                "next_observation", future_goal_index
-            ).squeeze()[0]
-            # Update reward based on the new goal
+        for i in her_indices_in_batch:
+            # The hindsight goal will be the final observation of the current trajectory
+            trajectory_length = trajectory_lengths[i]
+            future_goal_index = (indices[i] + trajectory_length) % self.size()
+            hindsight_goal = self._get_from_storage("next_observation", future_goal_index)[0]
+            hindsight_goal = hindsight_goal[
+                tuple(slice(size) for size in self._specs["desired_goal"][1])
+            ]
+
+            # Update the transition with the new goal and reward
+            batch["desired_goal"][i] = hindsight_goal
             batch["reward"][i] = self._compute_her_reward(
-                batch["observation"][i], batch["desired_goal"][i]
+                batch["next_observation"][i], hindsight_goal
             )
 
         return batch

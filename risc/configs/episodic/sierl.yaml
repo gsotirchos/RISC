@@ -97,7 +97,7 @@ kwargs:
         name: HERReplayBuffer  # HER
         kwargs:
           capacity: 100000
-          her_batch_size: 16  # HER
+          her_ratio: 0.5  # HER
       separate_agents: false
       local_visitation_vis_frequency: 2000
       oracle: false
