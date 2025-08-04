@@ -63,7 +63,7 @@ class HashableKeyDict(defaultdict):
 
     #@staticmethod
     def to_unhashable(self, obj):
-        def _to_hashable(obj):
+        def _to_unhashable(obj):
             if isinstance(obj, bytes):
                 return np.reshape(
                     np.frombuffer(obj, dtype=self._key_dtype),
@@ -72,10 +72,10 @@ class HashableKeyDict(defaultdict):
             elif isinstance(obj, (np.number, str, int, float, bool)) or obj is None:
                 return obj
             elif isinstance(obj, Iterable):
-                return tuple(_to_hashable(sub_obj) for sub_obj in obj)
+                return tuple(_to_unhashable(sub_obj) for sub_obj in obj)
             else:
                 raise KeyError(f"Key {obj} cannot be converted to hashable type")
-        return _to_hashable(obj)
+        return _to_unhashable(obj)
 
     #@staticmethod
     def to_hashable(self, obj):
