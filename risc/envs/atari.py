@@ -88,8 +88,8 @@ def success_fn(observation, goal=None):
     return np.allclose(obs[0], goal[0])
 
 
-def reward_fn(observation, goal=None, env_reward=-1, **kwargs):
-    bonus = -10 + float(success_fn(observation, goal))
+def reward_fn(observation, goal=None, env_reward=0, **kwargs):
+    bonus = 10 * (-1 + float(success_fn(observation, goal)))
     return env_reward + bonus
 
 

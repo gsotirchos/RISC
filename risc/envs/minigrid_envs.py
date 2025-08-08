@@ -404,13 +404,13 @@ class HallwayEnv(MiniGridEnv):
     """Hallway environment."""
 
     def __init__(
-            self,
-            agent_pos=(16, 9),
-            goal_pos=(13, 9),
-            hallway_length=10,
-            max_steps=100,
-            **kwargs
-        ):
+        self,
+        agent_pos=(16, 9),
+        goal_pos=(13, 9),
+        hallway_length=10,
+        max_steps=100,
+        **kwargs
+    ):
         self._agent_default_pos = agent_pos
         self._goal_default_pos = goal_pos
         self._hallway_length = hallway_length

@@ -306,7 +306,6 @@ class OmniGoalGenerator(GoalGenerator):
                 agent,
                 (
                     lambda state_action, counts:
-                    # counts <= self._max_visitations
                     agent._replay_buffer.familiarities[state_action] <= self._max_familiarity
                 )
             )
