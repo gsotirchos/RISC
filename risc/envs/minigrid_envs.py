@@ -405,20 +405,23 @@ class HallwayEnv(MiniGridEnv):
 
     def __init__(
         self,
+        room_size=19,
         agent_pos=(16, 9),
         goal_pos=(13, 9),
         hallway_length=10,
+        num_hallways=3,
         max_steps=100,
         **kwargs
     ):
         self._agent_default_pos = agent_pos
         self._goal_default_pos = goal_pos
         self._hallway_length = hallway_length
+        self._num_hallways = num_hallways
         self._hallway_start_x = goal_pos[0] - hallway_length
         self._hallway_end_x = goal_pos[0]
         self._hallway_y = goal_pos[1]
 
-        self.width = self.height = 19
+        self.width = self.height = room_size
         mission_space = MissionSpace(mission_func=self._gen_mission)
 
         super().__init__(
@@ -444,13 +447,14 @@ class HallwayEnv(MiniGridEnv):
         self.grid.vert_wall(width - 1, 0)
 
         # Generate main and decoy hallway walls
-        for step in [-5, 0, 5]:
-            for i in range(self._hallway_start_x, self._hallway_end_x):
-                self.put_obj(Slide(self.actions.up), i, self._hallway_y - 1 + step)
-                self.put_obj(Slide(self.actions.down), i, self._hallway_y + 1 + step)
-            self.grid.vert_wall(self._hallway_end_x + 1, self._hallway_y - 1 + step, 3)
-            self.grid.horz_wall(self._hallway_end_x, self._hallway_y - 1 + step, 1)
-            self.grid.horz_wall(self._hallway_end_x, self._hallway_y + 1 + step, 1)
+        for i in range(self._num_hallways):
+            offset = int(np.ceil(i / 2) * np.ceil(self.height / 4)) * (- 1 + int(i == 0)) ** i
+            for x in range(self._hallway_start_x, self._hallway_end_x):
+                self.put_obj(Slide(self.actions.up), x, self._hallway_y + offset - 1)
+                self.put_obj(Slide(self.actions.down), x, self._hallway_y + offset + 1)
+            self.grid.vert_wall(self._hallway_end_x + 1, self._hallway_y + offset - 1, 3)
+            self.grid.horz_wall(self._hallway_end_x, self._hallway_y + offset - 1, 1)
+            self.grid.horz_wall(self._hallway_end_x, self._hallway_y + offset + 1, 1)
 
         self.place_agent(self._agent_default_pos)
         self.place_goal(self._goal_default_pos)
