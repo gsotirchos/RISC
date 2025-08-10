@@ -8,8 +8,8 @@ kwargs:
       saving_schedule:
         name: PeriodicSchedule
         kwargs:
-          off_value: False
-          on_value: True
+          off_value: false
+          on_value: true
           period: 50000
   train_steps: 50000000
   max_steps_per_episode: 27000
@@ -29,6 +29,9 @@ kwargs:
       screen_size: 32  # 84
       resolution: 8
       seed: 0
+      # step_reward: &step_reward -1
+      # goal_reward: &goal_reward 0
+      # novelty_bonus: 0.15
       bonus: -10
       # render_mode: human
   agent:
@@ -38,7 +41,7 @@ kwargs:
         name: GoalConditionedDQNAgent
         kwargs:
           # batch_size: 128
-          device: cpu
+          device: mps
           representation_net:
             name: 'ConvNetwork'
             kwargs:
@@ -79,7 +82,8 @@ kwargs:
               end_value: .01
               steps: 250000
           test_epsilon: .001
-          min_replay_history: 20000
+          # min_replay_history: 20000
+          min_replay_history: -1
           log_frequency: 1000
       goal_generator:
         #name: FBGoalGenerator  # RISC
@@ -92,13 +96,13 @@ kwargs:
           max_familiarity: 0.8
           temperature: 0.5
           use_success_prob: false
-          oracle: false
+          use_oracle: false
       phase_step_limit: [25000, 1, 2000]
       goal_switcher:
         name: TimeoutGoalSwitcher
         kwargs:
           switching_probability: 0.2
-          oracle: false
+          use_oracle: false
       replay_buffer:
         # name: CountsReplayBuffer
         name: HERReplayBuffer  # HER
@@ -106,15 +110,15 @@ kwargs:
           capacity: 1000000
           her_ratio: 0.5  # HER
           # stack_size: *stack_size
-          gamma: *gamma
+          gamma: 0.5
       separate_agents: false
       local_visitation_vis_frequency: 2000
-      oracle: false
+      use_oracle: false
       directions: [forward, teleport_backward, lateral]
   loggers:
-    - name: WandbLogger
-      kwargs:
-        name: *run_name
-        project: Debug
-        resume: allow
-        start_method: fork
+    # - name: WandbLogger
+    #   kwargs:
+    #     name: *run_name
+    #     project: Debug
+    #     resume: allow
+    #     start_method: fork

@@ -372,7 +372,6 @@ def reward_fn(
         counts = replay_buffer.state_counts
         bonus += novelty_bonus / (1 + np.sqrt(counts[observation['observation']]))
     success = float(success_fn(observation, goal))
-    breakpoint()
     reward = step_reward * (1 - success) + goal_reward * success
     return reward + bonus
 
