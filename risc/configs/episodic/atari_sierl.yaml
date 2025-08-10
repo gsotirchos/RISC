@@ -41,7 +41,7 @@ kwargs:
         name: GoalConditionedDQNAgent
         kwargs:
           # batch_size: 128
-          device: mps
+          device: cpu
           representation_net:
             name: 'ConvNetwork'
             kwargs:
