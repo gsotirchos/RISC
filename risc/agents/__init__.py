@@ -1,5 +1,6 @@
-import agents.goal_generators
-import agents.networks
+# import agents.oracles
+# import agents.goal_generators
+# import agents.networks
 
 from agents.gc_agents import GoalConditionedDQNAgent, GoalConditionedSACAgent
 from agents.gc_rf_agent import GCResetFree

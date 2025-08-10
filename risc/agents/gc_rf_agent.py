@@ -13,6 +13,7 @@ from hive.utils.utils import create_folder
 from hive.replays.replay_buffer import BaseReplayBuffer
 
 from agents.goal_generators import GoalGenerator, GoalSwitcher
+from agents.oracles import Oracle
 from collections import deque
 import pickle
 
@@ -64,7 +65,6 @@ class GCResetFree(Agent):
         local_visitation_vis_frequency=2000,
         separate_agents=False,
         device="cpu",
-        oracle=False,
         log_success=False,
         never_truncate=False,
         use_demo=True,
@@ -105,7 +105,6 @@ class GCResetFree(Agent):
                 visualization.
             separate_agents: Whether to use separate agents for each direction.
             device: The device that will be used.
-            oracle: Whether to use a backward oracle agent (only for 4rooms environment).
             log_success: Whether to log the success.
             never_truncate: Whether to truncate trajectories on phase_step_limit.
             use_demo: Whether to use the demo.
@@ -122,7 +121,6 @@ class GCResetFree(Agent):
                 id="forward_agent",
                 logger=logger,
                 replay_buffer=replay_buffer,
-                oracle=oracle
             )
             self._backward_agent = base_agent(
                 observation_space=observation_space,
@@ -130,7 +128,6 @@ class GCResetFree(Agent):
                 id="backward_agent",
                 logger=logger,
                 replay_buffer=replay_buffer,
-                oracle=oracle,
             )
         else:
             if forward_demos is not None:

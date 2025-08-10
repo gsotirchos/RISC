@@ -66,11 +66,7 @@ def normalize(x):
 
 class GoalGenerator(Registrable):
     """Base class for Goal generators. Each subclass should implement
-    generate_goaln which takes in arbitrary arguments and returns a goal.
-
-    Args:
-        goal_candidates_fn (Callable): A function that returns a list of goal
-        candidates.
+    generate_goal which takes in arbitrary arguments and returns a goal.
     """
 
     @classmethod
@@ -128,7 +124,7 @@ class OmniGoalGenerator(GoalGenerator):
         max_familiarity: float = 0.5,
         frontier_proportion: float = 1.0,
         use_success_prob: bool = False,
-        oracle: bool = False,
+        use_oracle: bool = False,
         log_frequency: int = 10,
         vis_frequency: int = 100,
         debug: bool = False,
@@ -137,7 +133,7 @@ class OmniGoalGenerator(GoalGenerator):
         super().__init__(logger, **kwargs)
         self._forward_agent = forward_agent
         self._backward_agent = backward_agent
-        self._oracle = oracle
+        self._use_oracle = use_oracle
         self._logger = logger
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_switcher"))
         self._log_schedule = PeriodicSchedule(False, log_frequency > 0, max(log_frequency, 1))
@@ -238,7 +234,7 @@ class OmniGoalGenerator(GoalGenerator):
         # return softmax(counts)
 
     def _cost(self, observations, goals, agent):
-        if self._oracle:
+        if self._use_oracle:
             agent = agent._oracle
         if self._use_success_prob:
             cost = 1 / agent.compute_success_prob(observations, goals).squeeze()
@@ -501,7 +497,7 @@ class SuccessProbabilityGoalSwitcher(GoalSwitcher):
         switch_on_lateral: bool = True,
         minimum_steps: int = 0,
         trajectory_proportion: float = 1.0,
-        oracle: bool = False,
+        use_oracle: bool = False,
         **kwargs,
     ):
         self._forward_agent = forward_agent
@@ -515,13 +511,13 @@ class SuccessProbabilityGoalSwitcher(GoalSwitcher):
         self._switch_on_lateral = switch_on_lateral
         self._minimum_steps = minimum_steps
         self._trajectory_proportion = trajectory_proportion
-        self._oracle = oracle
+        self._use_oracle = use_oracle
 
     def should_switch(self, update_info, agent_traj_state):
         agent = (
             self._forward_agent if agent_traj_state.forward else self._backward_agent
         )
-        if self._oracle:
+        if self._use_oracle:
             agent = agent._oracle
         success_prob = agent.compute_success_prob(
            update_info.observation["observation"], agent_traj_state.current_goal

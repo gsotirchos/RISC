@@ -13,6 +13,7 @@ from replays.circular_replay import CircularReplayBuffer
 from dataclasses import asdict
 from agents.dqn import DQNAgent
 from agents.sac import SACAgent
+from agents.oracles import Oracle
 
 
 class GoalConditionedMixin:
@@ -258,6 +259,7 @@ class GoalConditionedDQNAgent(GoalConditionedMixin, DQNAgent):
         device="cpu",
         logger: Logger = None,
         log_frequency: int = 100,
+        oracle: Oracle = None,
         **kwargs,
     ):
         super().__init__(
@@ -285,6 +287,7 @@ class GoalConditionedDQNAgent(GoalConditionedMixin, DQNAgent):
             device=device,
             logger=logger,
             log_frequency=log_frequency,
+            oracle=oracle,
             **kwargs,
         )
 

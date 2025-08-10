@@ -32,6 +32,9 @@ kwargs:
       agent_pos: [8, 5]
       hallway_length: 2
       num_hallways: 1
+      step_reward: &step_reward -1
+      goal_reward: &goal_reward 0
+      novelty_bonus: 0.15
       eval_max_steps: 100
       local_vis_period: 2000
       reset_free: false  # episodic
@@ -44,10 +47,11 @@ kwargs:
     name: GCResetFree
     kwargs:
       base_agent:
+        name: GoalConditionedDQNAgent
         kwargs:
           batch_size: 128
           device: cpu
-          discount_rate: 0.95
+          discount_rate: &gamma 0.95
           epsilon_schedule:
             #name: ConstantSchedule
             #kwargs:
@@ -78,8 +82,12 @@ kwargs:
               off_value: false
               on_value: true
               period: 500
-        name: GoalConditionedDQNAgent
-      novelty_bonus: 0.15
+          oracle:
+            name: MiniGridOracle
+            kwargs:
+              discount_rate: *gamma
+              step_reward: *step_reward
+              goal_reward: *goal_reward
       goal_generator:
         #name: FBGoalGenerator  # RISC
         name: OmniGoalGenerator
@@ -91,7 +99,7 @@ kwargs:
           max_familiarity: 0.5  # familiarity_threshold
           temperature: 0.5
           # use_success_prob: true
-          # oracle: true
+          # use_oracle: true
       phase_step_limit: [5, 1, 20]
       goal_switcher:
         #name: BasicGoalSwitcher
@@ -99,7 +107,7 @@ kwargs:
         name: TimeoutGoalSwitcher
         kwargs:
           switching_probability: 0.45
-          oracle: false
+          # use_oracle: true
       replay_buffer:
         # name: CountsReplayBuffer
         name: HERReplayBuffer  # HER
@@ -108,7 +116,6 @@ kwargs:
           her_ratio: 0.5  # HER
       separate_agents: false
       local_visitation_vis_frequency: 2000
-      oracle: false
       directions: [forward, teleport_backward, lateral]
   loggers:
     # - name: WandbLogger
