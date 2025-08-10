@@ -329,7 +329,7 @@ def create_vis_fn(env_shape):
 def get_unique_states(obs):
     positions = np.where(obs == 255)
     n = len(positions[0])
-    unique_obs = np.zeros((n, 1, 19, 19), dtype=obs.dtype)
+    unique_obs = np.zeros((n,) + obs.shape, dtype=obs.dtype)
     for m in range(n):
         unique_obs[m, positions[0][m], positions[1][m], positions[2][m]] = 255
     return unique_obs
