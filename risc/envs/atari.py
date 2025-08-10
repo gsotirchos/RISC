@@ -88,9 +88,22 @@ def success_fn(observation, goal=None):
     return np.allclose(obs[0], goal[0])
 
 
-def reward_fn(observation, goal=None, env_reward=0, **kwargs):
-    bonus = 10 * (-1 + float(success_fn(observation, goal)))
-    return env_reward + bonus
+def reward_fn(
+        observation,
+        goal=None,
+        env_reward=0,
+        step_reward=None,
+        goal_reward=None,
+        bonus=0,
+        **kwargs
+):
+    if step_reward is None:
+        step_reward = env_reward
+    if goal_reward is None:
+        goal_reward = env_reward
+    success = float(success_fn(observation, goal))
+    reward = step_reward * (1 - success) + goal_reward * success
+    return reward + bonus
 
 
 def replace_goal_fn(obs, goal):
@@ -168,8 +181,11 @@ def get_atari_envs(
         frame_skip,
         screen_size=32,
         resolution=8,
-        eval_every=False,
         seed=None,
+        eval_every=False,
+        step_reward=None,
+        goal_reward=None,
+        bonus=0,
         **kwargs
 ):
     train_env = AtariEnv(
@@ -197,7 +213,12 @@ def get_atari_envs(
         train_env=lambda: train_env,
         eval_env=lambda: eval_env,
         success_fn=success_fn,
-        reward_fn=reward_fn,
+        reward_fn=partial(
+            reward_fn,
+            step_reward=step_reward,
+            goal_reward=goal_reward,
+            bonus=bonus,
+        ),
         replace_goal_fn=replace_goal_fn,
         all_states_fn=None,
         vis_fn=None,

@@ -57,7 +57,6 @@ class GCResetFree(Agent):
         logger: Logger,
         replay_buffer: BaseReplayBuffer,
         distance_type: str = "l2_cluster",
-        novelty_bonus: bool = False,
         phase_step_limit: int = 300,
         id=0,
         log_frequency=5,
@@ -210,7 +209,6 @@ class GCResetFree(Agent):
             self._id, PeriodicSchedule(False, True, log_frequency)
         )
         self._timescale = self.id
-        self._novelty_bonus = novelty_bonus
         self._phase_step_limit = np.roll(phase_step_limit, 1).flatten()
         self._use_termination_signal = use_termination_signal
         self._log_success = log_success
@@ -270,7 +268,6 @@ class GCResetFree(Agent):
             reward=self._reward_fn(
                 update_info.next_observation,
                 goal=agent_traj_state.current_goal,
-                novelty_bonus=self._novelty_bonus,
                 replay_buffer=agent._replay_buffer,
                 env_reward=update_info.reward,
             ),

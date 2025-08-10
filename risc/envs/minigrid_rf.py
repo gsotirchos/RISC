@@ -353,12 +353,27 @@ def success_fn(observation, goal=None):
     return np.allclose(obs[0], goal[0])
 
 
-def reward_fn(observation, goal=None, novelty_bonus=0, replay_buffer=None, **kwargs):
-    reward = 0
-    bonus = -1 + float(success_fn(observation, goal))
+def reward_fn(
+    observation,
+    goal=None,
+    env_reward=0,
+    step_reward=None,
+    goal_reward=None,
+    bonus=0,
+    novelty_bonus=0,
+    replay_buffer=None,
+    **kwargs
+):
+    if step_reward is None:
+        step_reward = env_reward
+    if goal_reward is None:
+        goal_reward = env_reward
     if novelty_bonus != 0:
         counts = replay_buffer.state_counts
         bonus += novelty_bonus / (1 + np.sqrt(counts[observation['observation']]))
+    success = float(success_fn(observation, goal))
+    breakpoint()
+    reward = step_reward * (1 - success) + goal_reward * success
     return reward + bonus
 
 
@@ -377,6 +392,10 @@ def get_minigrid_envs(
     video_period=-1,
     train_max_steps=100,
     eval_max_steps=100,
+    step_reward=None,
+    goal_reward=None,
+    bonus=0,
+    novelty_bonus=0,
     **kwargs,
 ):
     """Create a reset-free environment for MiniGrid.
@@ -437,7 +456,13 @@ def get_minigrid_envs(
             **kwargs,
         ),
         success_fn=success_fn,
-        reward_fn=reward_fn,
+        reward_fn=partial(
+            reward_fn,
+            step_reward=step_reward,
+            goal_reward=goal_reward,
+            bonus=bonus,
+            novelty_bonus=novelty_bonus,
+        ),
         replace_goal_fn=replace_goal_fn,
         all_states_fn=lambda: all_obs,
         vis_fn=create_vis_fn((env._width, env._height)),

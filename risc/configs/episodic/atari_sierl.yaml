@@ -29,6 +29,7 @@ kwargs:
       screen_size: 32  # 84
       resolution: 8
       seed: 0
+      bonus: -10
       # render_mode: human
   agent:
     name: GCResetFree
@@ -57,7 +58,7 @@ kwargs:
             name: 'xavier_uniform'
           loss_fn:
             name: 'SmoothL1Loss'
-          discount_rate: &gamma .99
+          discount_rate: &gamma 0.99
           reward_clip: 1
           update_period_schedule:
             name: 'PeriodicSchedule'
@@ -80,7 +81,6 @@ kwargs:
           test_epsilon: .001
           min_replay_history: 20000
           log_frequency: 1000
-      novelty_bonus: 0
       goal_generator:
         #name: FBGoalGenerator  # RISC
         name: OmniGoalGenerator
