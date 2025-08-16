@@ -455,7 +455,10 @@ class HallwayEnv(MiniGridEnv):
             for x in range(self._hallway_start_x, self._hallway_end_x):
                 self.put_obj(Slide(self.actions.up), x, self._hallway_y + offset - 1)
                 self.put_obj(Slide(self.actions.down), x, self._hallway_y + offset + 1)
-            self.grid.vert_wall(self._hallway_end_x + 1, self._hallway_y + offset - 1, 3)
+            try:
+                self.grid.vert_wall(self._hallway_end_x + 1, self._hallway_y + offset - 1, 3)
+            except Exception:
+                pass
             self.grid.horz_wall(self._hallway_end_x, self._hallway_y + offset - 1, 1)
             self.grid.horz_wall(self._hallway_end_x, self._hallway_y + offset + 1, 1)
 

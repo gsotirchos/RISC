@@ -12,12 +12,12 @@ kwargs:
           on_value: true
           period: 50000
   train_steps: 50000000
-  max_steps_per_episode: 27000
-  #train_phase_steps: 2000 # reset-free
-  test_frequency: 250000
+  # train_phase_steps: 2000  # reset-free
+  max_steps_per_episode: &train_steps 27000
+  test_max_steps: &test_steps 3000
+  est_frequency: 250000
   test_episodes: 10
-  test_max_steps: 3000
-  #test_random_goals: true
+  test_random_goals: false
   seed: 0
   # stack_size: &stack_size 4
   env_fn:
