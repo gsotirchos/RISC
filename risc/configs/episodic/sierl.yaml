@@ -102,13 +102,13 @@ kwargs:
           max_familiarity: 0.8
           temperature: 0.5
           use_success_prob: false
-          use_oracle: true
+          use_oracle: false
       phase_step_limit: [470, 1, 30]
       goal_switcher:
         name: TimeoutGoalSwitcher
         kwargs:
           switching_probability: 0.7
-          use_oracle: true
+          use_oracle: false
       replay_buffer:
         #name: CountsReplayBuffer
         name: HERReplayBuffer  # HER
