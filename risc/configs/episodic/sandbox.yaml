@@ -33,9 +33,9 @@ kwargs:
       # hallway_length: 10
       # num_hallways: 3
       room_size: [10, 7]
-      goal_pos: [9, 3]
-      agent_pos: [1, 3]
-      hallway_length: 7
+      goal_pos: [6, 3]
+      agent_pos: [8, 3]
+      hallway_length: 4
       num_hallways: 1
       step_reward: &step_reward -1
       goal_reward: &goal_reward 0
