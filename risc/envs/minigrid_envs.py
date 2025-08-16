@@ -421,7 +421,10 @@ class HallwayEnv(MiniGridEnv):
         self._hallway_end_x = goal_pos[0]
         self._hallway_y = goal_pos[1]
 
-        self.width = self.height = room_size
+        if isinstance(room_size, tuple):
+            self.width, self.height = room_size
+        else:
+            self.width = self.height = room_size
         mission_space = MissionSpace(mission_func=self._gen_mission)
 
         super().__init__(

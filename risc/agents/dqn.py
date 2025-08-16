@@ -222,7 +222,7 @@ class DQNAgent(_DQNAgent):
             transition["next_observation"], device=self._device, dtype=torch.float32
         ).unsqueeze(0)
         next_observation = torch.cat((next_observation, desired_goal), dim=1)
-        if self._use_oracle:
+        if self._oracle is None:
             optimal_qval = self._oracle.value(observation.cpu().numpy())
         else:
             optimal_qval = 0
