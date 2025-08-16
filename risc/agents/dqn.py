@@ -63,6 +63,7 @@ class DQNAgent(_DQNAgent):
         td_log_frequency: int = 20,
         only_add_low_confidence: bool = False,
         success_prob_threshold: float = 0.1,
+        use_oracle: bool = False,
         oracle: Oracle = None,
         inference_batch_size_bytes: int = 1024 ** 3,
         **kwargs,
@@ -124,6 +125,7 @@ class DQNAgent(_DQNAgent):
         self._td_error = 0
         self._steps = 0
         self._inference_batch_size_bytes = inference_batch_size_bytes
+        self._use_oracle = use_oracle
         self._oracle = oracle(
             observation_shape=observation_space.shape,
         ) if oracle is not None else None
@@ -188,7 +190,7 @@ class DQNAgent(_DQNAgent):
         qvals = self._qnet(observation)
 
         random_actions = self._rng.integers(self._action_space.n, size=batch_size)
-        if self._oracle is not None:
+        if self._use_oracle:
             greedy_actions = [self._oracle.act(observation.cpu().numpy())]
         else:
             greedy_actions = torch.argmax(qvals, dim=1).cpu().numpy()
@@ -220,7 +222,7 @@ class DQNAgent(_DQNAgent):
             transition["next_observation"], device=self._device, dtype=torch.float32
         ).unsqueeze(0)
         next_observation = torch.cat((next_observation, desired_goal), dim=1)
-        if self._oracle is not None:
+        if self._use_oracle:
             optimal_qval = self._oracle.value(observation.cpu().numpy())
         else:
             optimal_qval = 0

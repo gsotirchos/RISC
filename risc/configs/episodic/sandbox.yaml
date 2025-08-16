@@ -51,7 +51,7 @@ kwargs:
         kwargs:
           batch_size: 128
           device: cpu
-          discount_rate: &gamma 0.95
+          discount_rate: &discount_rate 0.95
           epsilon_schedule:
             #name: ConstantSchedule
             #kwargs:
@@ -82,10 +82,11 @@ kwargs:
               off_value: false
               on_value: true
               period: 500
+          # use_oracle: true
           oracle:
             name: MiniGridOracle
             kwargs:
-              discount_rate: *gamma
+              discount_rate: *discount_rate
               step_reward: *step_reward
               goal_reward: *goal_reward
       goal_generator:
@@ -99,7 +100,7 @@ kwargs:
           max_familiarity: 0.5  # familiarity_threshold
           temperature: 0.5
           # use_success_prob: true
-          # use_oracle: true
+          use_oracle: true
       phase_step_limit: [5, 1, 20]
       goal_switcher:
         #name: BasicGoalSwitcher
@@ -113,6 +114,7 @@ kwargs:
         name: HERReplayBuffer  # HER
         kwargs:
           capacity: 100000
+          gamma: 0.5
           her_ratio: 0.5  # HER
       separate_agents: false
       local_visitation_vis_frequency: 2000

@@ -274,9 +274,10 @@ class SymmetricMatrix(Mapping):
 
 
 class CountsReplayBuffer(CircularReplayBuffer):
-    def __init__(self, *args, action_n: int, **kwargs):
+    def __init__(self, *args, action_n: int, gamma: float = 0.5, **kwargs):
         super().__init__(*args, **kwargs)
         self._action_n = action_n
+        self._gamma = gamma
         self.state_counts = HashableKeyDict(int)
         self.action_counts = HashableKeyDict(int)
         self.familiarities = HashableKeyDict(int)
@@ -315,7 +316,8 @@ class CountsReplayBuffer(CircularReplayBuffer):
                 self._is_new_phase = False
             # self._trajectory_familiarity *= self._familiarity(new_state, new_action)
             self._trajectory_familiarity = (
-                0.5 * self._trajectory_familiarity + 0.5 * self._familiarity(new_state, new_action)
+                self._gamma * self._familiarity(new_state, new_action)
+                + (1 - self._gamma) * self._trajectory_familiarity
             )
             self.familiarities[new_state, new_action] = self._trajectory_familiarity
 

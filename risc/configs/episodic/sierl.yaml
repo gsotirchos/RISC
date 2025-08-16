@@ -51,7 +51,7 @@ kwargs:
         kwargs:
           batch_size: 128
           device: cpu
-          discount_rate: &gamma 0.95
+          discount_rate: &discount_rate 0.95
           epsilon_schedule:
             name: LinearSchedule
             kwargs:
@@ -108,8 +108,8 @@ kwargs:
         name: HERReplayBuffer  # HER
         kwargs:
           capacity: 100000
-          her_ratio: 0.5  # HER
           gamma: 0.5
+          her_ratio: 0.5  # HER
       separate_agents: false
       local_visitation_vis_frequency: 2000
       use_oracle: false
