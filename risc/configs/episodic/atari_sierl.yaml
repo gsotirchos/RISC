@@ -113,12 +113,11 @@ kwargs:
           # stack_size: *stack_size
       separate_agents: false
       local_visitation_vis_frequency: 2000
-      use_oracle: false
       directions: [forward, teleport_backward, lateral]
   loggers:
-    # - name: WandbLogger
-    #   kwargs:
-    #     name: *run_name
-    #     project: Debug
-    #     resume: allow
-    #     start_method: fork
+    - name: WandbLogger
+      kwargs:
+        name: *run_name
+        project: Debug
+        resume: allow
+        start_method: fork
