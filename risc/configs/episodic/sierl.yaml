@@ -92,7 +92,7 @@ kwargs:
               step_reward: *step_reward
               goal_reward: *goal_reward
       goal_generator:
-        #name: FBGoalGenerator  # RISC
+        # name: FBGoalGenerator  # RISC
         name: OmniGoalGenerator
         kwargs:
           debug: false
@@ -110,7 +110,7 @@ kwargs:
           switching_probability: 0.7
           use_oracle: false
       replay_buffer:
-        #name: CountsReplayBuffer
+        # name: CountsReplayBuffer
         name: HERReplayBuffer  # HER
         kwargs:
           capacity: 100000

@@ -56,6 +56,7 @@ class SingleAgentRunner(_SingleAgentRunner):
         stack_size: int = 1,
         seed: int = None,
         test_max_steps: int = 1000000000,
+        train_random_goals: bool = False,
         test_random_goals: bool = False,
         eval_every: bool = False,
         max_steps_per_episode: int = 1000000000,
@@ -79,6 +80,7 @@ class SingleAgentRunner(_SingleAgentRunner):
         self._test_max_steps = test_max_steps
         self._early_terminal = early_terminal
         self._send_truncation = send_truncation
+        self._train_random_goals = train_random_goals
         self._test_random_goals = test_random_goals
         super().__init__(
             reset_free_env.train_env,
@@ -298,7 +300,11 @@ class SingleAgentRunner(_SingleAgentRunner):
             # Run training episode
             if not self._training:
                 self.train_mode(True)
+            if self._train_random_goals:
+                self._train_environment.randomize_goal()
             episode_metrics = self.run_episode(self._train_environment)
+            if self._train_random_goals:
+                self._train_environment.reset_goal()
             if self._logger.should_log("train"):
                 episode_metrics = episode_metrics.get_flat_dict()
                 self._logger.log_metrics(episode_metrics, "train")
@@ -427,7 +433,6 @@ class SingleAgentRunner(_SingleAgentRunner):
             )
             self.update_step()
 
-        # gc.collect()
         return episode_metrics
 
     def reset_environment(self, environment):

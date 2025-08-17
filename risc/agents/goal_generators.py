@@ -109,6 +109,27 @@ class FBGoalGenerator(GoalGenerator):
         return goal
 
 
+class NoGoalGenerator(GoalGenerator):
+    """Generates goals from a fixed set of initial and goal states."""
+
+    def __init__(
+        self,
+        logger,
+        initial_states,
+        **kwargs,
+    ):
+        super().__init__(logger, **kwargs)
+        self._initial_states = initial_states
+        self._rng = np.random.default_rng(seeder.get_new_seed("goal_generator"))
+
+    def generate_goal(self, observation, agent_traj_state):
+        if agent_traj_state.forward:
+            goal = observation["desired_goal"]
+        else:
+            goal = self._initial_states[self._rng.integers(len(self._initial_states))]
+        return goal
+
+
 class OmniGoalGenerator(GoalGenerator):
     """Generates goals from the set of expored states (frontier) or start/goal states."""
 
@@ -396,6 +417,7 @@ class OmniGoalGenerator(GoalGenerator):
 registry.register_all(
     GoalGenerator,
     {
+        "NoGoalGenerator": NoGoalGenerator,
         "FBGoalGenerator": FBGoalGenerator,
         "OmniGoalGenerator": OmniGoalGenerator,
     }
