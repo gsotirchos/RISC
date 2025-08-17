@@ -295,7 +295,7 @@ class OmniGoalGenerator(GoalGenerator):
         self._dbg_print(f"observation: {self._dbg_format(observation[0])}")
         self._dbg_print(f"curent direction: {agent_traj_state.current_direction}")
         agent, initial_state, goal_state = self._get_agent_init_goal_states(agent_traj_state)
-        current_direction = agent_traj_state.current_direction.removeprefix("teleport_")
+        current_direction = agent_traj_state.current_direction.split("_")[-1]
         if current_direction == "lateral":
             assert self._max_familiarity <= 1, "max_familiarity must be between 0 and 1"
             frontier_states, frontier_actions = self._get_frontier(
@@ -467,7 +467,7 @@ class TimeoutGoalSwitcher(GoalSwitcher):
     def should_switch(self, update_info, agent_traj_state):
         agent = self._forward_agent if agent_traj_state.forward else self._backward_agent
         success_prob = 0.0
-        current_direction = agent_traj_state.current_direction.removeprefix("teleport_")
+        current_direction = agent_traj_state.current_direction.split("_")[-1]
         if current_direction != "lateral":
             return False, success_prob
         if agent_traj_state.phase_steps == 1:

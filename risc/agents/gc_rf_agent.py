@@ -183,7 +183,7 @@ class GCResetFree(Agent):
             for direction in self._directions:
                 self._local_metrics[direction] = {}
                 self._global_metrics[direction] = {}
-                for metric in ["observation", "desired_goal"]:
+                for metric in ["observation", "desired_goal", "reached_goal"]:
                     self._local_metrics[direction][metric] = deque(
                         maxlen=local_visitation_vis_frequency
                     )
@@ -276,7 +276,14 @@ class GCResetFree(Agent):
         )
         if self._vis_fn is not None:
             for metric in self._local_metrics[agent_traj_state.current_direction].keys():
-                self._local_metrics[agent_traj_state.current_direction][metric].append(update_info.next_observation[metric])
+                if metric in update_info.next_observation:
+                    self._local_metrics[agent_traj_state.current_direction][metric].append(
+                        update_info.next_observation[metric]
+                    )
+            if agent_traj_state.current_direction == "lateral" and success:
+                self._local_metrics["lateral"]["reached_goal"].append(
+                    update_info.next_observation["observation"]
+                )
             if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
                 self._log_visualizations()
 
@@ -294,13 +301,13 @@ class GCResetFree(Agent):
             if self._logger.update_step(self._timescale):
                 self._logger.log_metrics(
                     {
+                        "success": success,
                         "return": agent_traj_state.phase_return,
                         "steps": agent_traj_state.phase_steps,
-                        "distance": self._distance_fn(
-                            update_info.next_observation["observation"]
-                        ),
+                        "distance": self._distance_fn(update_info.next_observation["observation"]),
                     },
-                    "forward" if agent_traj_state.forward else "backward",
+                    agent_traj_state.current_direction.split("_")[-1],
+                    # "forward" if agent_traj_state.forward else "backward",
                 )
 
             agent_traj_state = GCAgentState(
