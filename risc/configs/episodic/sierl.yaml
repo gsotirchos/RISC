@@ -32,10 +32,10 @@ kwargs:
       # agent_pos: [16, 9]
       # hallway_length: 10
       # num_hallways: 3
-      room_size: [8, 7]
-      goal_pos: [4, 3]
-      agent_pos: [6, 3]
-      hallway_length: 2
+      room_size: [4, 7]
+      goal_pos: [3, 3]
+      agent_pos: [1, 1]
+      hallway_length: 1
       num_hallways: 1
       step_reward: &step_reward -1
       goal_reward: &goal_reward 0
@@ -47,7 +47,7 @@ kwargs:
       symbolic: true
       video_period: -1
       vis_frequency: 2000
-      #render_mode: human
+      # render_mode: human
   agent:
     name: GCResetFree
     kwargs:
