@@ -301,7 +301,7 @@ class GCResetFree(Agent):
             if self._logger.update_step(self._timescale):
                 self._logger.log_metrics(
                     {
-                        "success": success,
+                        "success": float(success),
                         "return": agent_traj_state.phase_return,
                         "steps": agent_traj_state.phase_steps,
                         "distance": self._distance_fn(update_info.next_observation["observation"]),

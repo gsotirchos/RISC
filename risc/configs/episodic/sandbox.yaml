@@ -17,6 +17,7 @@ kwargs:
   test_max_steps: &test_steps 10
   test_frequency: 10
   test_episodes: 2
+  train_random_goals: false
   test_random_goals: true
   seed: 0
   stack_size: 1
@@ -32,10 +33,10 @@ kwargs:
       # agent_pos: [16, 9]
       # hallway_length: 10
       # num_hallways: 3
-      room_size: [10, 7]
-      goal_pos: [6, 3]
-      agent_pos: [8, 3]
-      hallway_length: 4
+      room_size: [8, 7]
+      goal_pos: [4, 3]
+      agent_pos: [6, 3]
+      hallway_length: 2
       num_hallways: 1
       step_reward: &step_reward -1
       goal_reward: &goal_reward 0
@@ -95,7 +96,7 @@ kwargs:
               step_reward: *step_reward
               goal_reward: *goal_reward
       goal_generator:
-        #name: FBGoalGenerator  # RISC
+        # name: FBGoalGenerator  # RISC
         name: OmniGoalGenerator
         kwargs:
           debug: true
@@ -108,8 +109,8 @@ kwargs:
           use_oracle: true
       phase_step_limit: [5, 1, 20]
       goal_switcher:
-        #name: BasicGoalSwitcher
-        #name: SuccessProbabilityGoalSwitcher  # reset-free
+        # name: BasicGoalSwitcher
+        # name: SuccessProbabilityGoalSwitcher  # reset-free
         name: TimeoutGoalSwitcher
         kwargs:
           switching_probability: 0.45
