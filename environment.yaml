@@ -25,7 +25,6 @@ dependencies:
   - matplotlib=3.4.2
   - termcolor=1.1.0
   - moviepy=1.0.3
-  - shimmy=0.2.1
   - cython=0.29.32
   #- patchelf=0.17.2
   - mujoco-python=2.2.0
@@ -43,6 +42,7 @@ dependencies:
     - ale-py==0.10.0
     - rliable==1.0.8
     - wandb-osh==1.0.4
+    - shimmy==2.0.0
     - git+https://github.com/chandar-lab/RLHive.git@de8f0a20a4e4760b532f244a84761e8609e34fea
     - git+https://github.com/dapatil211/earl_benchmark.git@da7b902b64e7347a857f9b66eca0b0367d325e83
     #- git+https://github.com/rlworkgroup/metaworld.git@04be337a12305e393c0caf0cbf5ec7755c7c8feb
