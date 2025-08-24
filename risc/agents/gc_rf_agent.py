@@ -307,7 +307,6 @@ class GCResetFree(Agent):
                         "distance": self._distance_fn(update_info.next_observation["observation"]),
                     },
                     agent_traj_state.current_direction.split("_")[-1],
-                    # "forward" if agent_traj_state.forward else "backward",
                 )
 
             agent_traj_state = GCAgentState(

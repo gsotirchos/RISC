@@ -10,6 +10,7 @@ from dataclasses import asdict
 from functools import partial
 from typing import List
 from dataclasses import replace
+from collections import deque
 
 import numpy as np
 from envs.reset_free_envs import ResetFreeEnv
@@ -101,6 +102,9 @@ class SingleAgentRunner(_SingleAgentRunner):
             self._logger.register_timescale("train", log_timescale=True)
         if self._test_random_goals:
             self._logger.register_timescale("test_random_goals")
+        self.test_metrics = self.create_test_metrics()
+        if test_random_goals:
+            self.random_test_metrics = self.create_test_metrics()
         self._eval_every = eval_every
         self._rng = np.random.default_rng(seeder.get_new_seed("runner"))
         self._all_states_fn = reset_free_env.all_states_fn
@@ -288,6 +292,18 @@ class SingleAgentRunner(_SingleAgentRunner):
             [("full_episode_length", 0)],
         )
 
+    def create_test_metrics(self, length=10):
+        return {
+            agent: {
+                metric: deque(maxlen=length) for metric in self.create_episode_metrics()[agent._id]
+            } for agent in self._agents
+        }
+
+    def append_to_metrics(self, metrics, new_metrics):
+        for agent in self._agents:
+            for metric, value in new_metrics[agent._id].items():
+                metrics[agent][metric].append(value)
+
     def run_training(self):
         """Run the training loop. Note, to ensure that the test phase is run during
         the individual runners must call :py:meth:`~Runner.update_step` in their
@@ -339,6 +355,10 @@ class SingleAgentRunner(_SingleAgentRunner):
             episode_metrics = self.run_episode(environment, self._test_max_steps)
             for metric, value in episode_metrics.get_flat_dict().items():
                 aggregated_episode_metrics[metric] += value / self._test_episodes
+        if random_goal:
+            self.append_to_metrics(self.random_test_metrics, episode_metrics)
+        else:
+            self.append_to_metrics(self.test_metrics, episode_metrics)
         self._logger.update_step(prefix)
         if self._eval_every:
             rewards = aggregated_episode_metrics[f"{self._agents[0]._id}_reward"]

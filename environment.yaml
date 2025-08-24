@@ -16,6 +16,8 @@ dependencies:
   - cuda=11.8
   - pytorch=2.0.0
   - ipython=8.18.1
+  - optuna=4.5.0
+  - optuna-integration=4.5.0
   - wandb=0.19.11
   - scipy=1.11.2
   - seaborn=0.12.1
@@ -29,15 +31,16 @@ dependencies:
   - mujoco-python=2.2.0
   #- gymnasium-atari=0.28.1  # for Atari games
   #- gymnasium-other=0.28.1  # for Atari games
-  - ale-py=0.8.1
   - pip:
     - wheel==0.38.0
     - opencv-python==4.9.0.80
-    - gymnasium[atari,accept-rom-license]==1.1.1  # Atari ROMs
+    - gymnasium[atari,accept-rom-license]==1.0.0  # Atari ROMs
     #- gymnasium-robotics==1.2.2
-    - Minigrid==2.1.0
+    - minigrid==2.1.0
+    - minihack==1.0.2
     #- mujoco==2.2.0
     #- mujoco-py==2.1.2.14
+    - ale-py==0.10.0
     - rliable==1.0.8
     - wandb-osh==1.0.4
     - git+https://github.com/chandar-lab/RLHive.git@de8f0a20a4e4760b532f244a84761e8609e34fea
@@ -54,3 +57,4 @@ variables:
 # 4. `export CC="$(command -v clang)"`
 # 5. `git clone https://github.com/dapatil211/earl_benchmark \
 #         && mv ./earl_benchmark/earl_benchmark ${CONDA_PREFIX}/lib/python3.9/site-packages/earl_benchmark`
+# 6. `python -m minihack.scripts.download_boxoban_levels`

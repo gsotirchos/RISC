@@ -125,4 +125,4 @@ kwargs:
         name: *run_name
         project: Fine-tuning
         resume: allow
-        start_method: fork
+        # start_method: fork
