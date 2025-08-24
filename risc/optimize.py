@@ -61,7 +61,7 @@ def parse_args():
     return parser.parse_known_args()[0]
 
 
-def error(values, relative_weight=1.0):
+def error(values, relative_weight=0.9):
     return relative_weight * np.mean(values) + (1 - relative_weight) * np.var(values)
 
 def objective(trial, runner_fn, config):
@@ -80,7 +80,7 @@ def objective(trial, runner_fn, config):
     metrics = runner.test_metrics[runner._agents[0]]
     metrics_random = runner.random_test_metrics[runner._agents[0]]
     # breakpoint()
-    return error(1 - np.array(metrics["success"])) + error(metrics_random["success"])
+    return error(1 - np.array(metrics["success"])) + error(1 - metrics_random["success"])
 
 def main():
     args = parse_args()
