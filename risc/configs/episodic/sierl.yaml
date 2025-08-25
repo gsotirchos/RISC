@@ -103,7 +103,7 @@ kwargs:
           temperature: 0.5
           use_success_prob: false
           use_oracle: false
-      phase_step_limit: [470, 1, 30]
+      phase_step_limit: [135, 1, 25]
       goal_switcher:
         name: TimeoutGoalSwitcher
         kwargs:
