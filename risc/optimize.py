@@ -66,8 +66,8 @@ def error(values, relative_weight=0.9):
 
 def objective(trial, config):
     goal_generator_config = config["kwargs"]["agent"]["kwargs"]["goal_generator"]["kwargs"]
-    w_c = trial.suggest_float("w_c", -10.0, 10.0)
-    w_g = trial.suggest_float("w_g", -10.0, 10.0)
+    w_c = trial.suggest_float("w_c", 0.0, 1.0)
+    w_g = trial.suggest_float("w_g", 0.0, 1.0)
     w_n = trial.suggest_float("w_n", -2.0, 2.0)
     goal_generator_config["weights"] = [w_n, 0, w_c, w_g]
     goal_generator_config["max_familiarity"] = trial.suggest_float("max_familiarity", 0.1, 1.0)
