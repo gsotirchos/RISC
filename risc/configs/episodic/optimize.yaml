@@ -57,7 +57,7 @@ kwargs:
             kwargs:
               end_value: 0.1
               init_value: 1.0
-              steps: 20000
+              steps: 10000
           loss_fn:
             name: MSELoss
           optimizer_fn:

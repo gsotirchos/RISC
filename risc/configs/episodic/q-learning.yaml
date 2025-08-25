@@ -112,6 +112,6 @@ kwargs:
     - name: WandbLogger
       kwargs:
         name: *run_name
-        project: Fine-tuning
+        project: Experiments
         resume: allow
         start_method: fork
