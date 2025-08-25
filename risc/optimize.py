@@ -64,23 +64,31 @@ def parse_args():
 def error(values, relative_weight=0.9):
     return relative_weight * np.mean(values) + (1 - relative_weight) * np.var(values)
 
-def objective(trial, runner_fn, config):
-    runner = runner_fn()
+def objective(trial, config):
     goal_generator_config = config["kwargs"]["agent"]["kwargs"]["goal_generator"]["kwargs"]
     w_c = trial.suggest_float("w_c", -10.0, 10.0)
     w_g = trial.suggest_float("w_g", -10.0, 10.0)
     w_n = trial.suggest_float("w_n", -2.0, 2.0)
     goal_generator_config["weights"] = [w_n, 0, w_c, w_g]
-    goal_generator_config["max_familiarity"] = trial.suggest_float("max_familiarity", 0.2, 1.0)
+    goal_generator_config["max_familiarity"] = trial.suggest_float("max_familiarity", 0.1, 1.0)
     # goal_generator_config["frontier_proportion"] = 0.9
     # goal_generator_config["temperature"] = 0.5
-    runner.register_config(config)
+    success = np.array([])
+    success_random = np.array([])
+    for seed in [18995728, 49789456, 50259734]:  # 71729146, 83575762
+        config_new = copy.deepcopy(config)
+        config_new["kwargs"]["seed"] = seed
+        runner_fn, full_config = get_runner(config_new)
+        runner = runner_fn()
+        runner.register_config(full_config)
 
-    runner.run_training()
-    metrics = runner.test_metrics[runner._agents[0]]
-    metrics_random = runner.random_test_metrics[runner._agents[0]]
-    # breakpoint()
-    return error(1 - np.array(metrics["success"])) + error(1 - np.array(metrics_random["success"]))
+        runner.run_training()
+        run_success = np.array(runner.test_metrics[runner._agents[0]]["success"])
+        run_success_random = np.array(runner.random_test_metrics[runner._agents[0]]["success"])
+        success = np.concatenate([success, run_success])
+        success_random = np.concatenate([success_random, run_success_random])
+        # breakpoint()
+    return error(1 - success) + error(1 - success_random)
 
 def main():
     args = parse_args()
@@ -96,21 +104,21 @@ def main():
 
     config["kwargs"]["train_steps"] = min(25000, config["kwargs"]["train_steps"])  # max steps
     loggers = config["kwargs"]["loggers"]
+    wandb_kwargs = None
     if loggers is not None:
         for logger in loggers:
             if logger["name"] == "WandbLogger":
                 wandb_kwargs = copy.deepcopy(logger["kwargs"])
-        config["kwargs"]["loggers"] = None  # don"t log individual runs
+                wandb_kwargs["name"] = "optimizer"
+        config["kwargs"]["loggers"] = None  # don"t log individual runs (BUG when logging)
+
+    objective_fn = partial(objective, config=config)
+    study = optuna.create_study()
     if wandb_kwargs is not None:
         wandbc = WeightsAndBiasesCallback(metric_name="success", wandb_kwargs=wandb_kwargs)
+        study.optimize(objective_fn, n_trials=150, callbacks=[wandbc])
     else:
-        wandbc = None
-
-    runner_fn, full_config = get_runner(config)
-    objective_fn = partial(objective, runner_fn=runner_fn, config=full_config)
-    study = optuna.create_study()
-    study.optimize(objective_fn, n_trials=100, callbacks=[wandbc])
-    # print(f"Best params are {study.best_params} with value {study.best_value}")
+        study.optimize(objective_fn, n_trials=150)
 
 
 if __name__ == "__main__":
