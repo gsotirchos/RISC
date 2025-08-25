@@ -30,7 +30,7 @@ kwargs:
       room_size: 19
       goal_pos: [13, 9]
       agent_pos: [16, 9]
-      hallway_length: 10
+      hallway_length: 9
       num_hallways: 3
       # room_size: [4, 7]
       # goal_pos: [3, 3]
@@ -39,7 +39,7 @@ kwargs:
       # num_hallways: 1
       step_reward: &step_reward -1
       goal_reward: &goal_reward 0
-      novelty_bonus: 0.15
+      novelty_bonus: 0.0
       train_max_steps: *train_steps  # episodic
       eval_max_steps: *test_steps
       local_vis_period: 2000
