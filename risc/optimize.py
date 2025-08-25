@@ -88,6 +88,7 @@ def objective(trial, config):
         success = np.concatenate([success, run_success])
         success_random = np.concatenate([success_random, run_success_random])
         # breakpoint()
+    print(f"Run stats:\n  success: {success}\n  success_random: {success_random}")
     return error(1 - success) + error(1 - success_random)
 
 def main():
