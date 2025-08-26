@@ -66,9 +66,9 @@ def error(values, relative_weight=0.9):
 
 def objective(trial, config):
     goal_generator_config = config["kwargs"]["agent"]["kwargs"]["goal_generator"]["kwargs"]
-    w_n = trial.suggest_float("w_n", 1.0, 2.0)
+    w_n = trial.suggest_float("w_n", 1.5, 3.0)
     w_c = trial.suggest_float("w_c", 0.5, 1.0)
-    w_g = trial.suggest_float("w_g", 0.5, 1.0)
+    w_g = trial.suggest_float("w_g", 0.0, 1.0)
     goal_generator_config["weights"] = [w_n, 0, w_c, w_g]
     goal_generator_config["max_familiarity"] = trial.suggest_float("max_familiarity", 0.9, 1.0)
     # goal_generator_config["frontier_proportion"] = 0.9
@@ -115,7 +115,7 @@ def main():
 
     objective_fn = partial(objective, config=config)
     search_space = {
-        "w_n": [1.0, 1.5, 2.0],
+        "w_n": [1.5, 2.0, 3.0],
         "w_c": [0.5, 1.0],
         "w_g": [0.5, 1.0],
         "max_familiarity": [0.995, 1.0],
