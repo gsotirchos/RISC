@@ -3,7 +3,7 @@ kwargs:
   experiment_manager:
     name: Experiment
     kwargs:
-      name: &run_name episodic_SIERL
+      name: &run_name SIERL_optimizer
       save_dir: experiment
       saving_schedule:
         name: PeriodicSchedule
