@@ -66,7 +66,7 @@ def error(values, relative_weight=0.9):
 
 def objective(trial, config):
     goal_generator_config = config["kwargs"]["agent"]["kwargs"]["goal_generator"]["kwargs"]
-    w_n = trial.suggest_float("w_n", 1.5, 3.0)
+    w_n = trial.suggest_float("w_n", 1.4, 2.1)
     w_c = trial.suggest_float("w_c", 0.5, 1.0)
     w_g = trial.suggest_float("w_g", 0.0, 1.0)
     goal_generator_config["weights"] = [w_n, 0, w_c, w_g]
@@ -120,14 +120,14 @@ def main():
         config["kwargs"]["loggers"] = None  # don"t log individual runs (BUG when logging)
 
     objective_fn = partial(objective, config=config)
-    search_space = {
-        "w_n": [1.5, 2.0, 3.0],
-        "w_c": [0.5, 1.0],
-        "w_g": [0.5, 1.0],
-        "max_familiarity": [0.995, 1.0],
-    }
-    sampler = optuna.samplers.GridSampler(search_space)
-    study = optuna.create_study(study_name="Optimize SIERL (categorical)", sampler=sampler)
+    # search_space = {
+    #     "w_n": [1.5, 2.0],
+    #     "w_c": [0.5, 1.0],
+    #     "w_g": [0.5, 1.0],
+    #     "max_familiarity": [0.995, 1.0],
+    # }
+    # sampler = optuna.samplers.GridSampler(search_space)
+    study = optuna.create_study(study_name="Optimize SIERL")  # , sampler=sampler)
     if wandb_kwargs is not None:
         wandbc = WeightsAndBiasesCallback(metric_name="success", wandb_kwargs=wandb_kwargs)
         study.optimize(objective_fn, n_trials=150, callbacks=[wandbc])
