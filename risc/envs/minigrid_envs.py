@@ -406,9 +406,9 @@ class HallwayEnv(MiniGridEnv):
     def __init__(
         self,
         room_size=19,
-        agent_pos=(16, 9),
         goal_pos=(13, 9),
-        hallway_length=10,
+        agent_pos=(16, 9),
+        hallway_length=9,
         num_hallways=3,
         max_steps=100,
         **kwargs
