@@ -292,7 +292,7 @@ class SingleAgentRunner(_SingleAgentRunner):
             [("full_episode_length", 0)],
         )
 
-    def create_test_metrics(self, length=10):
+    def create_test_metrics(self, length=30):
         return {
             agent: {
                 metric: deque(maxlen=length) for metric in self.create_episode_metrics()[agent._id]

@@ -66,13 +66,15 @@ def error(values, relative_weight=0.9):
 
 def objective(trial, config):
     goal_generator_config = config["kwargs"]["agent"]["kwargs"]["goal_generator"]["kwargs"]
-    w_n = trial.suggest_float("w_n", 1.4, 2.1)
-    w_c = trial.suggest_float("w_c", 0.5, 1.0)
-    w_g = trial.suggest_float("w_g", 0.0, 1.0)
-    goal_generator_config["weights"] = [w_n, 0, w_c, w_g]
-    goal_generator_config["max_familiarity"] = trial.suggest_float("max_familiarity", 0.9, 1.0)
+    # w_n = trial.suggest_float("w_n", 1.4, 2.1)
+    # w_c = trial.suggest_float("w_c", 0.5, 1.0)
+    # w_g = trial.suggest_float("w_g", 0.0, 1.0)
+    # goal_generator_config["weights"] = [w_n, 0, w_c, w_g]
+    # goal_generator_config["max_familiarity"] = trial.suggest_float("Fthr", 0.9, 1.0)
     # goal_generator_config["frontier_proportion"] = 0.9
     # goal_generator_config["temperature"] = 0.5
+    goal_switcher_config = config["kwargs"]["agent"]["kwargs"]["goal_switcher"]["kwargs"]
+    goal_switcher_config["switching_probability"] = trial.suggest_float("Pswitch", 0.0, 1.0)
     success = np.array([])
     success_random = np.array([])
     for seed in [18995728, 49789456, 50259734]:  # 71729146, 83575762
@@ -109,7 +111,7 @@ def main():
         args.logger_config,
     )
 
-    config["kwargs"]["train_steps"] = min(25000, config["kwargs"]["train_steps"])  # max steps
+    config["kwargs"]["train_steps"] = min(20000, config["kwargs"]["train_steps"])  # max steps
     loggers = config["kwargs"]["loggers"]
     wandb_kwargs = None
     if loggers is not None:

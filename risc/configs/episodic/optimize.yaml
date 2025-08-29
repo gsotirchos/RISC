@@ -13,9 +13,9 @@ kwargs:
           period: 50000
   train_steps: 1000000
   # train_phase_steps: 2000  # reset-free
-  max_steps_per_episode: &train_steps 160  # episodic
-  test_max_steps: &test_steps 40
-  test_frequency: 1000
+  max_steps_per_episode: &train_steps 30  # episodic
+  test_max_steps: &test_steps 10
+  test_frequency: 300
   test_episodes: 10
   test_random_goals: true
   seed: 0
@@ -95,13 +95,13 @@ kwargs:
         kwargs:
           debug: false
           vis_frequency: 50
-          weights: [1, 0, 1, 1]
+          weights: [1.5, 0, 1, 0.5]
           frontier_proportion: 1.0
-          max_familiarity: 0.8
+          max_familiarity: 0.9
           temperature: 0.5
           use_success_prob: false
           use_oracle: false
-      phase_step_limit: [135, 1, 25]
+      phase_step_limit: [24, 1, 6]
       goal_switcher:
         name: TimeoutGoalSwitcher
         kwargs:
