@@ -14,7 +14,7 @@ kwargs:
   train_steps: 1000000
   # train_phase_steps: 2000  # reset-free
   max_steps_per_episode: &train_steps 500  # episodic
-  test_max_steps: &test_steps 100
+  test_max_steps: &test_steps 150
   test_frequency: 1000
   test_episodes: 10
   train_random_goals: false
@@ -99,7 +99,7 @@ kwargs:
       goal_switcher:
         name: BasicGoalSwitcher
       replay_buffer:
-        #name: CountsReplayBuffer
+        # name: CountsReplayBuffer
         name: HERReplayBuffer  # HER
         kwargs:
           capacity: 100000
