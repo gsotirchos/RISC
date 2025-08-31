@@ -263,7 +263,7 @@ class OmniGoalGenerator(GoalGenerator):
             cost = - agent.compute_value(observations, goals).squeeze()
         return cost
 
-    def _path_cost(self, costs, weights):
+    def _weighted_path_cost(self, costs, weights):
         return sigmoid(zscore(costs.dot(weights)))
 
     def _calculate_priority(
@@ -303,7 +303,7 @@ class OmniGoalGenerator(GoalGenerator):
             )
         priority = softmin(
             novelty_cost ** self._weights[0]
-            * self._path_cost(
+            * self._weighted_path_cost(
                 np.transpose([cost_to_come, cost_to_go, cost_to_reach]),
                 self._weights[1:4]
             ),
@@ -358,7 +358,7 @@ class OmniGoalGenerator(GoalGenerator):
                 counts = self._get_counts(frontier_states, frontier_actions, agent)
                 self._dbg_print(f"counts: {counts}", "   ")
                 self._dbg_print(f"novelty costs: {novelty_cost}", "   ")
-                path_costs = self._path_cost(
+                path_costs = self._weighted_path_cost(
                     np.transpose([cost_to_come, cost_to_go, cost_to_reach]),
                     self._weights[1:4]
                 )

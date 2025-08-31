@@ -28,11 +28,6 @@ kwargs:
     name: minigrid_envs
     kwargs:
       env_name: MiniGrid-Hallway-v1
-      # room_size: 19
-      # goal_pos: [13, 9]
-      # agent_pos: [16, 9]
-      # hallway_length: 9
-      # num_hallways: 3
       # room_size: [4, 7]
       # goal_pos: [3, 3]
       # agent_pos: [1, 1]

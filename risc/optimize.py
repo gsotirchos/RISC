@@ -65,7 +65,7 @@ def error(values, relative_weight=0.9):
     return relative_weight * np.mean(values) + (1 - relative_weight) * np.var(values)
 
 def objective(trial, config):
-    goal_generator_config = config["kwargs"]["agent"]["kwargs"]["goal_generator"]["kwargs"]
+    # goal_generator_config = config["kwargs"]["agent"]["kwargs"]["goal_generator"]["kwargs"]
     # w_n = trial.suggest_float("w_n", 1.4, 2.1)
     # w_c = trial.suggest_float("w_c", 0.5, 1.0)
     # w_g = trial.suggest_float("w_g", 0.0, 1.0)
@@ -84,12 +84,12 @@ def objective(trial, config):
         runner = runner_fn()
         runner.register_config(full_config)
 
+        breakpoint()
         runner.run_training()
         run_success = np.array(runner.test_metrics[runner._agents[0]]["success"])
         run_success_random = np.array(runner.random_test_metrics[runner._agents[0]]["success"])
         success = np.concatenate([success, run_success])
         success_random = np.concatenate([success_random, run_success_random])
-        # breakpoint()
     print("Run stats:")
     print(f"  success: {success}")
     print(f"    mean success: {np.mean(success)}")
