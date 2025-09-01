@@ -285,6 +285,7 @@ class CountsReplayBuffer(CircularReplayBuffer):
         self._trajectory_familiarity = 1.0
         self._is_new_phase = False
         self._prev_next_state = None
+        self._main_goal = None
 
     # def _update_distances(self, state):
     #     if self.action_counts[state] > 1:
@@ -333,7 +334,7 @@ class CountsReplayBuffer(CircularReplayBuffer):
         if action is not None:
             self.action_counts[state, action] -= 1
             if self.action_counts.get((state, action), 0) == 0:
-                # keep 0-count state-action entries unless their state entries have been deleted
+                # keep 0-count state-action entries, unless their state entries have been deleted
                 if state not in self.state_counts:
                     del self.action_counts[state, action]
                     del self.familiarities[state, action]
@@ -350,8 +351,14 @@ class CountsReplayBuffer(CircularReplayBuffer):
 
     def _update_metadata(self, **transition):
         """ Decrement the overwritten observation's metadata, increment those of the new one. """
-        self._decrement_overwritten_transition_metadata()
-        self._increment_transition_metadata(transition)
+        if self._main_goal is None:  # works as long as the first phase is towards the main goal
+            self._main_goal = transition['desired_goal']
+        if np.allclose(transition['desired_goal'], self._main_goal):
+            print("updating transition metadata")
+            self._decrement_overwritten_transition_metadata()
+            self._increment_transition_metadata(transition)
+        else:
+            print("NOT updating transition metadata")
         if transition["terminated"] or transition["done"]:
             self._is_new_phase = True
             self._prev_next_state = transition["next_observation"]
@@ -375,7 +382,9 @@ class CountsReplayBuffer(CircularReplayBuffer):
             self.state_counts = pickle.load(f)
 
 
+
 def main():
+    """ Tests """
     counts = HashableKeyDict(int)
     counts[np.array([[1, 1]])] = 1
     counts[(np.array([[1, 1]]), 0)] = 2
