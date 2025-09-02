@@ -299,6 +299,8 @@ class CountsReplayBuffer(CircularReplayBuffer):
         return 1 - 1 / (1 + counts)
 
     def _increment_transition_metadata(self, transition):
+        if not np.all(transition['desired_goal'] == self._main_goal):
+            return
         new_state = transition["observation"]
         new_action = transition["action"]
         new_next_state = transition["next_observation"]
@@ -323,6 +325,8 @@ class CountsReplayBuffer(CircularReplayBuffer):
             self.familiarities[new_state, new_action] = self._trajectory_familiarity
 
     def _decrement_overwritten_transition_metadata(self):
+        if not np.all(self._storage["desired_goal"][self._cursor] == self._main_goal):
+            return
         overwritten_state = self._storage["observation"][self._cursor]
         overwritten_action = self._storage["action"][self._cursor]
         overwritten_next_state = self._storage["next_observation"][self._cursor]
@@ -353,12 +357,8 @@ class CountsReplayBuffer(CircularReplayBuffer):
         """ Decrement the overwritten observation's metadata, increment those of the new one. """
         if self._main_goal is None:  # works as long as the first phase is towards the main goal
             self._main_goal = transition['desired_goal']
-        if np.allclose(transition['desired_goal'], self._main_goal):
-            print("updating transition metadata")
-            self._decrement_overwritten_transition_metadata()
-            self._increment_transition_metadata(transition)
-        else:
-            print("NOT updating transition metadata")
+        self._decrement_overwritten_transition_metadata()
+        self._increment_transition_metadata(transition)
         if transition["terminated"] or transition["done"]:
             self._is_new_phase = True
             self._prev_next_state = transition["next_observation"]
