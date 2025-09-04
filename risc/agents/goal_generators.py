@@ -205,7 +205,7 @@ class OmniGoalGenerator(GoalGenerator):
         else:
             return self._backward_agent, forward_goal_state, forward_initial_state
 
-    def array_from_space(self, length, space):
+    def _array_from_space(self, length, space):
         return np.zeros((length,) + tuple(space.shape), dtype=space.dtype)
 
     def _get_frontier(self, agent, condition_fn):
@@ -218,8 +218,8 @@ class OmniGoalGenerator(GoalGenerator):
         if frontier_length == len(counts):
             frontier_states, frontier_actions = list(zip(*counts.keys()))
             return np.array(frontier_states), np.array(frontier_actions)
-        frontier_states = self.array_from_space(frontier_length, agent._observation_space)
-        frontier_actions = self.array_from_space(frontier_length, agent._action_space)
+        frontier_states = self._array_from_space(frontier_length, agent._observation_space)
+        frontier_actions = self._array_from_space(frontier_length, agent._action_space)
         frontier_counts = np.zeros((frontier_length,), dtype=np.uint64)
         next_empty_idx = 0
         for state_action, count in counts.items():
