@@ -159,7 +159,7 @@ class OmniGoalGenerator(GoalGenerator):
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_switcher"))
         self._log_schedule = PeriodicSchedule(False, log_frequency > 0, max(log_frequency, 1))
         self._vis_schedule = PeriodicSchedule(False, vis_frequency > 0, max(vis_frequency, 1))
-        self._main_goal_schedule = PeriodicSchedule(False, True, 3)
+        self._main_goal_schedule = PeriodicSchedule(True, False, 3)
         self._initial_states = initial_states
         self._goal_states = goal_states
         self._weights = weights
