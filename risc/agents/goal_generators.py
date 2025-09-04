@@ -159,6 +159,7 @@ class OmniGoalGenerator(GoalGenerator):
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_switcher"))
         self._log_schedule = PeriodicSchedule(False, log_frequency > 0, max(log_frequency, 1))
         self._vis_schedule = PeriodicSchedule(False, vis_frequency > 0, max(vis_frequency, 1))
+        self._main_goal_schedule = PeriodicSchedule(False, True, 3)
         self._initial_states = initial_states
         self._goal_states = goal_states
         self._weights = weights
@@ -271,7 +272,7 @@ class OmniGoalGenerator(GoalGenerator):
         agent,
         observation,
         initial_state,
-        goal_state,
+        main_goal_state,
         frontier_states,
         frontier_actions
     ):
@@ -298,7 +299,7 @@ class OmniGoalGenerator(GoalGenerator):
         if self._weights[3] != 0:
             cost_to_go = self._cost(
                 frontier_states,
-                goal_state,
+                main_goal_state,
                 agent
             )
         priority = softmin(
@@ -315,10 +316,16 @@ class OmniGoalGenerator(GoalGenerator):
         observation = observation["observation"]
         self._dbg_print(f"observation: {self._dbg_format(observation[0])}")
         self._dbg_print(f"curent direction: {agent_traj_state.current_direction}")
-        agent, initial_state, goal_state = self._get_agent_init_goal_states(agent_traj_state)
+        agent, initial_state, main_goal_state = self._get_agent_init_goal_states(agent_traj_state)
         current_direction = agent_traj_state.current_direction.split("_")[-1]
         if current_direction == "lateral":
             assert self._max_familiarity <= 1, "max_familiarity must be between 0 and 1"
+            if self._main_goal_schedule.update():
+                goal_state = main_goal_state if agent_traj_state.forward else initial_state
+                self._dbg_print("Periodic main-goal selection", "   ")
+                self._dbg_print(f"goal state: {self._dbg_format(goal_state)}", "   ")
+                self._dbg_print(f"goal action: {None}", "   ")
+                return (goal_state, None)
             frontier_states, frontier_actions = self._get_frontier(
                 agent,
                 (
@@ -330,10 +337,11 @@ class OmniGoalGenerator(GoalGenerator):
               f"frontier state-actions: {self._dbg_format(frontier_states[:, 0], frontier_actions)}"
             )
             if frontier_states is None:
-                self._dbg_print("no frontier states yet", "   ")
-                self._dbg_print(f"goal state: {self._dbg_format(initial_state)}", "   ")
+                goal_state = main_goal_state if agent_traj_state.forward else initial_state
+                self._dbg_print("No frontier states yet", "   ")
+                self._dbg_print(f"goal state: {self._dbg_format(goal_state)}", "   ")
                 self._dbg_print(f"goal action: {None}", "   ")
-                return (goal_state, None) if agent_traj_state.forward else (initial_state, None)
+                return (goal_state, None)
             if len(frontier_states) == 1:
                 self._dbg_print(f"goal state: {self._dbg_format(frontier_states[:, 0])}", "   ")
                 self._dbg_print(f"goal action: {frontier_actions[0]}", "   ")
@@ -348,7 +356,7 @@ class OmniGoalGenerator(GoalGenerator):
                 agent,
                 observation,
                 initial_state,
-                goal_state,
+                main_goal_state,
                 frontier_states,
                 frontier_actions
             )
@@ -406,7 +414,7 @@ class OmniGoalGenerator(GoalGenerator):
                     f"{agent._id.removesuffix('_agent')}_goal_generator",
                 )
         else:  # current_direction != "lateral"
-            goal = goal_state, None
+            goal = main_goal_state, None
         self._dbg_print(f"goal state: {self._dbg_format(goal[0])}", "   ")
         self._dbg_print(f"goal action: {goal[1]}", "   ")
         if self._debug and isinstance(self._logger, NullLogger):
