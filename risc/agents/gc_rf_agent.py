@@ -217,6 +217,7 @@ class GCResetFree(Agent):
             self._success_table = []
         else:
             self._success_table = None
+        self._steps = 0  # TODO: temprorary
 
     def act(self, observation, agent_traj_state=None):
         if not self._training:
@@ -235,6 +236,7 @@ class GCResetFree(Agent):
                 # execute subgoal action if subgoal state was reached
                 action = agent_traj_state.next_action
             agent_traj_state = replace(agent_traj_state, next_action=None)
+        self._steps += 1  # TODO: temprorary
         return action, replace(
             agent_traj_state,
             subagent_traj_state=subagent_traj_state,
@@ -341,7 +343,7 @@ class GCResetFree(Agent):
                         name=f"{direction}/global_{metric}",
                     )
                     metrics[f"{direction}/global_{metric}"] = global_image
-        if self._all_states_fn is not None:
+        if self._all_states_fn is not None:  # TODO: update or remove
             all_states = self._all_states_fn()["observation"]
             forward_agent_vis = self._forward_agent.get_stats(
                 all_states, self._goal_states[0]
@@ -400,7 +402,7 @@ class GCResetFree(Agent):
         return terminated, truncated, success
 
     def get_new_goal(self, observation, agent_traj_state):
-        goal = self._goal_generator.generate_goal(observation, agent_traj_state)
+        goal = self._goal_generator.generate_goal(observation, agent_traj_state, self._steps)
         if isinstance(goal, tuple):
             goal, action = goal
             action = action or agent_traj_state.next_action

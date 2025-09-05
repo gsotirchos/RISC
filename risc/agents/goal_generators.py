@@ -312,7 +312,7 @@ class OmniGoalGenerator(GoalGenerator):
         )
         return priority, novelty_cost, cost_to_reach, cost_to_come, cost_to_go
 
-    def generate_goal(self, observation, agent_traj_state):
+    def generate_goal(self, observation, agent_traj_state, steps):
         observation = observation["observation"]
         self._dbg_print(f"observation: {self._dbg_format(observation[0])}")
         self._dbg_print(f"curent direction: {agent_traj_state.current_direction}")
@@ -320,12 +320,12 @@ class OmniGoalGenerator(GoalGenerator):
         current_direction = agent_traj_state.current_direction.split("_")[-1]
         if current_direction == "lateral":
             assert self._max_familiarity <= 1, "max_familiarity must be between 0 and 1"
-            # if self._main_goal_schedule.update():
-            #     goal_state = main_goal_state if agent_traj_state.forward else initial_state
-            #     self._dbg_print("Periodic main-goal selection", "   ")
-            #     self._dbg_print(f"goal state: {self._dbg_format(goal_state)}", "   ")
-            #     self._dbg_print(f"goal action: {None}", "   ")
-            #     return (goal_state, None)
+            if self._main_goal_schedule.update() or steps >= 200000:
+                goal_state = main_goal_state if agent_traj_state.forward else initial_state
+                self._dbg_print("Periodic main-goal selection", "   ")
+                self._dbg_print(f"goal state: {self._dbg_format(goal_state)}", "   ")
+                self._dbg_print(f"goal action: {None}", "   ")
+                return (goal_state, None)
             frontier_states, frontier_actions = self._get_frontier(
                 agent,
                 (
