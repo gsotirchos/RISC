@@ -159,7 +159,7 @@ class OmniGoalGenerator(GoalGenerator):
         self._rng = np.random.default_rng(seeder.get_new_seed("goal_switcher"))
         self._log_schedule = PeriodicSchedule(False, log_frequency > 0, max(log_frequency, 1))
         self._vis_schedule = PeriodicSchedule(False, vis_frequency > 0, max(vis_frequency, 1))
-        self._main_goal_schedule = PeriodicSchedule(True, False, 3)
+        self._main_goal_schedule = PeriodicSchedule(False, True, 3)
         self._initial_states = initial_states
         self._goal_states = goal_states
         self._weights = weights
@@ -320,12 +320,12 @@ class OmniGoalGenerator(GoalGenerator):
         current_direction = agent_traj_state.current_direction.split("_")[-1]
         if current_direction == "lateral":
             assert self._max_familiarity <= 1, "max_familiarity must be between 0 and 1"
-            if self._main_goal_schedule.update():
-                goal_state = main_goal_state if agent_traj_state.forward else initial_state
-                self._dbg_print("Periodic main-goal selection", "   ")
-                self._dbg_print(f"goal state: {self._dbg_format(goal_state)}", "   ")
-                self._dbg_print(f"goal action: {None}", "   ")
-                return (goal_state, None)
+            # if self._main_goal_schedule.update():
+            #     goal_state = main_goal_state if agent_traj_state.forward else initial_state
+            #     self._dbg_print("Periodic main-goal selection", "   ")
+            #     self._dbg_print(f"goal state: {self._dbg_format(goal_state)}", "   ")
+            #     self._dbg_print(f"goal action: {None}", "   ")
+            #     return (goal_state, None)
             frontier_states, frontier_actions = self._get_frontier(
                 agent,
                 (
@@ -360,7 +360,8 @@ class OmniGoalGenerator(GoalGenerator):
                 frontier_states,
                 frontier_actions
             )
-            goal_idx = self._rng.choice(len(priority), p=priority)  # np.argmin(priority)
+            # goal_idx = self._rng.choice(len(priority), p=priority)
+            goal_idx = np.argmin(priority)
             goal = frontier_states[goal_idx, 0][None, ...], frontier_actions[goal_idx]
             if self._debug:
                 counts = self._get_counts(frontier_states, frontier_actions, agent)

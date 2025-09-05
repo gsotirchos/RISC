@@ -299,8 +299,8 @@ class CountsReplayBuffer(CircularReplayBuffer):
         return 1 - 1 / (1 + counts)
 
     def _increment_transition_metadata(self, transition):
-        if not np.all(transition['desired_goal'] == self._main_goal):
-            return
+        # if not np.all(transition['desired_goal'] == self._main_goal):
+        #     return
         new_state = transition["observation"]
         new_action = transition["action"]
         new_next_state = transition["next_observation"]
@@ -325,8 +325,8 @@ class CountsReplayBuffer(CircularReplayBuffer):
             self.familiarities[new_state, new_action] = self._trajectory_familiarity
 
     def _decrement_overwritten_transition_metadata(self):
-        if not np.all(self._storage["desired_goal"][self._cursor] == self._main_goal):
-            return
+        # if not np.all(self._storage["desired_goal"][self._cursor] == self._main_goal):
+        #     return
         overwritten_state = self._storage["observation"][self._cursor]
         overwritten_action = self._storage["action"][self._cursor]
         overwritten_next_state = self._storage["next_observation"][self._cursor]
