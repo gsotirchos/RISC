@@ -35,7 +35,7 @@ kwargs:
       # num_hallways: 1
       step_reward: &step_reward -1
       goal_reward: &goal_reward 0
-      novelty_bonus: 0.15
+      novelty_bonus: 0.0
       train_max_steps: *train_steps  # episodic
       eval_max_steps: *test_steps
       local_vis_period: 2000
@@ -99,16 +99,21 @@ kwargs:
           weights: [1, 0, 2, 1]
           frontier_proportion: 0.9
           max_familiarity: 0.5  # familiarity_threshold
-          temperature: 0.5
           # use_success_prob: true
           use_oracle: true
-      phase_step_limit: [5, 1, 20]
+      temperature_schedule:
+        name: LinearSchedule
+        kwargs:
+          end_value: 0.05
+          init_value: 0.7
+          steps: 200000
+      phase_step_limit: [3, 1, 6]
       goal_switcher:
         # name: BasicGoalSwitcher
         # name: SuccessProbabilityGoalSwitcher  # reset-free
         name: TimeoutGoalSwitcher
         kwargs:
-          switching_probability: 0.45
+          switching_probability: 0.0
           # use_oracle: true
       replay_buffer:
         # name: CountsReplayBuffer

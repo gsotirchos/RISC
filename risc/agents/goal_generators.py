@@ -141,7 +141,6 @@ class OmniGoalGenerator(GoalGenerator):
         initial_states,
         goal_states,
         weights,
-        temperature: float = 20,
         max_familiarity: float = 0.5,
         frontier_proportion: float = 1.0,
         use_success_prob: bool = False,
@@ -163,7 +162,6 @@ class OmniGoalGenerator(GoalGenerator):
         self._initial_states = initial_states
         self._goal_states = goal_states
         self._weights = weights
-        self._temperature = temperature
         self._masking_dist = norm(loc=max_familiarity, scale=weights[0])
         self._max_familiarity = max_familiarity
         self._frontier_proportion = frontier_proportion
@@ -308,7 +306,7 @@ class OmniGoalGenerator(GoalGenerator):
                 np.transpose([cost_to_come, cost_to_go, cost_to_reach]),
                 self._weights[1:4]
             ),
-            self._temperature
+            agent.temperature
         )
         return priority, novelty_cost, cost_to_reach, cost_to_come, cost_to_go
 

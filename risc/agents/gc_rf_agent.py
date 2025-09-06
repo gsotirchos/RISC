@@ -8,7 +8,7 @@ import numpy as np
 from envs.types import UpdateInfo
 from hive.agents import Agent
 from hive.utils.loggers import Logger, NullLogger
-from hive.utils.schedule import PeriodicSchedule
+from hive.utils.schedule import Schedule, PeriodicSchedule
 from hive.utils.utils import create_folder
 from hive.replays.replay_buffer import BaseReplayBuffer
 
@@ -44,6 +44,7 @@ class GCResetFree(Agent):
         base_agent: Agent,
         goal_generator: GoalGenerator,
         goal_switcher: GoalSwitcher,
+        temperature_schedule: Schedule,
         success_fn,
         reward_fn,
         all_states_fn,
@@ -173,6 +174,7 @@ class GCResetFree(Agent):
             device=self._forward_agent._device,
             log_success=log_success,
         )
+        self._temperature_schedule = temperature_schedule()
         self._success_fn = success_fn
         self._reward_fn = reward_fn
         self._all_states_fn = all_states_fn
@@ -230,6 +232,7 @@ class GCResetFree(Agent):
         observation = self._replace_goal_fn(observation, agent_traj_state.current_goal)
         agent = (self._forward_agent if agent_traj_state.forward else self._backward_agent)
         action, subagent_traj_state = agent.act(observation, agent_traj_state.subagent_traj_state)
+        agent.temperature = self._temperature_schedule.update()
         if (agent_traj_state.current_direction == "forward"
             and agent_traj_state.next_action is not None):
             if agent_traj_state.forward_success:
