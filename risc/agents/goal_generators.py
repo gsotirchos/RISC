@@ -360,8 +360,8 @@ class OmniGoalGenerator(GoalGenerator):
                 frontier_states,
                 frontier_actions
             )
-            # goal_idx = self._rng.choice(len(priority), p=priority)
-            goal_idx = np.argmin(priority)
+            goal_idx = self._rng.choice(len(priority), p=priority)
+            # goal_idx = np.argmin(priority)
             goal = frontier_states[goal_idx, 0][None, ...], frontier_actions[goal_idx]
             if self._debug:
                 counts = self._get_counts(frontier_states, frontier_actions, agent)
