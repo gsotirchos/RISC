@@ -97,12 +97,21 @@ kwargs:
           max_familiarity: 0.9
           use_success_prob: false
           use_oracle: false
-      temperature_schedule:
-        name: LinearSchedule
-        kwargs:
-          end_value: 0.05
-          init_value: 0.7
-          steps: 200000
+          temperature_schedule:
+            name: ConstantSchedule
+            kwargs:
+              value: 0.5
+            # name: LinearSchedule
+            # kwargs:
+            #   init_value: 0.7
+            #   end_value: 0.05
+            #   steps: 200000
+          sierl_prob_schedule:
+            name: LinearSchedule
+            kwargs:
+              init_value: 0.5
+              end_value: 0.05
+              steps: 200000
       phase_step_limit: [450, 1, 50]
       goal_switcher:
         name: TimeoutGoalSwitcher

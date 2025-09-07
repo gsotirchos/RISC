@@ -101,12 +101,21 @@ kwargs:
           max_familiarity: 0.5  # familiarity_threshold
           # use_success_prob: true
           use_oracle: true
-      temperature_schedule:
-        name: LinearSchedule
-        kwargs:
-          end_value: 0.05
-          init_value: 0.7
-          steps: 200000
+          temperature_schedule:
+            name: ConstantSchedule
+            kwargs:
+              value: 0.5
+            # name: LinearSchedule
+            # kwargs:
+            #   init_value: 0.7
+            #   end_value: 0.05
+            #   steps: 400  # episodes
+          sierl_prob_schedule:
+            name: LinearSchedule
+            kwargs:
+              init_value: 0.5
+              end_value: 0.05
+              steps: 400  # episodes
       phase_step_limit: [3, 1, 6]
       goal_switcher:
         # name: BasicGoalSwitcher

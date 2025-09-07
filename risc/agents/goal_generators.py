@@ -9,7 +9,7 @@ from envs.utils import heatmap as _heatmap
 from hive import registry
 from hive.utils.loggers import Logger, NullLogger
 from hive.utils.registry import Registrable
-from hive.utils.schedule import PeriodicSchedule
+from hive.utils.schedule import Schedule, PeriodicSchedule, ConstantSchedule
 from hive.utils.utils import seeder
 from replays.counts_replay import HashableKeyDict
 from scipy.special import expit as sigmoid
@@ -143,6 +143,8 @@ class OmniGoalGenerator(GoalGenerator):
         weights,
         max_familiarity: float = 0.5,
         frontier_proportion: float = 1.0,
+        sierl_prob_schedule: Schedule = None,
+        temperature_schedule: Schedule = None,
         use_success_prob: bool = False,
         use_oracle: bool = False,
         log_frequency: int = 10,
@@ -167,6 +169,15 @@ class OmniGoalGenerator(GoalGenerator):
         self._frontier_proportion = frontier_proportion
         self._use_success_prob = use_success_prob
         self._debug = debug
+        if temperature_schedule is None:
+            self._temperature_schedule = ConstantSchedule(0.5)
+        else:
+            self._temperature_schedule = temperature_schedule()
+        self._temperature = self._temperature_schedule.get_value()
+        if sierl_prob_schedule is None:
+            self._sierl_prob_schedule = ConstantSchedule(0.5)
+        else:
+            self._sierl_prob_schedule = sierl_prob_schedule()
 
     def _dbg_format(self, states: np.ndarray, actions: np.ndarray = None, value: int = 255):
         positions = np.flip(np.argwhere(np.array(states) == value)[..., -2:].squeeze(), axis=-1)
@@ -306,7 +317,7 @@ class OmniGoalGenerator(GoalGenerator):
                 np.transpose([cost_to_come, cost_to_go, cost_to_reach]),
                 self._weights[1:4]
             ),
-            agent.temperature
+            self._temperature
         )
         return priority, novelty_cost, cost_to_reach, cost_to_come, cost_to_go
 
@@ -318,9 +329,15 @@ class OmniGoalGenerator(GoalGenerator):
         current_direction = agent_traj_state.current_direction.split("_")[-1]
         if current_direction == "lateral":
             assert self._max_familiarity <= 1, "max_familiarity must be between 0 and 1"
-            if self._main_goal_schedule.update():  # or steps >= 200000:
+            self._temperature = self._temperature_schedule.update()
+            self._dbg_print(f"{self._temperature=}")
+            sierl_prob = self._sierl_prob_schedule.update()
+            rand_num = self._rng.random()
+            self._dbg_print(f"{rand_num=}")
+            self._dbg_print(f"{sierl_prob=}")
+            if rand_num > sierl_prob:
+                self._dbg_print("Random main-goal selection", "   ")
                 goal_state = main_goal_state if agent_traj_state.forward else initial_state
-                self._dbg_print("Periodic main-goal selection", "   ")
                 self._dbg_print(f"goal state: {self._dbg_format(goal_state)}", "   ")
                 self._dbg_print(f"goal action: {None}", "   ")
                 return (goal_state, None)

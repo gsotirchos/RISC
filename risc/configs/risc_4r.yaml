@@ -66,6 +66,7 @@ kwargs:
               off_value: false
               on_value: true
               period: 500
+          success_prob_threshold: 0.1
         name: GoalConditionedDQNAgent
       goal_generator:
         name: FBGoalGenerator
