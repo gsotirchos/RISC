@@ -330,12 +330,7 @@ class OmniGoalGenerator(GoalGenerator):
         if current_direction == "lateral":
             assert self._max_familiarity <= 1, "max_familiarity must be between 0 and 1"
             self._temperature = self._temperature_schedule.update()
-            self._dbg_print(f"{self._temperature=}")
-            sierl_prob = self._sierl_prob_schedule.update()
-            rand_num = self._rng.random()
-            self._dbg_print(f"{rand_num=}")
-            self._dbg_print(f"{sierl_prob=}")
-            if rand_num > sierl_prob:
+            if self._rng.random() > self._sierl_prob_schedule.update():
                 self._dbg_print("Random main-goal selection", "   ")
                 goal_state = main_goal_state if agent_traj_state.forward else initial_state
                 self._dbg_print(f"goal state: {self._dbg_format(goal_state)}", "   ")
