@@ -349,6 +349,7 @@ class GCResetFree(Agent):
                         name=f"{direction}/global_{metric}",
                     )
                     metrics[f"{direction}/global_{metric}"] = global_image
+                    self._local_metrics[direction][metric].clear()
         if self._all_states_fn is not None:  # TODO: update or remove
             all_states = self._all_states_fn()["observation"]
             forward_agent_vis = self._forward_agent.get_stats(
