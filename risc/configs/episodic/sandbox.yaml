@@ -109,13 +109,13 @@ kwargs:
             # kwargs:
             #   init_value: 0.7
             #   end_value: 0.05
-            #   steps: 400  # episodes
+            #   steps: 500  # episodes
           sierl_prob_schedule:
             name: LinearSchedule
             kwargs:
-              init_value: 0.5
+              init_value: 1.0
               end_value: 0.05
-              steps: 400  # episodes
+              steps: 500  # episodes
       phase_step_limit: [3, 1, 6]
       goal_switcher:
         # name: BasicGoalSwitcher
