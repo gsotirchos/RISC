@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 from envs.types import UpdateInfo
 from hive.agents import Agent
-from hive.utils.loggers import Logger, NullLogger
+from hive.utils.loggers import ConstantSchedule, Logger, NullLogger
 from hive.utils.schedule import Schedule, PeriodicSchedule
 from hive.utils.utils import create_folder
 from hive.replays.replay_buffer import BaseReplayBuffer
@@ -44,7 +44,6 @@ class GCResetFree(Agent):
         base_agent: Agent,
         goal_generator: GoalGenerator,
         goal_switcher: GoalSwitcher,
-        temperature_schedule: Schedule,
         success_fn,
         reward_fn,
         all_states_fn,
@@ -57,6 +56,7 @@ class GCResetFree(Agent):
         replace_goal_fn,
         logger: Logger,
         replay_buffer: BaseReplayBuffer,
+        temperature_schedule: Schedule = None,
         distance_type: str = "l2_cluster",
         phase_step_limit: int = 300,
         id=0,
@@ -174,7 +174,10 @@ class GCResetFree(Agent):
             device=self._forward_agent._device,
             log_success=log_success,
         )
-        self._temperature_schedule = temperature_schedule()
+        if temperature_schedule is None:
+            self._temperature_schedule = ConstantSchedule(0.5)
+        else:
+            self._temperature_schedule = temperature_schedule()
         self._success_fn = success_fn
         self._reward_fn = reward_fn
         self._all_states_fn = all_states_fn
@@ -405,7 +408,7 @@ class GCResetFree(Agent):
         return terminated, truncated, success
 
     def get_new_goal(self, observation, agent_traj_state):
-        goal = self._goal_generator.generate_goal(observation, agent_traj_state, self._steps)
+        goal = self._goal_generator.generate_goal(observation, agent_traj_state)
         if isinstance(goal, tuple):
             goal, action = goal
             action = action or agent_traj_state.next_action

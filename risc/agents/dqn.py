@@ -175,8 +175,10 @@ class DQNAgent(_DQNAgent):
                 metrics={}
                 metrics["epsilon"] = epsilon
                 metrics["replay_buffer_size"] = self._replay_buffer.size()
-                metrics["state_counts_size"] = len(self._replay_buffer.state_counts)
-                metrics["state-action_counts_size"] = len(self._replay_buffer.action_counts)
+                if hasattr(self._replay_buffer, "state_counts"):
+                    metrics["state_counts_size"] = len(self._replay_buffer.state_counts)
+                if hasattr(self._replay_buffer, "action_counts"):
+                    metrics["state-action_counts_size"] = len(self._replay_buffer.action_counts)
                 self._logger.log_metrics(metrics, self._timescale)
         else:
             epsilon = self._test_epsilon

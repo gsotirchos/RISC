@@ -310,7 +310,7 @@ class OmniGoalGenerator(GoalGenerator):
         )
         return priority, novelty_cost, cost_to_reach, cost_to_come, cost_to_go
 
-    def generate_goal(self, observation, agent_traj_state, steps):
+    def generate_goal(self, observation, agent_traj_state):
         observation = observation["observation"]
         self._dbg_print(f"observation: {self._dbg_format(observation[0])}")
         self._dbg_print(f"curent direction: {agent_traj_state.current_direction}")
