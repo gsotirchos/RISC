@@ -109,7 +109,7 @@ kwargs:
           sierl_prob_schedule:
             name: LinearSchedule
             kwargs:
-              init_value: 1.0
+              init_value: 0.75
               end_value: 0.05
               steps: 500  # episodes
       phase_step_limit: [450, 1, 50]
