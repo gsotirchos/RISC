@@ -172,10 +172,6 @@ class SingleAgentRunner(_SingleAgentRunner):
         agent = self._agents[0]
         stacked_observation = transition_info.get_stacked_state(agent, observation)
         action, agent_traj_state = agent.act(stacked_observation, agent_traj_state)
-        if agent_traj_state.current_direction == "lateral":
-            environment.place_subgoal(agent_traj_state.current_goal)
-        else:
-            environment.remove_subgoal()
         (
             next_observation,
             reward,
@@ -438,12 +434,18 @@ class SingleAgentRunner(_SingleAgentRunner):
             )
             steps += 1
             self.update_step()
-            # handle teleport requests
-            if hasattr(agent_traj_state, 'current_direction'):
-                if agent_traj_state.current_direction.startswith("teleport"):
-                    observation, transition_info, agent_traj_state = self.teleport_to_goal(
-                        environment, agent_traj_state
-                    )
+            # Place sub-goal tile
+            if self._training:
+                if agent_traj_state.current_direction == "lateral":
+                    environment.place_subgoal(agent_traj_state.current_goal)
+                else:
+                    environment.remove_subgoal()
+                # Handle teleport requests
+                if hasattr(agent_traj_state, 'current_direction'):
+                    if agent_traj_state.current_direction.startswith("teleport"):
+                        observation, transition_info, agent_traj_state = self.teleport_to_goal(
+                            environment, agent_traj_state
+                        )
             if self._eval_every and not self._training:
                 terminated, truncated = np.all(terminated), np.all(truncated)
         if not (terminated or truncated):

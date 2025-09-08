@@ -217,7 +217,6 @@ class GCResetFree(Agent):
             self._success_table = []
         else:
             self._success_table = None
-        self._steps = 0  # TODO: temprorary
 
     def act(self, observation, agent_traj_state=None):
         if not self._training:
@@ -236,7 +235,6 @@ class GCResetFree(Agent):
                 # execute subgoal action if subgoal state was reached
                 action = agent_traj_state.next_action
             agent_traj_state = replace(agent_traj_state, next_action=None)
-        self._steps += 1  # TODO: temprorary
         return action, replace(
             agent_traj_state,
             subagent_traj_state=subagent_traj_state,

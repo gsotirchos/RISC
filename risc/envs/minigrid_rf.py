@@ -275,6 +275,9 @@ class MiniGridEnv(GymEnv):
 
     def place_subgoal(self, state):
         self._subgoal_pos = self._pos_from_state(state)
+        if self._subgoal_pos == self._env.unwrapped._goal_default_pos:
+            self._subgoal_pos = None
+            return
         self._env.unwrapped.place_subgoal(self._subgoal_pos)
         self._env.render()
 
