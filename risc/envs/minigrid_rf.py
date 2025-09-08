@@ -279,17 +279,15 @@ class MiniGridEnv(GymEnv):
             self._subgoal_pos = None
             return
         self._env.unwrapped.place_subgoal(self._subgoal_pos)
-        self._env.render()
 
     def remove_subgoal(self):
         if self._subgoal_pos is None:
             return
         self._env.unwrapped.place_floor(self._subgoal_pos)
         self._subgoal_pos = None
-        self._env.render()
 
     def _pos_from_state(self, state):
-        return np.flip(np.argwhere(state[0] == 255)[..., -2:].squeeze(), axis=-1).tolist()
+        return tuple(np.flip(np.argwhere(state[0] == 255)[..., -2:].squeeze(), axis=-1).tolist())
 
     def save(self, folder_name):
         pass

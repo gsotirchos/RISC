@@ -434,8 +434,8 @@ class SingleAgentRunner(_SingleAgentRunner):
             )
             steps += 1
             self.update_step()
-            # Place sub-goal tile
             if self._training:
+                # Place sub-goal tile
                 if agent_traj_state.current_direction == "lateral":
                     environment.place_subgoal(agent_traj_state.current_goal)
                 else:
