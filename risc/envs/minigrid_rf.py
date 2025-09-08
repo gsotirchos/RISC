@@ -117,29 +117,30 @@ class MiniGridEnv(GymEnv):
         eval_every=False,
         local_vis_period=500,
         vis_frequency=5000,
-        video_period=-1,
         symbolic=True,
         no_render=False,
-        train_video=False,
+        video_period=100,
         video_length=100,
-        train_video_period=20,
         id="env",
         **kwargs,
     ):
         self._reset_free = reset_free
-        self._eval = eval
         self._eval_every = eval_every
-        kwargs = {k: tuple(v) if isinstance(v, list) else v for k, v in kwargs.items()}
-        if self._eval:
-            kwargs.setdefault("render_mode", "rgb_array_list" if not eval_every else None)
+        if eval or no_render or video_period == -1:
+            self._video_period_schedule = ConstantSchedule(False)
+            self._is_recording_video = False
         else:
-            kwargs.setdefault("render_mode", "rgb_array_list" if train_video else None)
+            self._video_period_schedule = PeriodicSchedule(False, True, video_period)
+            self._is_recording_video = True
+        self._video_length = video_length
+        self._video_frames_recorded = 0
+        kwargs = {k: tuple(v) if isinstance(v, list) else v for k, v in kwargs.items()}
+        if eval:
+            kwargs["render_mode"] = "rgb_array_list" if not eval_every else None
+        elif self._is_recording_video:
+            kwargs["render_mode"] = "rgb_array_list"
         if no_render:
             kwargs["render_mode"] = None
-        self._train_video = (not self._eval) and train_video
-        self._video_reset_schedule = PeriodicSchedule(False, True, video_length)
-        self._video_write_schedule = PeriodicSchedule(False, True, train_video_period)
-
         super().__init__(
             env_name,
             num_players=num_players,
@@ -156,10 +157,6 @@ class MiniGridEnv(GymEnv):
         self._id = id
         self._num_episodes = 0
         self._has_reset = False
-        if video_period == -1:
-            self._video_schedule = ConstantSchedule(False)
-        else:
-            self._video_schedule = PeriodicSchedule(False, True, video_period)
 
     def create_env(self, env_name, env_wrappers, seed, symbolic, **kwargs):
         env_fn = create_env_fn(env_name, seed, symbolic, **kwargs)
@@ -240,21 +237,29 @@ class MiniGridEnv(GymEnv):
             if self._vis_period.update() and not isinstance(self._logger, NullLogger):
                 self.visualize(self._id)
 
-        if self._train_video and self._video_reset_schedule.update():
-            if self._env.unwrapped.render_mode == "rgb_array_list":
-                frames = np.array(self._env.unwrapped.render())
-                if self._video_write_schedule.update():
-                    frames = frames.transpose(0, 3, 1, 2)
-                    self._logger.log_scalar("video", wandb.Video(frames), self._id)
+        self._is_recording_video &= self._video_frames_recorded <= self._video_length
+        if self._is_recording_video:
+            print("step")
+            breakpoint()
+            frames = np.array(self._env.render())
+            frames = frames.transpose(0, 3, 1, 2)
+            self._logger.log_scalar("video", wandb.Video(frames), self._id)
+            self._video_frames_recorded += 1
         return observation, reward, terminated, truncated, self._turn, info
 
     def reset(self):
         self._has_reset = True
-        if not self._eval_every and self._video_schedule.update():
-            if self._env.unwrapped.render_mode == "rgb_array_list":
-                frames = np.array(self._env.unwrapped.render())
-                frames = frames.transpose(0, 3, 1, 2)
-                self._logger.log_scalar("video", wandb.Video(frames), self._id)
+        self._is_recording_video |= self._video_period_schedule.update()
+        if not self._eval_every:
+            if self._is_recording_video:
+                self._video_frames_recorded = 0
+                print("reset")
+                breakpoint()
+                frames = np.array(self._env.render())
+                if len(frames.shape) > 1:
+                    frames = frames.transpose(0, 3, 1, 2)
+                    self._logger.log_scalar("video", wandb.Video(frames), self._id)
+                    self._video_frames_recorded += 1
         return super().reset()
 
     def randomize_goal(self):
@@ -418,7 +423,6 @@ def get_minigrid_envs(
         symbolic=symbolic,
         id="train_env",
         eval_every=False,
-        video_period=-1,
         max_steps=train_max_steps,
         no_render=True,
         **kwargs,
@@ -437,7 +441,6 @@ def get_minigrid_envs(
             symbolic=symbolic,
             id="train_env",
             eval_every=False,
-            video_period=-1,
             max_steps=train_max_steps,
             **kwargs,
         ),
@@ -450,7 +453,6 @@ def get_minigrid_envs(
             symbolic=symbolic,
             id="eval_env",
             eval_every=eval_every,
-            video_period=video_period,
             max_steps=eval_max_steps,
             **kwargs,
         ),
