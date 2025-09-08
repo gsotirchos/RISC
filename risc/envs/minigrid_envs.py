@@ -9,7 +9,7 @@ from gymnasium.envs.registration import register
 from minigrid.core.constants import DIR_TO_VEC, COLORS
 from minigrid.core.grid import Grid
 from minigrid.core.mission import MissionSpace
-from minigrid.core.world_object import Goal, WorldObj
+from minigrid.core.world_object import Goal, WorldObj, Floor
 from minigrid.core.roomgrid import RoomGrid as _RoomGrid
 from minigrid.envs.empty import EmptyEnv as _EmptyEnv
 # from minigrid.envs.fourrooms import FourRoomsEnv as _FourRoomsEnv
@@ -27,6 +27,55 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
         down = 1
         left = 2
         up = 3
+
+    class Slide(WorldObj):
+        def __init__(self, action):
+            self.action = action
+            super().__init__("wall", "purple")
+
+        def can_overlap(self) -> bool:
+            """Can the agent overlap with this?"""
+            return True
+
+        def can_pickup(self) -> bool:
+            """Can the agent pick this up?"""
+            return False
+
+        def can_contain(self) -> bool:
+            """Can this contain another object?"""
+            return False
+
+        def see_behind(self) -> bool:
+            """Can the agent see behind this object?"""
+            return True
+
+        def render(self, img):
+            """Draw this object with the given renderer"""
+            fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS[self.color])
+
+    class Subgoal(WorldObj):
+        def __init__(self):
+            super().__init__("floor", "blue")
+
+        def can_overlap(self) -> bool:
+            """Can the agent overlap with this?"""
+            return True
+
+        def can_pickup(self) -> bool:
+            """Can the agent pick this up?"""
+            return False
+
+        def can_contain(self) -> bool:
+            """Can this contain another object?"""
+            return False
+
+        def see_behind(self) -> bool:
+            """Can the agent see behind this object?"""
+            return True
+
+        def render(self, img):
+            """Draw this object with the given renderer"""
+            fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS[self.color])
 
     def __init__(
         self,
@@ -170,19 +219,25 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
 
         return obs, reward, terminated, truncated, {}
 
-    def place_goal(self, goal_pos=None):
-        if goal_pos is None:
-            self.place_obj(Goal())  # random position
-        else:
-            self.put_obj(Goal(), *goal_pos)
-
-    def place_agent(self, agent_pos=None):
-        if agent_pos is None:
+    def place_agent(self, pos=None):
+        if pos is None:
             super().place_agent()  # random position and orientation
         else:
-            self.agent_pos = agent_pos
-            self.grid.set(*agent_pos, None)
+            self.agent_pos = pos
+            self.grid.set(*pos, None)
             self.agent_dir = self._rand_int(0, 4)  # random direction
+
+    def place_goal(self, pos=None):
+        if pos is None:
+            self.place_obj(Goal())  # random position
+        else:
+            self.put_obj(Goal(), *pos)
+
+    def place_subgoal(self, pos):
+        self.put_obj(self.Subgoal(), *pos)
+
+    def place_floor(self, pos):
+        self.put_obj(Floor(), *pos)
 
     def teleport(self, agent_pos=None):
         #print(f"=== teleporting to: {agent_pos}")
@@ -453,8 +508,8 @@ class HallwayEnv(MiniGridEnv):
         for i in range(self._num_hallways):
             offset = int(np.ceil(i / 2) * np.ceil(self.height / 4)) * (- 1 + int(i == 0)) ** i
             for x in range(self._hallway_start_x, self._hallway_end_x):
-                self.put_obj(Slide(self.actions.up), x, self._hallway_y + offset - 1)
-                self.put_obj(Slide(self.actions.down), x, self._hallway_y + offset + 1)
+                self.put_obj(self.Slide(self.actions.up), x, self._hallway_y + offset - 1)
+                self.put_obj(self.Slide(self.actions.down), x, self._hallway_y + offset + 1)
             try:
                 self.grid.vert_wall(self._hallway_end_x + 1, self._hallway_y + offset - 1, 3)
             except Exception:
@@ -539,32 +594,6 @@ class EmptyEnv(MiniGridEnv, _EmptyEnv):
             max_steps=max_steps,
             **kwargs,
         )
-
-
-class Slide(WorldObj):
-    def __init__(self, action):
-        self.action = action
-        super().__init__("wall", "purple")
-
-    def can_overlap(self) -> bool:
-        """Can the agent overlap with this?"""
-        return True
-
-    def can_pickup(self) -> bool:
-        """Can the agent pick this up?"""
-        return False
-
-    def can_contain(self) -> bool:
-        """Can this contain another object?"""
-        return False
-
-    def see_behind(self) -> bool:
-        """Can the agent see behind this object?"""
-        return True
-
-    def render(self, img):
-        """Draw this object with the given renderer"""
-        fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS[self.color])
 
 
 register(id="MiniGrid-TwoRooms-v1", entry_point="envs.minigrid_envs:TwoRoomsEnv")

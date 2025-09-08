@@ -119,7 +119,7 @@ class MiniGridEnv(GymEnv):
         vis_frequency=5000,
         symbolic=True,
         no_render=False,
-        video_period=100,
+        video_period=-1,
         video_length=100,
         id="env",
         **kwargs,
@@ -157,6 +157,7 @@ class MiniGridEnv(GymEnv):
         self._id = id
         self._num_episodes = 0
         self._has_reset = False
+        self._subgoal_pos = None
 
     def create_env(self, env_name, env_wrappers, seed, symbolic, **kwargs):
         env_fn = create_env_fn(env_name, seed, symbolic, **kwargs)
@@ -239,12 +240,11 @@ class MiniGridEnv(GymEnv):
 
         self._is_recording_video &= self._video_frames_recorded <= self._video_length
         if self._is_recording_video:
-            print("step")
-            breakpoint()
             frames = np.array(self._env.render())
-            frames = frames.transpose(0, 3, 1, 2)
-            self._logger.log_scalar("video", wandb.Video(frames), self._id)
-            self._video_frames_recorded += 1
+            if len(frames.shape) > 1:
+                frames = frames.transpose(0, 3, 1, 2)
+                self._logger.log_scalar("video", wandb.Video(frames), self._id)
+                self._video_frames_recorded += 1
         return observation, reward, terminated, truncated, self._turn, info
 
     def reset(self):
@@ -253,8 +253,6 @@ class MiniGridEnv(GymEnv):
         if not self._eval_every:
             if self._is_recording_video:
                 self._video_frames_recorded = 0
-                print("reset")
-                breakpoint()
                 frames = np.array(self._env.render())
                 if len(frames.shape) > 1:
                     frames = frames.transpose(0, 3, 1, 2)
@@ -272,8 +270,23 @@ class MiniGridEnv(GymEnv):
         if state is None:
             pos = None
         else:
-            pos = np.flip(np.argwhere(state[0] == 255)[..., -2:].squeeze(), axis=-1).tolist()
+            pos = self._pos_from_state(state)
         return self._env.unwrapped.teleport(pos)
+
+    def place_subgoal(self, state):
+        self._subgoal_pos = self._pos_from_state(state)
+        self._env.unwrapped.place_subgoal(self._subgoal_pos)
+        self._env.render()
+
+    def remove_subgoal(self):
+        if self._subgoal_pos is None:
+            return
+        self._env.unwrapped.place_floor(self._subgoal_pos)
+        self._subgoal_pos = None
+        self._env.render()
+
+    def _pos_from_state(self, state):
+        return np.flip(np.argwhere(state[0] == 255)[..., -2:].squeeze(), axis=-1).tolist()
 
     def save(self, folder_name):
         pass

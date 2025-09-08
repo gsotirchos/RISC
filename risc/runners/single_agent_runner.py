@@ -172,6 +172,10 @@ class SingleAgentRunner(_SingleAgentRunner):
         agent = self._agents[0]
         stacked_observation = transition_info.get_stacked_state(agent, observation)
         action, agent_traj_state = agent.act(stacked_observation, agent_traj_state)
+        if agent_traj_state.current_direction == "lateral":
+            environment.place_subgoal(agent_traj_state.current_goal)
+        else:
+            environment.remove_subgoal()
         (
             next_observation,
             reward,
