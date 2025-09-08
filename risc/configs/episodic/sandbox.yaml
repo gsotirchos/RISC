@@ -12,7 +12,6 @@ kwargs:
           on_value: true
           period: 1000000
   train_steps: 25000
-  # train_phase_steps: 2000  # reset-free
   max_steps_per_episode: &train_steps 10  # episodic
   test_max_steps: &test_steps 10
   test_frequency: 1000
@@ -28,11 +27,11 @@ kwargs:
     name: minigrid_envs
     kwargs:
       env_name: MiniGrid-Hallway-v1
-      # room_size: [4, 7]
-      # goal_pos: [3, 3]
-      # agent_pos: [1, 1]
-      # hallway_length: 1
-      # num_hallways: 1
+      room_size: [4, 7]
+      goal_pos: [3, 3]
+      agent_pos: [1, 1]
+      hallway_length: 1
+      num_hallways: 1
       step_reward: &step_reward -1
       goal_reward: &goal_reward 0
       novelty_bonus: 0.0
@@ -92,7 +91,6 @@ kwargs:
               step_reward: *step_reward
               goal_reward: *goal_reward
       goal_generator:
-        # name: FBGoalGenerator  # RISC
         name: OmniGoalGenerator
         kwargs:
           debug: true
@@ -120,7 +118,6 @@ kwargs:
       phase_step_limit: [3, 1, 6]
       goal_switcher:
         # name: BasicGoalSwitcher
-        # name: SuccessProbabilityGoalSwitcher  # reset-free
         name: TimeoutGoalSwitcher
         kwargs:
           switching_probability: 0.0
