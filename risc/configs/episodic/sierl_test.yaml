@@ -1,0 +1,139 @@
+name: SingleAgentRunner
+kwargs:
+  experiment_manager:
+    name: Experiment
+    kwargs:
+      name: &run_name episodic_SIERL
+      save_dir: experiment
+      saving_schedule:
+        name: PeriodicSchedule
+        kwargs:
+          off_value: false
+          on_value: true
+          period: 50000
+  train_steps: 1000000
+  # max_steps_per_episode: &train_steps 500  # episodic
+  max_steps_per_episode: &train_steps 25
+  # test_max_steps: &test_steps 150
+  test_max_steps: &test_steps 10
+  # test_frequency: 1000
+  test_frequency: 50
+  test_episodes: 10
+  test_random_goals: true
+  seed: 0
+  stack_size: 1
+  eval_every: false
+  early_terminal: true
+  send_truncation: false
+  env_fn:
+    name: minigrid_envs
+    kwargs:
+      env_name: MiniGrid-Hallway-v1
+      room_size: [4, 7]
+      goal_pos: [3, 3]
+      agent_pos: [1, 1]
+      hallway_length: 1
+      num_hallways: 1
+      step_reward: &step_reward -1
+      goal_reward: &goal_reward 0
+      novelty_bonus: 0.0
+      train_max_steps: *train_steps  # episodic
+      eval_max_steps: *test_steps
+      local_vis_period: 2000
+      reset_free: false  # episodic
+      symbolic: true
+      video_period: 1
+      video_length: *train_steps
+      vis_frequency: 2000
+      # render_mode: human
+  agent:
+    name: GCResetFree
+    kwargs:
+      base_agent:
+        name: GoalConditionedDQNAgent
+        kwargs:
+          batch_size: 128
+          device: cpu
+          discount_rate: &discount_rate 0.95
+          epsilon_schedule:
+            name: LinearSchedule
+            kwargs:
+              end_value: 0.1
+              init_value: 1.0
+              steps: 20000
+          loss_fn:
+            name: MSELoss
+          optimizer_fn:
+            name: Adam
+            kwargs:
+              lr: 0.0003
+          min_replay_history: 128
+          compute_success_probability: false
+          representation_net:
+            name: ConvNetwork
+            kwargs:
+              channels: [16, 16, 16, 16, 16, 16]
+              paddings: 1
+              kernel_sizes: 3
+              mlp_layers: [16]
+          target_net_update_schedule:
+            name: PeriodicSchedule
+            kwargs:
+              off_value: false
+              on_value: true
+              period: 500
+          use_oracle: false
+          oracle:
+            name: MiniGridOracle
+            kwargs:
+              discount_rate: *discount_rate
+              step_reward: *step_reward
+              goal_reward: *goal_reward
+      goal_generator:
+        name: OmniGoalGenerator
+        kwargs:
+          debug: false
+          vis_frequency: 50
+          weights: [1.5, 0, 1, 0.5]
+          frontier_proportion: 1.0
+          max_familiarity: 0.9
+          use_success_prob: false
+          use_oracle: false
+          temperature_schedule:
+            name: ConstantSchedule
+            kwargs:
+              value: 0.5
+          sierl_prob_schedule:
+            name: ConstantSchedule
+            kwargs:
+              value: 1.0
+            # name: LinearSchedule
+            # kwargs:
+            #   init_value: 0.7
+            #   end_value: 0.05
+            #   steps: 500  # episodes
+      # phase_step_limit: [450, 1, 50]
+      phase_step_limit: [5, 1, 20]
+      goal_switcher:
+        name: TimeoutGoalSwitcher
+        kwargs:
+          switching_probability: 0.7
+          use_oracle: false
+      replay_buffer:
+        name: CountsReplayBuffer
+        # name: HERReplayBuffer  # HER
+        kwargs:
+          capacity: 100000
+          gamma: 0.5
+          # her_ratio: 0.5  # HER
+      separate_agents: false
+      local_visitation_vis_frequency: 2000
+      directions: [forward, teleport_backward, lateral]
+  loggers:
+    - name: WandbLogger
+      kwargs:
+        name: *run_name
+        # project: Experiments
+        project: Debug
+        resume: allow
+        start_method: fork
