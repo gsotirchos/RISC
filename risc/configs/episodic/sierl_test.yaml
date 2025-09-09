@@ -11,7 +11,7 @@ kwargs:
           off_value: false
           on_value: true
           period: 50000
-  train_steps: 1000000
+  train_steps: 25000
   # max_steps_per_episode: &train_steps 500  # episodic
   max_steps_per_episode: &train_steps 25
   # test_max_steps: &test_steps 150

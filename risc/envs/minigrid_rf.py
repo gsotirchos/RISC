@@ -126,12 +126,12 @@ class MiniGridEnv(GymEnv):
     ):
         self._reset_free = reset_free
         self._eval_every = eval_every
-        if eval or no_render or video_period == -1:
-            self._video_period_schedule = ConstantSchedule(False)
-            self._is_recording_video = False
-        else:
+        if video_period > 0 and (not eval) and (not no_render):
             self._video_period_schedule = PeriodicSchedule(False, True, video_period)
             self._is_recording_video = True
+        else:
+            self._is_recording_video = False
+            self._video_period_schedule = ConstantSchedule(False)
         self._video_length = video_length
         self._video_frames_recorded = 0
         kwargs = {k: tuple(v) if isinstance(v, list) else v for k, v in kwargs.items()}
@@ -243,7 +243,7 @@ class MiniGridEnv(GymEnv):
             frames = np.array(self._env.render())
             if len(frames.shape) > 1:
                 frames = frames.transpose(0, 3, 1, 2)
-                self._logger.log_scalar("video", wandb.Video(frames), self._id)
+                self._logger.log_scalar("video", wandb.Video(frames, format="gif"), self._id)
                 self._video_frames_recorded += 1
         return observation, reward, terminated, truncated, self._turn, info
 
@@ -256,7 +256,7 @@ class MiniGridEnv(GymEnv):
                 frames = np.array(self._env.render())
                 if len(frames.shape) > 1:
                     frames = frames.transpose(0, 3, 1, 2)
-                    self._logger.log_scalar("video", wandb.Video(frames), self._id)
+                    self._logger.log_scalar("video", wandb.Video(frames, format="gif"), self._id)
                     self._video_frames_recorded += 1
         return super().reset()
 
@@ -451,6 +451,7 @@ def get_minigrid_envs(
             env_name=env_name,
             seed=seed,
             reset_free=reset_free,
+            video_period=video_period,
             eval=False,
             symbolic=symbolic,
             id="train_env",
@@ -463,6 +464,7 @@ def get_minigrid_envs(
             env_name=env_name,
             seed=seed,
             reset_free=False,
+            video_period=video_period,
             eval=True,
             symbolic=symbolic,
             id="eval_env",
