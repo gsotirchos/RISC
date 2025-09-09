@@ -49,7 +49,7 @@ class Subgoal(WorldObj):
 
 class Slide(WorldObj):
     def __init__(self, action, color):
-        self.action = action
+        self.slide_action = action
         super().__init__(type="wall", color=color)
 
     def can_overlap(self):
@@ -97,7 +97,7 @@ class Slide(WorldObj):
 
     def render(self, img):
         fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS["purple"])
-        self._draw_arrows(self.action, img, COLORS["purple"] / 2)
+        self._draw_arrows(self.slide_action, img, COLORS["purple"] / 2)
 
 
 class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
@@ -221,10 +221,9 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
         if fwd_cell is None or fwd_cell.can_overlap():
             self.agent_pos = tuple(fwd_pos)
             self.agent_dir = action
-        if fwd_cell is not None and fwd_cell.color == "purple":
-            slide_action = fwd_cell.action
-            self.agent_pos += DIR_TO_VEC[slide_action]
-            self.agent_dir = slide_action
+        if fwd_cell is not None and hasattr(fwd_cell, "slide_action"):
+            self.agent_pos += DIR_TO_VEC[fwd_cell.slide_action]
+            self.agent_dir = fwd_cell.slide_action
         if fwd_cell is not None and fwd_cell.type == "goal":
             terminated = True
             reward = 1.0  # self._reward()
