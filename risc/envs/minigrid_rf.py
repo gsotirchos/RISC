@@ -135,8 +135,6 @@ class MiniGridEnv(GymEnv):
         kwargs = {k: tuple(v) if isinstance(v, list) else v for k, v in kwargs.items()}
         if eval:
             kwargs["render_mode"] = "rgb_array_list" if not eval_every else None
-        # elif self._is_recording_video:
-        #     kwargs["render_mode"] = "rgb_array_list"
         if no_render:
             kwargs["render_mode"] = None
         super().__init__(
@@ -241,6 +239,7 @@ class MiniGridEnv(GymEnv):
     def reset(self):
         observation, turn = super().reset()
         self._has_reset = True
+        self._video_period_schedule.update()
         if not self._eval_every:
             self._record_video()
         return observation, turn
@@ -275,6 +274,9 @@ class MiniGridEnv(GymEnv):
         return tuple(np.flip(np.argwhere(state[0] == 255)[..., -2:].squeeze(), axis=-1).tolist())
 
     def _record_video(self):
+        if not self._video_period_schedule.get_value():
+            return
+        breakpoint()
         if len(self._video_frames) < self._video_frames.maxlen:
             frame = np.array(self._env.render())
             if len(frame.shape) > 1:
