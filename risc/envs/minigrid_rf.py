@@ -286,7 +286,6 @@ class MiniGridEnv(GymEnv):
                 wandb.Video(np.array(self._video_frames).squeeze(), format="gif"),
                 self._id
             )
-            breakpoint()
             self._video_frames.clear()
 
     def save(self, folder_name):
