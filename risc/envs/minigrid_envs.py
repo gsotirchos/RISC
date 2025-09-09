@@ -27,60 +27,6 @@ class Floor(WorldObj):
         fill_coords(img, point_in_rect(0.031, 1, 0.031, 1), (0, 0, 0))
 
 
-class Slide(WorldObj):
-    def __init__(self, action):
-        self.action = action
-        super().__init__("wall", "purple")
-
-    def can_overlap(self):
-        return True
-
-    def can_pickup(self):
-        return False
-
-    def can_contain(self):
-        return False
-
-    def see_behind(self):
-        return True
-
-    # def render(self, img):
-    #     fill_coords(img, point_in_rect(0.031, 1, 0.031, 1), COLORS[self.color])
-
-    def render(self, img):
-        fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS[self.color])
-
-        tri1_pts = np.array([
-            [0.2, 0.5],
-            [0.5, 0.2],
-            [0.5, 0.8],
-        ])
-        tri2_pts = np.array([
-            [0.5, 0.5],
-            [0.8, 0.2],
-            [0.8, 0.8],
-        ])
-
-        rotations = {
-            0: [[ 1,  0], [ 0,  1]],
-            1: [[ 0, -1], [ 1,  0]],
-            2: [[-1,  0], [ 0, -1]],
-            3: [[ 0,  1], [-1,  0]],
-        }
-
-        rot_mat = rotations[self.action]
-        breakpoint()
-
-        # Apply the rotation to the vertices and add 0.5 to center them on the tile
-        center_offset = np.array([0.5, 0.5])
-        tri1_rotated = np.dot(tri1_pts - center_offset, rot_mat) + center_offset
-        tri2_rotated = np.dot(tri2_pts - center_offset, rot_mat) + center_offset
-
-        # Draw the triangles
-        fill_coords(img, point_in_triangle(*tri1_rotated), (0, 0, 0))
-        fill_coords(img, point_in_triangle(*tri2_rotated), (0, 0, 0))
-
-
 class Subgoal(WorldObj):
     def __init__(self):
         super().__init__("floor", "blue")
@@ -99,6 +45,59 @@ class Subgoal(WorldObj):
 
     def render(self, img):
         fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS[self.color])
+
+
+class Slide(WorldObj):
+    def __init__(self, action, color):
+        self.action = action
+        super().__init__(type="wall", color=color)
+
+    def can_overlap(self):
+        return True
+
+    def can_pickup(self):
+        return False
+
+    def can_contain(self):
+        return False
+
+    def see_behind(self):
+        return True
+
+    def _draw_arrows(self, action, img, color):
+        tri1_pts = np.array([
+            [0.55, 0.5],
+            [ 0.1, 0.1],
+            [ 0.1, 0.9],
+        ])
+
+        tri2_pts = np.array([
+            [0.95, 0.5],
+            [0.5,  0.1],
+            [0.5,  0.9],
+        ])
+
+        rotations = {
+            0: [[-1,  0], [ 0, -1]],
+            1: [[ 0,  1], [-1,  0]],
+            2: [[ 1,  0], [ 0,  1]],
+            3: [[ 0, -1], [ 1,  0]],
+        }
+
+        rot_mat = rotations[action]
+
+        # Apply the rotation to the vertices and add 0.5 to center them on the tile
+        center_offset = np.array([0.5, 0.5])
+        tri1_rotated = np.dot(tri1_pts - center_offset, rot_mat) + center_offset
+        tri2_rotated = np.dot(tri2_pts - center_offset, rot_mat) + center_offset
+
+        # Draw the triangles
+        fill_coords(img, point_in_triangle(*tri1_rotated), color)
+        fill_coords(img, point_in_triangle(*tri2_rotated), color)
+
+    def render(self, img):
+        fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS["purple"])
+        self._draw_arrows(self.action, img, COLORS["purple"] / 2)
 
 
 class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
@@ -132,6 +131,7 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
             max_steps,
             **kwargs,
         )
+
         # Action enumeration for this environment
         self.actions = MiniGridEnv.Actions
 
@@ -544,8 +544,8 @@ class HallwayEnv(MiniGridEnv):
         for i in range(self._num_hallways):
             offset = int(np.ceil(i / 2) * np.ceil(self.height / 4)) * (- 1 + int(i == 0)) ** i
             for x in range(self._hallway_start_x, self._hallway_end_x):
-                self.put_obj(Slide(self.actions.up), x, self._hallway_y + offset - 1)
-                self.put_obj(Slide(self.actions.down), x, self._hallway_y + offset + 1)
+                self.put_obj(Slide(self.actions.up, "purple"), x, self._hallway_y + offset - 1)
+                self.put_obj(Slide(self.actions.down, "red"), x, self._hallway_y + offset + 1)
             try:
                 self.grid.vert_wall(self._hallway_end_x + 1, self._hallway_y + offset - 1, 3)
             except Exception:
