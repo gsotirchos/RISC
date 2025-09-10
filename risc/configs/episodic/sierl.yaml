@@ -96,14 +96,14 @@ kwargs:
             kwargs:
               value: 0.5
           sierl_prob_schedule:
-            # name: ConstantSchedule
-            # kwargs:
-            #   value: 1.0
-            name: LinearSchedule
+            name: ConstantSchedule
             kwargs:
-              init_value: 0.7
-              end_value: 0.05
-              steps: 500  # episodes
+              value: 1.0
+            # name: LinearSchedule
+            # kwargs:
+            #   init_value: 0.7
+            #   end_value: 0.05
+            #   steps: 500  # episodes
       phase_step_limit: [450, 1, 50]
       # phase_step_limit: [5, 1, 20]
       goal_switcher:
