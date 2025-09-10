@@ -26,10 +26,10 @@ kwargs:
     name: minigrid_envs
     kwargs:
       env_name: MiniGrid-Hallway-v1
-      room_size: [8, 7]
-      goal_pos: [7, 3]
+      room_size: [4, 7]
+      goal_pos: [3, 3]
       agent_pos: [1, 1]
-      hallway_length: 5
+      hallway_length: 1
       num_hallways: 1
       step_reward: &step_reward -1
       goal_reward: &goal_reward 0
@@ -69,7 +69,7 @@ kwargs:
           representation_net:
             name: ConvNetwork
             kwargs:
-              channels: [16, 16, 16]
+              channels: [16, 16, 16, 16, 16, 16, 16]
               paddings: 1
               kernel_sizes: 3
               mlp_layers: [16]
@@ -112,19 +112,19 @@ kwargs:
           use_oracle: false
       replay_buffer:
         name: CountsReplayBuffer
-        # name: HERReplayBuffer  # HER
+        name: HERReplayBuffer  # HER
         kwargs:
           capacity: 100000
           gamma: 0.5
-          # her_ratio: 0.5  # HER
+          her_ratio: 0.5  # HER
       separate_agents: false
       local_visitation_vis_frequency: 2000
       directions: [forward, teleport_backward, lateral]
   loggers:
-    - name: WandbLogger
-      kwargs:
-        name: *run_name
-        # project: Experiments
-        project: Debug
-        resume: allow
-        start_method: fork
+    # - name: WandbLogger
+    #   kwargs:
+    #     name: *run_name
+    #     # project: Experiments
+    #     project: Debug
+    #     resume: allow
+    #     start_method: fork
