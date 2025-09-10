@@ -276,7 +276,6 @@ class MiniGridEnv(GymEnv):
     def _record_video(self):
         if not self._video_period_schedule.get_value():
             return
-        breakpoint()
         if len(self._video_frames) < self._video_frames.maxlen:
             frame = np.array(self._env.render())
             if len(frame.shape) > 1:
