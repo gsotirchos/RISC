@@ -26,10 +26,10 @@ kwargs:
     name: minigrid_envs
     kwargs:
       env_name: MiniGrid-Hallway-v1
-      room_size: [6, 7]
-      goal_pos: [5, 3]
+      room_size: [8, 7]
+      goal_pos: [7, 3]
       agent_pos: [1, 1]
-      hallway_length: 3
+      hallway_length: 5
       num_hallways: 1
       step_reward: &step_reward -1
       goal_reward: &goal_reward 0
