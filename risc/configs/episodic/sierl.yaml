@@ -12,12 +12,12 @@ kwargs:
           on_value: true
           period: 50000
   train_steps: 1000000
-  # max_steps_per_episode: &train_steps 500  # episodic
-  max_steps_per_episode: &train_steps 25
-  # test_max_steps: &test_steps 150
-  test_max_steps: &test_steps 10
-  # test_frequency: 1000
-  test_frequency: 50
+  max_steps_per_episode: &train_steps 500  # episodic
+  # max_steps_per_episode: &train_steps 25
+  test_max_steps: &test_steps 150
+  # test_max_steps: &test_steps 10
+  test_frequency: 1000
+  # test_frequency: 50
   test_episodes: 10
   test_random_goals: true
   seed: 0
@@ -29,11 +29,11 @@ kwargs:
     name: minigrid_envs
     kwargs:
       env_name: MiniGrid-Hallway-v1
-      room_size: [4, 7]
-      goal_pos: [3, 3]
-      agent_pos: [1, 1]
-      hallway_length: 1
-      num_hallways: 1
+      # room_size: [4, 7]
+      # goal_pos: [3, 3]
+      # agent_pos: [1, 1]
+      # hallway_length: 1
+      # num_hallways: 1
       step_reward: &step_reward -1
       goal_reward: &goal_reward 0
       novelty_bonus: 0.0
@@ -42,7 +42,8 @@ kwargs:
       local_vis_period: 2000
       reset_free: false  # episodic
       symbolic: true
-      video_period: -1
+      # video_period: 1
+      video_length: *train_steps
       vis_frequency: 2000
       # render_mode: human
   agent:
@@ -71,7 +72,7 @@ kwargs:
           representation_net:
             name: ConvNetwork
             kwargs:
-              channels: [16, 16, 16]
+              channels: [16, 16, 16, 16, 16, 16, 16, 16, 16, 16]
               paddings: 1
               kernel_sizes: 3
               mlp_layers: [16]
@@ -103,16 +104,16 @@ kwargs:
             kwargs:
               value: 0.5
           sierl_prob_schedule:
-            name: ConstantSchedule
-            kwargs:
-              value: 1.0
-            # name: LinearSchedule
+            # name: ConstantSchedule
             # kwargs:
-            #   init_value: 0.7
-            #   end_value: 0.05
-            #   steps: 500  # episodes
-      # phase_step_limit: [450, 1, 50]
-      phase_step_limit: [5, 1, 20]
+            #   value: 1.0
+            name: LinearSchedule
+            kwargs:
+              init_value: 0.7
+              end_value: 0.05
+              steps: 500  # episodes
+      phase_step_limit: [450, 1, 50]
+      # phase_step_limit: [5, 1, 20]
       goal_switcher:
         name: TimeoutGoalSwitcher
         kwargs:
@@ -132,6 +133,7 @@ kwargs:
     - name: WandbLogger
       kwargs:
         name: *run_name
-        project: Experiments
+        project: Fine-tuning
+        # project: Debug
         resume: allow
         start_method: fork

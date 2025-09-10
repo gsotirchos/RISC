@@ -42,7 +42,7 @@ kwargs:
       local_vis_period: 2000
       reset_free: false  # episodic
       symbolic: true
-      video_period: 1
+      video_period: 50
       video_length: *train_steps
       vis_frequency: 2000
       # render_mode: human
@@ -72,7 +72,7 @@ kwargs:
           representation_net:
             name: ConvNetwork
             kwargs:
-              channels: [16, 16, 16, 16, 16, 16]
+              channels: [16, 16, 16]
               paddings: 1
               kernel_sizes: 3
               mlp_layers: [16]
