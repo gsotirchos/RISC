@@ -13,11 +13,8 @@ kwargs:
           period: 50000
   train_steps: 1000000
   max_steps_per_episode: &train_steps 500  # episodic
-  # max_steps_per_episode: &train_steps 25
   test_max_steps: &test_steps 150
-  # test_max_steps: &test_steps 10
   test_frequency: 1000
-  # test_frequency: 50
   test_episodes: 10
   test_random_goals: true
   seed: 0
@@ -29,11 +26,6 @@ kwargs:
     name: minigrid_envs
     kwargs:
       env_name: MiniGrid-Hallway-v1
-      # room_size: [4, 7]
-      # goal_pos: [3, 3]
-      # agent_pos: [1, 1]
-      # hallway_length: 1
-      # num_hallways: 1
       step_reward: &step_reward -1
       goal_reward: &goal_reward 0
       novelty_bonus: 0.0
@@ -42,7 +34,7 @@ kwargs:
       local_vis_period: 2000
       reset_free: false  # episodic
       symbolic: true
-      # video_period: 1
+      video_period: 2500
       video_length: *train_steps
       vis_frequency: 2000
       # render_mode: human
@@ -72,7 +64,7 @@ kwargs:
           representation_net:
             name: ConvNetwork
             kwargs:
-              channels: [16, 16, 16, 16, 16, 16, 16, 16, 16, 16]
+              channels: [16, 16, 16]
               paddings: 1
               kernel_sizes: 3
               mlp_layers: [16]
@@ -120,12 +112,12 @@ kwargs:
           switching_probability: 0.7
           use_oracle: false
       replay_buffer:
-        # name: CountsReplayBuffer
-        name: HERReplayBuffer  # HER
+        name: CountsReplayBuffer
+        # name: HERReplayBuffer  # HER
         kwargs:
           capacity: 100000
           gamma: 0.5
-          her_ratio: 0.5  # HER
+          # her_ratio: 0.5  # HER
       separate_agents: false
       local_visitation_vis_frequency: 2000
       directions: [forward, teleport_backward, lateral]
