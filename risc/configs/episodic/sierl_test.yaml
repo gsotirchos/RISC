@@ -12,11 +12,8 @@ kwargs:
           on_value: true
           period: 50000
   train_steps: 25000
-  # max_steps_per_episode: &train_steps 500  # episodic
-  max_steps_per_episode: &train_steps 25
-  # test_max_steps: &test_steps 150
-  test_max_steps: &test_steps 10
-  # test_frequency: 1000
+  max_steps_per_episode: &train_steps 50
+  test_max_steps: &test_steps 20
   test_frequency: 50
   test_episodes: 10
   test_random_goals: true
@@ -29,10 +26,10 @@ kwargs:
     name: minigrid_envs
     kwargs:
       env_name: MiniGrid-Hallway-v1
-      room_size: [4, 7]
-      goal_pos: [3, 3]
+      room_size: [6, 7]
+      goal_pos: [5, 3]
       agent_pos: [1, 1]
-      hallway_length: 1
+      hallway_length: 3
       num_hallways: 1
       step_reward: &step_reward -1
       goal_reward: &goal_reward 0
@@ -107,12 +104,6 @@ kwargs:
             name: ConstantSchedule
             kwargs:
               value: 1.0
-            # name: LinearSchedule
-            # kwargs:
-            #   init_value: 0.7
-            #   end_value: 0.05
-            #   steps: 500  # episodes
-      # phase_step_limit: [450, 1, 50]
       phase_step_limit: [5, 1, 20]
       goal_switcher:
         name: TimeoutGoalSwitcher
