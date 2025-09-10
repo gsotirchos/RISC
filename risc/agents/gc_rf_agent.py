@@ -298,12 +298,6 @@ class GCResetFree(Agent):
             backward_success=backward_success,
         )
         if terminated or truncated:
-            if (agent_traj_state.phase_steps > 50
-                and agent_traj_state.current_direction.split('_')[-1] == "lateral"):
-                print(f" steps: {agent_traj_state.phase_steps}")
-                print(f"prefix: {agent_traj_state.current_direction.split('_')[-1]}")
-                print(f"WARNING: Lateral phase ended after {agent_traj_state.phase_steps} > 50 steps")
-                # breakpoint()
             if self._logger.update_step(self._timescale):
                 self._logger.log_metrics(
                     {
