@@ -11,10 +11,12 @@ kwargs:
           off_value: false
           on_value: true
           period: 50000
-  train_steps: 25000
-  max_steps_per_episode: &train_steps 50
-  test_max_steps: &test_steps 20
-  test_frequency: 50
+  train_steps: 1000000
+  # max_steps_per_episode: &train_steps 500  # episodic
+  max_steps_per_episode: &train_steps 150  # episodic
+  # test_max_steps: &test_steps 150
+  test_max_steps: &test_steps 50
+  test_frequency: 1000
   test_episodes: 10
   test_random_goals: true
   seed: 0
@@ -26,10 +28,10 @@ kwargs:
     name: minigrid_envs
     kwargs:
       env_name: MiniGrid-Hallway-v1
-      room_size: [4, 7]
-      goal_pos: [3, 3]
-      agent_pos: [1, 1]
-      hallway_length: 1
+      room_size: [9, 9]
+      goal_pos: [4, 4]
+      agent_pos: [7, 4]
+      hallway_length: 2
       num_hallways: 1
       step_reward: &step_reward -1
       goal_reward: &goal_reward 0
@@ -39,7 +41,7 @@ kwargs:
       local_vis_period: 2000
       reset_free: false  # episodic
       symbolic: true
-      video_period: 50
+      # video_period: 2500
       video_length: *train_steps
       vis_frequency: 2000
       # render_mode: human
@@ -69,7 +71,7 @@ kwargs:
           representation_net:
             name: ConvNetwork
             kwargs:
-              channels: [16, 16, 16, 16, 16, 16, 16]
+              channels: [16, 16, 16]
               paddings: 1
               kernel_sizes: 3
               mlp_layers: [16]
@@ -89,7 +91,7 @@ kwargs:
       goal_generator:
         name: OmniGoalGenerator
         kwargs:
-          debug: false
+          # debug: true
           vis_frequency: 50
           weights: [1.5, 0, 1, 0.5]
           frontier_proportion: 1.0
@@ -101,17 +103,22 @@ kwargs:
             kwargs:
               value: 0.5
           sierl_prob_schedule:
-            name: ConstantSchedule
+            # name: ConstantSchedule
+            # kwargs:
+            #   value: 1.0
+            name: LinearSchedule
             kwargs:
-              value: 1.0
-      phase_step_limit: [5, 1, 20]
+              init_value: 0.75
+              end_value: 0.05
+              steps: 500  # episodes
+      phase_step_limit: [450, 1, 50]
       goal_switcher:
         name: TimeoutGoalSwitcher
         kwargs:
           switching_probability: 0.7
           use_oracle: false
       replay_buffer:
-        name: CountsReplayBuffer
+        # name: CountsReplayBuffer
         name: HERReplayBuffer  # HER
         kwargs:
           capacity: 100000
@@ -121,10 +128,10 @@ kwargs:
       local_visitation_vis_frequency: 2000
       directions: [forward, teleport_backward, lateral]
   loggers:
-    # - name: WandbLogger
-    #   kwargs:
-    #     name: *run_name
-    #     # project: Experiments
-    #     project: Debug
-    #     resume: allow
-    #     start_method: fork
+    - name: WandbLogger
+      kwargs:
+        name: *run_name
+        # project: Fine-tuning
+        project: Debug
+        resume: allow
+        start_method: fork
