@@ -73,7 +73,7 @@ kwargs:
             kwargs:
               off_value: false
               on_value: true
-              period: 500
+              period: *train_steps
           use_oracle: false
           oracle:
             name: MiniGridOracle

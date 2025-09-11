@@ -12,8 +12,8 @@ kwargs:
           on_value: true
           period: 50000
   train_steps: 1000000
-  max_steps_per_episode: &train_steps 500  # episodic
-  test_max_steps: &test_steps 150
+  max_steps_per_episode: &train_steps 150  # episodic
+  test_max_steps: &test_steps 50
   test_frequency: 1000
   test_episodes: 10
   train_random_goals: false
@@ -79,7 +79,7 @@ kwargs:
             kwargs:
               off_value: false
               on_value: true
-              period: 500
+              period: *train_steps
           use_oracle: false
           oracle:
             name: MiniGridOracle
@@ -89,7 +89,7 @@ kwargs:
               goal_reward: *goal_reward
       goal_generator:
         name: NoGoalGenerator
-      phase_step_limit: 500
+      phase_step_limit: *train_steps
       goal_switcher:
         name: BasicGoalSwitcher
       replay_buffer:
