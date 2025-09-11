@@ -89,7 +89,6 @@ kwargs:
               goal_reward: *goal_reward
       goal_generator:
         name: NoGoalGenerator
-      phase_step_limit: *train_steps
       goal_switcher:
         name: BasicGoalSwitcher
       replay_buffer:
@@ -102,6 +101,7 @@ kwargs:
       separate_agents: false
       local_visitation_vis_frequency: 2000
       directions: forward
+      phase_step_limit: *train_steps
   loggers:
     - name: WandbLogger
       kwargs:

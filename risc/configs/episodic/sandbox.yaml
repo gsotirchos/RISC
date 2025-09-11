@@ -93,7 +93,7 @@ kwargs:
       goal_generator:
         name: OmniGoalGenerator
         kwargs:
-          debug: true
+          # debug: true
           vis_frequency: 1
           weights: [1, 0, 2, 1]
           frontier_proportion: 0.9
@@ -115,7 +115,6 @@ kwargs:
               init_value: 1.0
               end_value: 0.05
               steps: 500  # episodes
-      phase_step_limit: [3, 1, 6]
       goal_switcher:
         # name: BasicGoalSwitcher
         name: TimeoutGoalSwitcher
@@ -133,6 +132,7 @@ kwargs:
       log_frequency: 1
       local_visitation_vis_frequency: 2000
       directions: [forward, teleport_backward, lateral]
+      phase_step_limit: [3, 1, 6]
   loggers:
     # - name: WandbLogger
     #   kwargs:

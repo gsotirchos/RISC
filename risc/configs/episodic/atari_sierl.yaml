@@ -97,7 +97,6 @@ kwargs:
           temperature: 0.5
           use_success_prob: false
           use_oracle: false
-      phase_step_limit: [25000, 1, 2000]
       goal_switcher:
         name: TimeoutGoalSwitcher
         kwargs:
@@ -114,6 +113,7 @@ kwargs:
       separate_agents: false
       local_visitation_vis_frequency: 2000
       directions: [forward, teleport_backward, lateral]
+      phase_step_limit: [25000, 1, 2000]
   loggers:
     - name: WandbLogger
       kwargs:

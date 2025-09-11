@@ -12,11 +12,10 @@ kwargs:
           on_value: true
           period: 1000000
   train_steps: 25
-  max_steps_per_episode: 15  # episodic
-  #train_phase_steps: 2000 # reset-free
+  max_steps_per_episode: &train_steps 15  # episodic
+  test_max_steps: &test _steps 10
   test_frequency: 1
   test_episodes: 2
-  test_max_steps: 10
   test_random_goals: true
   seed: 0
   stack_size: 1
@@ -27,24 +26,24 @@ kwargs:
     name: minihack_envs
     kwargs:
       env_name: MiniHack-Boxoban-Unfiltered-v0
-      eval_max_steps: 100
+      train_max_steps: *train_steps  # episodic
+      eval_max_steps: *test_steps
+      # novelty_bonus: 0.0
       # local_vis_period: 2000
-      train_max_steps: 500  # episodic
       # video_period: -1
+      # video_length: *train_steps
       # vis_frequency: 2000
       render_mode: human
   agent:
     name: GCResetFree
     kwargs:
       base_agent:
+        name: GoalConditionedDQNAgent
         kwargs:
           batch_size: 128
           device: cpu
-          discount_rate: 0.95
+          discount_rate: &discount_rate 0.95
           epsilon_schedule:
-            #name: ConstantSchedule
-            #kwargs:
-            #  value: 0.0
             name: LinearSchedule
             kwargs:
               end_value: 0.1
@@ -56,6 +55,7 @@ kwargs:
             name: Adam
             kwargs:
               lr: 0.0003
+          # min_replay_history: 128
           min_replay_history: -1
           compute_success_probability: false
           representation_net:
@@ -70,11 +70,8 @@ kwargs:
             kwargs:
               off_value: false
               on_value: true
-              period: 500
-        name: GoalConditionedDQNAgent
-      novelty_bonus: 0.15
+              period: *train_steps
       goal_generator:
-        #name: FBGoalGenerator  # RISC
         name: OmniGoalGenerator
         kwargs:
           debug: true
@@ -85,24 +82,24 @@ kwargs:
           temperature: 0.5
           # use_success_prob: true
           # oracle: true
-      phase_step_limit: [5, 1, 20]
       goal_switcher:
         #name: BasicGoalSwitcher
         #name: SuccessProbabilityGoalSwitcher  # reset-free
         name: TimeoutGoalSwitcher
         kwargs:
-          switching_probability: 0.45
+          switching_probability: 0.7
           oracle: false
       replay_buffer:
         # name: CountsReplayBuffer
         name: HERReplayBuffer  # HER
         kwargs:
           capacity: 100000
+          gamma: 0.5
           her_ratio: 0.5  # HER
       separate_agents: false
       local_visitation_vis_frequency: 2000
-      oracle: false
       directions: [forward, teleport_backward, lateral]
+      phase_step_limit: [5, 1, 20]
   loggers:
     # - name: WandbLogger
     #   kwargs:
