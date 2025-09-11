@@ -80,7 +80,7 @@ kwargs:
             kwargs:
               off_value: false
               on_value: true
-              period: 500
+              period: *train_steps
           use_oracle: false
           oracle:
             name: MiniGridOracle
@@ -106,7 +106,6 @@ kwargs:
             name: ConstantSchedule
             kwargs:
               value: 1.0
-      phase_step_limit: [147, 1, 3]
       goal_switcher:
         name: TimeoutGoalSwitcher
         kwargs:
@@ -122,6 +121,7 @@ kwargs:
       separate_agents: false
       local_visitation_vis_frequency: 2000
       directions: [forward, teleport_backward, lateral]
+      phase_step_limit: [3, 1, 147]
   loggers:
     - name: WandbLogger
       kwargs:
