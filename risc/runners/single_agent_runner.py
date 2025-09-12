@@ -21,7 +21,7 @@ from hive.runners.utils import Metrics, TransitionInfo
 from hive.utils.experiment import Experiment
 from hive.utils.loggers import ScheduledLogger, NullLogger
 from hive.utils.utils import seeder
-from risc.wandb_logger import WandbLogger
+from wandb_logger import WandbLogger
 from wandb_osh.hooks import TriggerWandbSyncHook
 
 
