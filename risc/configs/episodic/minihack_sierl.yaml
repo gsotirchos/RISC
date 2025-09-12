@@ -30,7 +30,7 @@ kwargs:
       eval_max_steps: *test_steps
       # novelty_bonus: 0.0
       # local_vis_period: 2000
-      # video_period: -1
+      # video_period: 50  # episodes
       # video_length: *train_steps
       # vis_frequency: 2000
       render_mode: human
