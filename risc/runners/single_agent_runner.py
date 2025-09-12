@@ -21,6 +21,7 @@ from hive.runners.utils import Metrics, TransitionInfo
 from hive.utils.experiment import Experiment
 from hive.utils.loggers import ScheduledLogger, NullLogger
 from hive.utils.utils import seeder
+from risc.wandb_logger import WandbLogger
 from wandb_osh.hooks import TriggerWandbSyncHook
 
 
@@ -334,6 +335,8 @@ class SingleAgentRunner(_SingleAgentRunner):
         # Run a final test episode and save the experiment.
         self.run_testing()
         self._experiment_manager.save()
+        if isinstance(self._logger, WandbLogger):
+            self._logger.finish()
 
     def run_testing(self):
         """Run a testing phase."""

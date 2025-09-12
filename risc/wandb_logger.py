@@ -84,6 +84,9 @@ class WandbLogger(_WandbLogger):
         )
         wandb.log(metrics)
 
+    def finish(self):
+        wandb.finish()
+
 
 def composite_logger_hack(loggers):
     return loggers[0]
