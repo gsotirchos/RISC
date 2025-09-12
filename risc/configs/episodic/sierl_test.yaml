@@ -12,10 +12,8 @@ kwargs:
           on_value: true
           period: 50000
   train_steps: 1000000
-  # max_steps_per_episode: &train_steps 500  # episodic
-  max_steps_per_episode: &train_steps 300  # episodic
-  # test_max_steps: &test_steps 150
-  test_max_steps: &test_steps 100
+  max_steps_per_episode: &train_steps 400  # episodic
+  test_max_steps: &test_steps 120
   test_frequency: 1000
   test_episodes: 10
   test_random_goals: true
@@ -28,10 +26,10 @@ kwargs:
     name: minigrid_envs
     kwargs:
       env_name: MiniGrid-Hallway-v1
-      room_size: [11, 9]
-      goal_pos: [6, 4]
-      agent_pos: [9, 4]
-      hallway_length: 4
+      room_size: [13, 9]
+      goal_pos: [8, 4]
+      agent_pos: [11, 4]
+      hallway_length: 6
       num_hallways: 1
       step_reward: &step_reward -1
       goal_reward: &goal_reward 0
