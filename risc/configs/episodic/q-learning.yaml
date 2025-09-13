@@ -12,8 +12,8 @@ kwargs:
           on_value: true
           period: 50000
   train_steps: 1000000
-  max_steps_per_episode: &train_steps 400  # episodic
-  test_max_steps: &test_steps 120
+  max_steps_per_episode: &train_steps 150  # episodic
+  test_max_steps: &test_steps 50
   test_frequency: 1000
   test_episodes: 10
   train_random_goals: false
@@ -27,10 +27,10 @@ kwargs:
     name: minigrid_envs
     kwargs:
       env_name: MiniGrid-Hallway-v1
-      room_size: [13, 9]
-      goal_pos: [8, 4]
-      agent_pos: [11, 4]
-      hallway_length: 6
+      room_size: [9, 9]
+      goal_pos: [4, 4]
+      agent_pos: [7, 4]
+      hallway_length: 2
       num_hallways: 1
       step_reward: &step_reward -1
       goal_reward: &goal_reward 0
@@ -106,6 +106,6 @@ kwargs:
     - name: WandbLogger
       kwargs:
         name: *run_name
-        project: Debug
+        project: Experiments
         resume: allow
         start_method: fork
