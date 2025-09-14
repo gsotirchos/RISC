@@ -93,13 +93,14 @@ kwargs:
       goal_generator:
         name: OmniGoalGenerator
         kwargs:
-          # debug: true
+          debug: true
           vis_frequency: 1
           weights: [1, 0, 2, 1]
           frontier_proportion: 0.9
           max_familiarity: 0.5  # familiarity_threshold
           # use_success_prob: true
           use_oracle: true
+          # random_selection: true
           temperature_schedule:
             name: ConstantSchedule
             kwargs:

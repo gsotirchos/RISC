@@ -145,6 +145,7 @@ class OmniGoalGenerator(GoalGenerator):
         frontier_proportion: float = 1.0,
         sierl_prob_schedule: Schedule = None,
         temperature_schedule: Schedule = None,
+        random_selection: bool = False,
         use_success_prob: bool = False,
         use_oracle: bool = False,
         log_frequency: int = 10,
@@ -163,6 +164,7 @@ class OmniGoalGenerator(GoalGenerator):
         self._main_goal_schedule = PeriodicSchedule(False, True, 3)
         self._initial_states = initial_states
         self._goal_states = goal_states
+        self._random_selection = random_selection
         self._weights = weights
         self._masking_dist = norm(loc=max_familiarity, scale=weights[0])
         self._max_familiarity = max_familiarity
@@ -356,74 +358,76 @@ class OmniGoalGenerator(GoalGenerator):
                 self._dbg_print(f"goal state: {self._dbg_format(frontier_states[:, 0])}", "   ")
                 self._dbg_print(f"goal action: {frontier_actions[0]}", "   ")
                 return frontier_states[:, 0], frontier_actions[0]
-            (
-                priority,
-                novelty_cost,
-                cost_to_reach,
-                cost_to_come,
-                cost_to_go
-            ) = self._calculate_priority(
-                agent,
-                observation,
-                initial_state,
-                main_goal_state,
-                frontier_states,
-                frontier_actions
-            )
+            if self._random_selection:
+                priority = None
+            else:
+                (
+                    priority,
+                    novelty_cost,
+                    cost_to_reach,
+                    cost_to_come,
+                    cost_to_go
+                ) = self._calculate_priority(
+                    agent,
+                    observation,
+                    initial_state,
+                    main_goal_state,
+                    frontier_states,
+                    frontier_actions
+                )
+                if self._debug:
+                    counts = self._get_counts(frontier_states, frontier_actions, agent)
+                    self._dbg_print(f"counts: {counts}", "   ")
+                    self._dbg_print(f"novelty costs: {novelty_cost}", "   ")
+                    path_costs = self._weighted_path_cost(
+                        np.transpose([cost_to_come, cost_to_go, cost_to_reach]),
+                        self._weights[1:4]
+                    )
+                    self._dbg_print(f"path costs: {path_costs}", "   ")
+                    self._dbg_print(f"priority: {np.round(priority, 3)}", "   ")
+                if self._log_schedule.update() and not isinstance(self._logger, NullLogger):
+                    goal_s = frontier_states[goal_idx]
+                    goal_a = frontier_actions[goal_idx]
+                    self._logger.log_metrics(
+                        {
+                            "goal/novelty_cost": novelty_cost[goal_idx],
+                            "goal/cost_to_reach": cost_to_reach[goal_idx],
+                            "goal/cost_to_come": cost_to_come[goal_idx],
+                            "goal/cost_to_go": cost_to_go[goal_idx],
+                            "goal/familiarity": agent._replay_buffer.familiarities[goal_s, goal_a],
+                        },
+                        f"{agent._id.removesuffix('_agent')}_goal_generator",
+                    )
+                if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
+                    self._logger.log_metrics(
+                        {
+                            "novelty_cost": heatmap(*self._flatten_over_actions(
+                                frontier_states,
+                                frontier_actions,
+                                novelty_cost
+                            ), logscale=True),
+                            "cost_to_reach": heatmap(*self._flatten_unique(
+                                frontier_states,
+                                cost_to_reach
+                            ), vmin=0),
+                            "cost_to_come": heatmap(*self._flatten_unique(
+                                frontier_states,
+                                cost_to_come
+                            ), vmin=0),
+                            "cost_to_go": heatmap(*self._flatten_unique(
+                                frontier_states,
+                                cost_to_go
+                            ), vmin=0),
+                            "priority": heatmap(*self._flatten_unique(
+                                frontier_states,
+                                priority
+                            ), logscale=True),
+                        },
+                        f"{agent._id.removesuffix('_agent')}_goal_generator",
+                    )
             goal_idx = self._rng.choice(len(priority), p=priority)
             # goal_idx = np.argmin(priority)
             goal = frontier_states[goal_idx, 0][None, ...], frontier_actions[goal_idx]
-            if self._debug:
-                counts = self._get_counts(frontier_states, frontier_actions, agent)
-                self._dbg_print(f"counts: {counts}", "   ")
-                self._dbg_print(f"novelty costs: {novelty_cost}", "   ")
-                path_costs = self._weighted_path_cost(
-                    np.transpose([cost_to_come, cost_to_go, cost_to_reach]),
-                    self._weights[1:4]
-                )
-                self._dbg_print(f"path costs: {path_costs}", "   ")
-                self._dbg_print(f"priority: {np.round(priority, 3)}", "   ")
-            if self._log_schedule.update() and not isinstance(self._logger, NullLogger):
-                goal_s, goal_a = goal
-                if goal_s.shape != agent._observation_space.shape:
-                    goal_s = np.concatenate([goal_s, observation[1][None, ...]])
-                self._logger.log_metrics(
-                    {
-                        "goal/novelty_cost": novelty_cost[goal_idx],
-                        "goal/cost_to_reach": cost_to_reach[goal_idx],
-                        "goal/cost_to_come": cost_to_come[goal_idx],
-                        "goal/cost_to_go": cost_to_go[goal_idx],
-                        "goal/familiarity": agent._replay_buffer.familiarities[goal_s, goal_a],
-                    },
-                    f"{agent._id.removesuffix('_agent')}_goal_generator",
-                )
-            if self._vis_schedule.update() and not isinstance(self._logger, NullLogger):
-                self._logger.log_metrics(
-                    {
-                        "novelty_cost": heatmap(*self._flatten_over_actions(
-                            frontier_states,
-                            frontier_actions,
-                            novelty_cost
-                        ), logscale=True),
-                        "cost_to_reach": heatmap(*self._flatten_unique(
-                            frontier_states,
-                            cost_to_reach
-                        ), vmin=0),
-                        "cost_to_come": heatmap(*self._flatten_unique(
-                            frontier_states,
-                            cost_to_come
-                        ), vmin=0),
-                        "cost_to_go": heatmap(*self._flatten_unique(
-                            frontier_states,
-                            cost_to_go
-                        ), vmin=0),
-                        "priority": heatmap(*self._flatten_unique(
-                            frontier_states,
-                            priority
-                        ), logscale=True),
-                    },
-                    f"{agent._id.removesuffix('_agent')}_goal_generator",
-                )
         else:  # current_direction != "lateral"
             goal = main_goal_state, None
         self._dbg_print(f"goal state: {self._dbg_format(goal[0])}", "   ")
