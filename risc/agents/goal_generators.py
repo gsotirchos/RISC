@@ -425,7 +425,7 @@ class OmniGoalGenerator(GoalGenerator):
                         },
                         f"{agent._id.removesuffix('_agent')}_goal_generator",
                     )
-            goal_idx = self._rng.choice(len(priority), p=priority)
+            goal_idx = self._rng.choice(len(frontier_states), p=priority)
             # goal_idx = np.argmin(priority)
             goal = frontier_states[goal_idx, 0][None, ...], frontier_actions[goal_idx]
         else:  # current_direction != "lateral"
