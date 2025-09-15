@@ -13,10 +13,10 @@ kwargs:
           period: 1000000
   train_steps: 30
   max_steps_per_episode: &train_steps 15  # episodic
-  test_max_steps: &test _steps 10
-  test_frequency: 1
+  test_max_steps: &test_steps 10
+  test_frequency: 2
   test_episodes: 2
-  train_random_goals: true
+  # train_random_goals: true
   test_random_goals: true
   seed: 0
   stack_size: 1
@@ -85,7 +85,7 @@ kwargs:
           frontier_proportion: 0.9
           max_familiarity: 0.5  # familiarity_threshold
           # use_success_prob: true
-          use_oracle: true
+          use_oracle: false
           # random_selection: true
           temperature_schedule:
             name: ConstantSchedule

@@ -313,7 +313,7 @@ class SingleAgentRunner(_SingleAgentRunner):
         :py:class:`~hive.runners.multi_agent_loop.MultiAgentRunner` for examples."""
         self.train_mode(True)
         while self._train_schedule.get_value():
-            #print("New training episode")
+            # print("=== TRAINING")
             # Run training episode
             if not self._training:
                 self.train_mode(True)
@@ -351,6 +351,7 @@ class SingleAgentRunner(_SingleAgentRunner):
     def test_and_log(self, environment, random_goal=False, prefix="test"):
         aggregated_episode_metrics = self.create_episode_metrics().get_flat_dict()
         for _ in range(self._test_episodes):
+            # print("=== TESTING")
             if random_goal:
                 environment.randomize_goal()
             episode_metrics = self.run_episode(environment, self._test_max_steps)

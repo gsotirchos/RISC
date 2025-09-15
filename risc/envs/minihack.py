@@ -14,7 +14,7 @@ from gymnasium.spaces import Box
 
 
 # fix legacy error
-gym.wrappers.common.PassiveEnvChecker.reset = lambda self, **kwargs: self.env.reset(**kwargs)
+# gym.wrappers.common.PassiveEnvChecker.reset = lambda self, **kwargs: self.env.reset(**kwargs)
 
 
 @dataclass(frozen=True)
@@ -27,9 +27,8 @@ class CharValues():
 
 
 class ReseedWrapper(gym.Wrapper):
-    def __init__(self, env, random_goal=False):
+    def __init__(self, env):
         super().__init__(env)
-        self.random_goal = random_goal
         self.env.unwrapped._goal_pos_set = {}
 
     def get_lvl_gen(self, lvl_index=None):
@@ -53,13 +52,8 @@ class ReseedWrapper(gym.Wrapper):
 
     def reset(self, level=0, **kwargs):
         env = self.env.unwrapped
-        if self.random_goal:
-            level = None
-        try:
-            env.update(self.get_lvl_gen(level).get_des())
-        except Exception:  # TODO
-            print(f"{level=}")
-            breakpoint()
+        des_file = self.get_lvl_gen(level).get_des()
+        env.update(des_file)
         initial_obs = super(minihack.MiniHackNavigation, env).reset(**kwargs)
         env._goal_pos_set = env._object_positions(env.last_observation, "{")
         env.seed(0, 0, reseed=False)
@@ -93,6 +87,10 @@ class GCObsWrapper(gym.ObservationWrapper):
         self.goal[self.goal == CharValues.GOAL] = CharValues.BOX
         return {"observation": obs, "desired_goal": self.goal}
 
+    def reset(self, **kwargs):
+        obs, info = self.env.reset(**kwargs)
+        return self.observation(obs), info
+
 
 class MiniHackEnv(GymEnv):
     """Expands the GymEnv interface."""
@@ -100,11 +98,14 @@ class MiniHackEnv(GymEnv):
         self,
         *args,
         seed=None,
+        level=0,
         **kwargs
     ):
         super().__init__(*args, **kwargs)
         self._env.set_wrapper_attr("_elapsed_steps", 0)
         self.seed(seed=seed)
+        self._level = level
+        self._random_goals = level is None
 
     def step(self, action, **kwargs):
         if self._env.render_mode == "human":
@@ -117,18 +118,30 @@ class MiniHackEnv(GymEnv):
     #     terminated = self.is_successful(concat_to_gc_obs(observation))
     #     return observation, reward, terminated, truncated, self._turn, info
 
-    # def reset(self):
-    #     return super().reset()
+    def reset(self):
+        level = None if self._random_goals else self._level
+        return self._env.reset(level=level)
+
+    def close(self):
+        pass
 
     def teleport(self, _):
         observation, _ = super().reset()
         return observation
 
     def randomize_goal(self):
-        self._env.random_goal = True
+        self._random_goals = True
 
     def reset_goal(self):
-        self._env.random_goal = False
+        self._random_goals = False
+
+    def place_subgoal(self, pos):
+        # TODO
+        pass
+
+    def remove_subgoal(self):
+        # TODO
+        pass
 
     def register_logger(self, logger):
         self.logger = logger
