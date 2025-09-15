@@ -16,7 +16,7 @@ kwargs:
   test_max_steps: &test_steps 10
   test_frequency: 1000
   test_episodes: 2
-  train_random_goals: false
+  train_random_goals: true
   test_random_goals: true
   seed: 0
   stack_size: 1
@@ -82,7 +82,7 @@ kwargs:
             kwargs:
               off_value: false
               on_value: true
-              period: 500
+              period: *train_steps
           # use_oracle: true
           oracle:
             name: MiniGridOracle

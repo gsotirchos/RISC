@@ -11,11 +11,12 @@ kwargs:
           off_value: false
           on_value: true
           period: 1000000
-  train_steps: 25
+  train_steps: 30
   max_steps_per_episode: &train_steps 15  # episodic
   test_max_steps: &test _steps 10
   test_frequency: 1
   test_episodes: 2
+  train_random_goals: true
   test_random_goals: true
   seed: 0
   stack_size: 1
@@ -44,6 +45,9 @@ kwargs:
           device: cpu
           discount_rate: &discount_rate 0.95
           epsilon_schedule:
+            #name: ConstantSchedule
+            #kwargs:
+            #  value: 0.0
             name: LinearSchedule
             kwargs:
               end_value: 0.1
@@ -71,6 +75,7 @@ kwargs:
               off_value: false
               on_value: true
               period: *train_steps
+          use_oracle: false
       goal_generator:
         name: OmniGoalGenerator
         kwargs:
@@ -79,16 +84,30 @@ kwargs:
           weights: [1, 0, 2, 1]
           frontier_proportion: 0.9
           max_familiarity: 0.5  # familiarity_threshold
-          temperature: 0.5
           # use_success_prob: true
-          # oracle: true
+          use_oracle: true
+          # random_selection: true
+          temperature_schedule:
+            name: ConstantSchedule
+            kwargs:
+              value: 0.5
+            # name: LinearSchedule
+            # kwargs:
+            #   init_value: 0.7
+            #   end_value: 0.05
+            #   steps: 500  # episodes
+          sierl_prob_schedule:
+            name: LinearSchedule
+            kwargs:
+              init_value: 1.0
+              end_value: 0.05
+              steps: 500  # episodes
       goal_switcher:
-        #name: BasicGoalSwitcher
-        #name: SuccessProbabilityGoalSwitcher  # reset-free
+        # name: BasicGoalSwitcher
         name: TimeoutGoalSwitcher
         kwargs:
-          switching_probability: 0.7
-          oracle: false
+          switching_probability: 0.0
+          # use_oracle: true
       replay_buffer:
         # name: CountsReplayBuffer
         name: HERReplayBuffer  # HER
@@ -97,9 +116,10 @@ kwargs:
           gamma: 0.5
           her_ratio: 0.5  # HER
       separate_agents: false
+      log_frequency: 1
       local_visitation_vis_frequency: 2000
       directions: [forward, teleport_backward, lateral]
-      phase_step_limit: [5, 1, 20]
+      phase_step_limit: [5, 1, 10]
   loggers:
     # - name: WandbLogger
     #   kwargs:
