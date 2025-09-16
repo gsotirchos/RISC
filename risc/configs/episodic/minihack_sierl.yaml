@@ -3,7 +3,7 @@ kwargs:
   experiment_manager:
     name: Experiment
     kwargs:
-      name: &run_name episodic_sandbox
+      name: &run_name MiniHack_SIERL
       save_dir: experiment
       saving_schedule:
         name: PeriodicSchedule
@@ -12,10 +12,10 @@ kwargs:
           on_value: true
           period: 1000000
   train_steps: 30
-  max_steps_per_episode: &train_steps 15  # episodic
-  test_max_steps: &test_steps 10
-  test_frequency: 2
-  test_episodes: 2
+  max_steps_per_episode: &train_steps 600  # episodic
+  test_max_steps: &test_steps 80
+  test_frequency: 1000
+  test_episodes: 10
   # train_random_goals: true
   test_random_goals: true
   seed: 0
@@ -34,7 +34,7 @@ kwargs:
       # video_period: 50  # episodes
       # video_length: *train_steps
       # vis_frequency: 2000
-      render_mode: human
+      # render_mode: human
   agent:
     name: GCResetFree
     kwargs:
@@ -59,8 +59,7 @@ kwargs:
             name: Adam
             kwargs:
               lr: 0.0003
-          # min_replay_history: 128
-          min_replay_history: -1
+          min_replay_history: 128
           compute_success_probability: false
           representation_net:
             name: ConvNetwork
@@ -79,51 +78,48 @@ kwargs:
       goal_generator:
         name: OmniGoalGenerator
         kwargs:
-          debug: true
-          vis_frequency: 1
-          weights: [1, 0, 2, 1]
-          frontier_proportion: 0.9
-          max_familiarity: 0.5  # familiarity_threshold
-          # use_success_prob: true
+          # debug: true
+          vis_frequency: 50
+          weights: [1.5, 0, 1, 0.5]
+          frontier_proportion: 1.0
+          max_familiarity: 0.9
+          use_success_prob: false
           use_oracle: false
           # random_selection: true
           temperature_schedule:
             name: ConstantSchedule
             kwargs:
               value: 0.5
+          sierl_prob_schedule:
+            name: ConstantSchedule
+            kwargs:
+              value: 1.0
             # name: LinearSchedule
             # kwargs:
-            #   init_value: 0.7
+            #   init_value: 0.75
             #   end_value: 0.05
             #   steps: 500  # episodes
-          sierl_prob_schedule:
-            name: LinearSchedule
-            kwargs:
-              init_value: 1.0
-              end_value: 0.05
-              steps: 500  # episodes
       goal_switcher:
-        # name: BasicGoalSwitcher
         name: TimeoutGoalSwitcher
         kwargs:
-          switching_probability: 0.0
-          # use_oracle: true
+          switching_probability: 0.7
+          use_oracle: false
       replay_buffer:
-        # name: CountsReplayBuffer
-        name: HERReplayBuffer  # HER
+        name: CountsReplayBuffer
+        # name: HERReplayBuffer  # HER
         kwargs:
           capacity: 100000
           gamma: 0.5
-          her_ratio: 0.5  # HER
+          # her_ratio: 0.5  # HER
       separate_agents: false
-      log_frequency: 1
+      # log_frequency: 1
       local_visitation_vis_frequency: 2000
       directions: [forward, teleport_backward, lateral]
-      phase_step_limit: [5, 1, 10]
+      phase_step_limit: [2, 1, 747]
   loggers:
-    # - name: WandbLogger
-    #   kwargs:
-    #     name: *run_name
-    #     project: Debug
-    #     resume: allow
-    #     start_method: fork
+    - name: WandbLogger
+      kwargs:
+        name: *run_name
+        project: Experiments
+        resume: allow
+        start_method: fork

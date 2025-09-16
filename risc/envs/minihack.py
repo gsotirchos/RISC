@@ -93,7 +93,13 @@ class GCObsWrapper(gym.ObservationWrapper):
 
 
 class MiniHackEnv(GymEnv):
-    """Expands the GymEnv interface."""
+    """Expands the GymEnv interface.
+    Actions:
+      0: North
+      1: East
+      2: South
+      3: West
+    """
     def __init__(
         self,
         *args,
@@ -108,15 +114,14 @@ class MiniHackEnv(GymEnv):
         self._random_goals = level is None
 
     def step(self, action, **kwargs):
+        obs, reward, terminated, truncated, self._turn, info = super().step(action, **kwargs)
+        # truncated = bool(terminated)
+        # terminated = self.is_successful(concat_to_gc_obs(observation))
         if self._env.render_mode == "human":
             os.system('cls' if os.name == 'nt' else 'clear')
             self.render()
             time.sleep(0.25)
-        return super().step(action, **kwargs)
-    #     observation, reward, terminated, truncated, self._turn, info = super().step(action)
-    #     truncated = bool(terminated)
-    #     terminated = self.is_successful(concat_to_gc_obs(observation))
-    #     return observation, reward, terminated, truncated, self._turn, info
+        return obs, reward, terminated, truncated, self._turn, info
 
     def reset(self):
         level = None if self._random_goals else self._level

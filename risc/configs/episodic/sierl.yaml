@@ -3,7 +3,7 @@ kwargs:
   experiment_manager:
     name: Experiment
     kwargs:
-      name: &run_name episodic_SIERL
+      name: &run_name MiniGrid_SIERL
       save_dir: experiment
       saving_schedule:
         name: PeriodicSchedule
@@ -16,6 +16,7 @@ kwargs:
   test_max_steps: &test_steps 50
   test_frequency: 1000
   test_episodes: 10
+  # train_random_goals: true
   test_random_goals: true
   seed: 0
   stack_size: 1
@@ -96,6 +97,7 @@ kwargs:
           max_familiarity: 0.9
           use_success_prob: false
           use_oracle: false
+          # random_selection: true
           temperature_schedule:
             name: ConstantSchedule
             kwargs:
