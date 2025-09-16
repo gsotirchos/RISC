@@ -81,7 +81,7 @@ kwargs:
         name: OmniGoalGenerator
         kwargs:
           # debug: true
-          vis_frequency: 50
+          vis_frequency: 0
           weights: [1.5, 0, 1, 0.5]
           frontier_proportion: 1.0
           max_familiarity: 0.9
