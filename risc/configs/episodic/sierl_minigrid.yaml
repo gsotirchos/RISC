@@ -3,7 +3,7 @@ kwargs:
   experiment_manager:
     name: Experiment
     kwargs:
-      name: &run_name episodic_SIERL
+      name: &run_name MiniGrid_SIERL
       save_dir: experiment
       saving_schedule:
         name: PeriodicSchedule
@@ -13,9 +13,10 @@ kwargs:
           period: 50000
   train_steps: 1000000
   max_steps_per_episode: &train_steps 400  # episodic
-  test_max_steps: &test_steps 120
+  test_max_steps: &test_steps 80
   test_frequency: 1000
   test_episodes: 10
+  # train_random_goals: true
   test_random_goals: true
   seed: 0
   stack_size: 1
@@ -39,7 +40,7 @@ kwargs:
       local_vis_period: 2000
       reset_free: false  # episodic
       symbolic: true
-      # video_period: 50  # episodes
+      video_period: 50  # episodes
       video_length: *train_steps
       vis_frequency: 2000
       # render_mode: human
@@ -89,13 +90,14 @@ kwargs:
       goal_generator:
         name: OmniGoalGenerator
         kwargs:
-          # debug: true
+          debug: false
           vis_frequency: 50
           weights: [1.5, 0, 1, 0.5]
           frontier_proportion: 1.0
           max_familiarity: 0.9
           use_success_prob: false
           use_oracle: false
+          # random_selection: true
           temperature_schedule:
             name: ConstantSchedule
             kwargs:
@@ -104,6 +106,11 @@ kwargs:
             name: ConstantSchedule
             kwargs:
               value: 1.0
+            # name: LinearSchedule
+            # kwargs:
+            #   init_value: 0.75
+            #   end_value: 0.05
+            #   steps: 500  # episodes
       goal_switcher:
         name: TimeoutGoalSwitcher
         kwargs:
@@ -119,12 +126,11 @@ kwargs:
       separate_agents: false
       local_visitation_vis_frequency: 2000
       directions: [forward, teleport_backward, lateral]
-      phase_step_limit: [3, 1, 147]
+      phase_step_limit: [450, 1, 50]
   loggers:
     - name: WandbLogger
       kwargs:
         name: *run_name
-        # project: Fine-tuning
-        project: Debug
+        project: Experiments
         resume: allow
         start_method: fork
