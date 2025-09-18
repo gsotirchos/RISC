@@ -120,7 +120,7 @@ kwargs:
         name: CountsReplayBuffer
         # name: HERReplayBuffer  # HER
         kwargs:
-          capacity: 100000
+          capacity: 200000
           gamma: 0.5
           # her_ratio: 0.5  # HER
       separate_agents: false
