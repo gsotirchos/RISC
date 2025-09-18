@@ -15,7 +15,8 @@ from gymnasium.spaces import Box
 
 
 # fix legacy error
-gym.wrappers.common.PassiveEnvChecker.reset = lambda self, seed=None, **kwargs: self.env.reset(**kwargs)
+gym.wrappers.common.PassiveEnvChecker.reset = \
+    lambda self, seed=None, **kwargs: self.env.reset(**kwargs)
 
 
 @dataclass(frozen=True)
@@ -165,7 +166,8 @@ def success_fn(observation, goal=None):
 
 
 def reward_fn(observation, goal=None, env_reward=0, **kwargs):
-    bonus = -1 + float(success_fn(observation, goal))
+    # bonus = -1 + float(success_fn(observation, goal))
+    bonus = float(success_fn(observation, goal))
     return env_reward + bonus
 
 
