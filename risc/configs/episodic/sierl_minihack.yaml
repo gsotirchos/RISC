@@ -36,7 +36,7 @@ kwargs:
       # video_period: 50  # episodes
       # video_length: *train_steps
       # vis_frequency: 2000
-      render_mode: human
+      # render_mode: human
   agent:
     name: GCResetFree
     kwargs:
@@ -80,7 +80,7 @@ kwargs:
       goal_generator:
         name: OmniGoalGenerator
         kwargs:
-          debug: true
+          # debug: true
           vis_frequency: 0
           weights: [1.5, 0, 1, 0.5]
           frontier_proportion: 1.0
@@ -119,9 +119,9 @@ kwargs:
       directions: [forward, teleport_backward, lateral]
       phase_step_limit: [2, 1, 747]
   loggers:
-    # - name: WandbLogger
-    #   kwargs:
-    #     name: *run_name
-    #     project: Experiments
-    #     resume: allow
-    #     start_method: fork
+    - name: WandbLogger
+      kwargs:
+        name: *run_name
+        project: Experiments
+        resume: allow
+        start_method: fork
