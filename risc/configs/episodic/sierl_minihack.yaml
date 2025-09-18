@@ -10,10 +10,10 @@ kwargs:
         kwargs:
           off_value: false
           on_value: true
-          period: 1000000
+          period: 100000
   train_steps: 1000000
-  max_steps_per_episode: &train_steps 300  # episodic
-  test_max_steps: &test_steps 70
+  max_steps_per_episode: &train_steps 150  # episodic
+  test_max_steps: &test_steps 40
   test_frequency: 1000
   test_episodes: 10
   # train_random_goals: true
@@ -54,7 +54,7 @@ kwargs:
             kwargs:
               end_value: 0.1
               init_value: 1.0
-              steps: 20000
+              steps: 50000
           loss_fn:
             name: MSELoss
           optimizer_fn:
@@ -107,12 +107,12 @@ kwargs:
           switching_probability: 0.7
           use_oracle: false
       replay_buffer:
-        name: CountsReplayBuffer
-        # name: HERReplayBuffer  # HER
+        # name: CountsReplayBuffer
+        name: HERReplayBuffer  # HER
         kwargs:
           capacity: 100000
           gamma: 0.5
-          # her_ratio: 0.5  # HER
+          her_ratio: 0.25  # HER
       separate_agents: false
       # log_frequency: 1
       local_visitation_vis_frequency: 2000
