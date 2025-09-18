@@ -4,6 +4,7 @@ import copy
 import random
 # from functools import partial
 from dataclasses import dataclass
+from inspect import getsource
 
 import numpy as np
 import gymnasium as gym
@@ -54,10 +55,11 @@ class ReseedWrapper(gym.Wrapper):
         env = self.env.unwrapped
         des_file = self.get_lvl_gen(level).get_des()
         env.update(des_file)
-        initial_obs = super(minihack.MiniHackNavigation, env).reset(**kwargs)
+        super(minihack.MiniHackNavigation, env).reset(**kwargs)
         env._goal_pos_set = env._object_positions(env.last_observation, "{")
+        breakpoint()
         env.seed(0, 0, reseed=False)
-        return initial_obs
+        return self.env.env.env.reset()
 
 
 class GCObsWrapper(gym.ObservationWrapper):
