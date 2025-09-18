@@ -12,10 +12,10 @@ kwargs:
           on_value: true
           period: 1000000
   train_steps: 1000000
-  max_steps_per_episode: &train_steps 3  # episodic
-  test_max_steps: &test_steps 2
-  test_frequency: 5
-  test_episodes: 1
+  max_steps_per_episode: &train_steps 300  # episodic
+  test_max_steps: &test_steps 70
+  test_frequency: 1000
+  test_episodes: 10
   # train_random_goals: true
   test_random_goals: true
   seed: 0

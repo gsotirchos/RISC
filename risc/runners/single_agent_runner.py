@@ -169,11 +169,10 @@ class SingleAgentRunner(_SingleAgentRunner):
                 for.
             episode_metrics (Metrics): Keeps track of metrics for current episode.
         """
-        print("=== STEP")
+        # print("=== STEP", flush=True)
         agent = self._agents[0]
         stacked_observation = transition_info.get_stacked_state(agent, observation)
         action, agent_traj_state = agent.act(stacked_observation, agent_traj_state)
-        # breakpoint()
         (
             next_observation,
             reward,
@@ -216,9 +215,9 @@ class SingleAgentRunner(_SingleAgentRunner):
         # dump memory
         # rss = psutil.Process(os.getpid()).memory_info().rss
         # if rss > 5 * 1024 ** 3:
-        #     print(f"=== DUMPING MEMORY ({rss=})")
+        #     print(f"=== DUMPING MEMORY ({rss=})", flush=True)
         #     self.memory_dump()
-        #     print("=== DONE")
+        #     print("=== DONE", flush=True)
         #     exit()
 
         return (
@@ -314,7 +313,7 @@ class SingleAgentRunner(_SingleAgentRunner):
         :py:class:`~hive.runners.multi_agent_loop.MultiAgentRunner` for examples."""
         self.train_mode(True)
         while self._train_schedule.get_value():
-            print("=== TRAINING")
+            # print("=== TRAINING", flush=True)
             # Run training episode
             if not self._training:
                 self.train_mode(True)
@@ -352,11 +351,11 @@ class SingleAgentRunner(_SingleAgentRunner):
     def test_and_log(self, environment, random_goal=False, prefix="test"):
         aggregated_episode_metrics = self.create_episode_metrics().get_flat_dict()
         for _ in range(self._test_episodes):
-            print("=== TESTING", end="")
+            # print("=== TESTING", end="", flush=True)
             if random_goal:
-                print(" RANDOM GOAL")
+                # print(" RANDOM GOAL", flush=True)
                 environment.randomize_goal()
-            print("")
+            # print(flush=True)
             episode_metrics = self.run_episode(environment, self._test_max_steps)
             for metric, value in episode_metrics.get_flat_dict().items():
                 aggregated_episode_metrics[metric] += value / self._test_episodes
@@ -410,7 +409,7 @@ class SingleAgentRunner(_SingleAgentRunner):
         Args:
             environment (BaseEnv): Environment in which the agent will take a step in.
         """
-        print("=== EPISODE")
+        # print("=== EPISODE", flush=True)
         if max_steps is None:
             max_steps = self._max_steps_per_episode
         episode_metrics = self.create_episode_metrics()
