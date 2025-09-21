@@ -1,6 +1,7 @@
 import argparse
 import os
 import pickle
+import warnings
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -8,6 +9,8 @@ import numpy as np
 import pandas as pd
 # import seaborn as sns
 import wandb
+
+warnings.filterwarnings("error")
 
 
 def load_run_data(env_filters, algo_filters, metrics, x_axis, project_path, fetch_data=True):
@@ -47,6 +50,9 @@ def load_run_data(env_filters, algo_filters, metrics, x_axis, project_path, fetc
 
         try:
             for metric in metrics:
+                if metric not in run.summary.keys():
+                    print(f"(skipping metric {metric} from {run.id})")
+                    continue
                 history = run.history(keys=[metric], x_axis=x_axis)
                 history = history.set_index(x_axis).rename(columns={metric: seed})
 
@@ -56,10 +62,11 @@ def load_run_data(env_filters, algo_filters, metrics, x_axis, project_path, fetc
 
                 data[env][algo][metric] = merge_data(data[env][algo][metric], history)
 
-            print(f"Data for run {run.name} ({run.id})loaded successfully.")
+            print(f"Data for run {run.name} ({run.id}) loaded successfully.")
 
         except Exception as e:
             print(f"Error loading data for run {run.name}: {e}")
+            breakpoint()
             continue
 
     with open('data.pkl', 'wb') as file:
@@ -70,13 +77,19 @@ def load_run_data(env_filters, algo_filters, metrics, x_axis, project_path, fetc
 
 def check_config_match(config, filter_criteria):
     """Checks if a config matches a single filter criteria dictionary."""
-    for keys, required_value in filter_criteria.items():
-        current_dict = config
+    matches = True
+    for keys, criterion in filter_criteria.items():
+        current_item = config
         for key in keys:
-            if not isinstance(current_dict, dict) or key not in current_dict:
+            if not isinstance(current_item, dict):
                 return False
-            current_dict = current_dict[key]
-        if current_dict != required_value:
+            if key not in current_item:
+                current_item = False
+                break
+            else:
+                current_item = current_item[key]
+        matches &= criterion(current_item)
+        if not matches:
             return False
     return True
 
@@ -92,14 +105,17 @@ def merge_data(maybe_df, df):
     if maybe_df is None:
         return df
     else:
-        return pd.merge(
-            maybe_df,
-            df,
-            left_index=True,
-            right_index=True,
-            how='outer'
-        )
-
+        try:
+            return pd.merge(
+                maybe_df,
+                df,
+                left_index=True,
+                right_index=True,
+                how='outer'
+            )
+        except Exception as e:
+            print(f"Error merging dataframes: {e}")
+            breakpoint()
 
 def convert_to_longform(data):
     plotting_data = pd.DataFrame()
@@ -193,24 +209,103 @@ def plot_data(data, x_axis, output_dir, running_average=10):
 def create_figures(output_dir, entity, project, fetch_data=True):
     env_filters = {
         "Hallway 2-steps": {
-            ("kwargs", "env_fn", "kwargs", "env_name"): "MiniGrid-Hallway-v1",
-            ("kwargs", "env_fn", "kwargs", "hallway_length"): 2,
+            ("kwargs", "env_fn", "kwargs", "env_name"): (lambda _: _ == "MiniGrid-Hallway-v1"),
+            ("kwargs", "env_fn", "kwargs", "hallway_length"):  (lambda _: _ == 2),
         },
-        # "Hallway 4-steps": {
-        #     ("kwargs", "env_fn", "kwargs", "env_name"): "MiniGrid-Hallway-v1",
-        #     ("kwargs", "env_fn", "kwargs", "hallway_length"): 4,
-        # },
-        # "Hallway 6-steps": {
-        #     ("kwargs", "env_fn", "kwargs", "env_name"): "MiniGrid-Hallway-v1",
-        #     ("kwargs", "env_fn", "kwargs", "hallway_length"): 6,
-        # },
+        "Hallway 4-steps": {
+            ("kwargs", "env_fn", "kwargs", "env_name"): (lambda _: _ == "MiniGrid-Hallway-v1"),
+            ("kwargs", "env_fn", "kwargs", "hallway_length"):  (lambda _: _ == 4),
+        },
+        "Hallway 6-steps": {
+            ("kwargs", "env_fn", "kwargs", "env_name"): (lambda _: _ == "MiniGrid-Hallway-v1"),
+            ("kwargs", "env_fn", "kwargs", "hallway_length"):  (lambda _: _ == 6),
+        },
         # "FourRooms": {
-        #     ("kwargs", "env_fn", "kwargs", "env_name"): "MiniGrid-FourRooms-v1",
+        #     ("kwargs", "env_fn", "kwargs", "env_name"): (lambda _: _ == "MiniGrid-FourRooms-v1"),
         # },
     }
     algo_filters = {
         "SIERL": {
-            ("kwargs", "agent", "kwargs", "goal_generator", "name"): "OmniGoalGenerator",
+            ("kwargs", "agent", "kwargs", "goal_generator", "name"):
+            (lambda _: _ == "OmniGoalGenerator"),
+            ("kwargs", "agent", "kwargs", "goal_switcher", "kwargs", "switching_probability"):
+            (lambda _: _ > 0),
+            ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "max_familiarity"):
+            (lambda _: _ < 1),
+            ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "random_selection"):
+            (lambda _: _ is False),
+            ("kwargs", "agent", "kwargs", "replay_buffer", "kwargs", "capacity"):
+            (lambda _: _ == 100000),
+        },
+        "Q-learning": {
+            ("kwargs", "agent", "kwargs", "goal_generator", "name"):
+            (lambda _: _ == "NoGoalGenerator"),
+            ("kwargs", "env_fn", "kwargs", "novelty_bonus"):
+            (lambda _: _ == 0),
+            ("kwargs", "train_random_goals"):
+            (lambda _: _ is False),
+            ("kwargs", "agent", "kwargs", "replay_buffer", "kwargs", "her_ratio"):
+            (lambda _: _ == 0),
+        },
+        "Random-goals Q-learning": {
+            ("kwargs", "agent", "kwargs", "goal_generator", "name"):
+            (lambda _: _ == "NoGoalGenerator"),
+            ("kwargs", "env_fn", "kwargs", "novelty_bonus"):
+            (lambda _: _ == 0),
+            ("kwargs", "train_random_goals"):
+            (lambda _: _ is True),
+            ("kwargs", "agent", "kwargs", "replay_buffer", "kwargs", "her_ratio"):
+            (lambda _: _ == 0),
+        },
+        "HER": {
+            ("kwargs", "agent", "kwargs", "goal_generator", "name"):
+            (lambda _: _ == "NoGoalGenerator"),
+            ("kwargs", "env_fn", "kwargs", "novelty_bonus"):
+            (lambda _: _ == 0),
+            ("kwargs", "train_random_goals"):
+            (lambda _: _ is False),
+            ("kwargs", "agent", "kwargs", "replay_buffer", "kwargs", "her_ratio"):
+            (lambda _: _ > 0),
+        },
+        "Novelty bonuses": {
+            ("kwargs", "agent", "kwargs", "goal_generator", "name"):
+            (lambda _: _ == "NoGoalGenerator"),
+            ("kwargs", "env_fn", "kwargs", "novelty_bonus"):
+            (lambda _: _ > 0),
+            ("kwargs", "train_random_goals"):
+            (lambda _: _ is False),
+            ("kwargs", "agent", "kwargs", "replay_buffer", "kwargs", "her_ratio"):
+            (lambda _: _ == 0),
+        },
+        "No frontier filtering": {
+            ("kwargs", "agent", "kwargs", "goal_generator", "name"):
+            (lambda _: _ == "OmniGoalGenerator"),
+            ("kwargs", "agent", "kwargs", "goal_switcher", "kwargs", "switching_probability"):
+            (lambda _: _ > 0),
+            ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "max_familiarity"):
+            (lambda _: _ == 1),
+            ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "random_selection"):
+            (lambda _: _ is False),
+        },
+        "No early switching": {
+            ("kwargs", "agent", "kwargs", "goal_generator", "name"):
+            (lambda _: _ == "OmniGoalGenerator"),
+            ("kwargs", "agent", "kwargs", "goal_switcher", "kwargs", "switching_probability"):
+            (lambda _: _ == 0),
+            ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "max_familiarity"):
+            (lambda _: _ < 1),
+            ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "random_selection"):
+            (lambda _: _ is False),
+        },
+        "No prioritization": {
+            ("kwargs", "agent", "kwargs", "goal_generator", "name"):
+            (lambda _: _ == "OmniGoalGenerator"),
+            ("kwargs", "agent", "kwargs", "goal_switcher", "kwargs", "switching_probability"):
+            (lambda _: _ > 0),
+            ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "max_familiarity"):
+            (lambda _: _ < 1),
+            ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "random_selection"):
+            (lambda _: _ is True),
         },
     }
     metrics = [
@@ -258,5 +353,6 @@ create_figures(
     output_dir=args.output_dir,
     entity=args.wandb_entity,
     project=args.wandb_project,
-    fetch_data=False,  # (not args.no_fetch_data),
+    fetch_data=(not args.no_fetch_data),
+    # fetch_data=False,
 )
