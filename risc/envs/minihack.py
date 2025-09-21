@@ -15,11 +15,6 @@ from envs.reset_free_envs import ResetFreeEnv
 from gymnasium.spaces import Box
 
 
-# fix legacy error
-gym.wrappers.common.PassiveEnvChecker.reset = \
-    lambda self, seed=None, **kwargs: self.env.reset(**kwargs)
-
-
 @dataclass(frozen=True)
 class CharValues():
     WALL: int = 35
@@ -35,6 +30,21 @@ class ReseedWrapper(gym.Wrapper):
         self.env.unwrapped._goal_pos_set = {}
         self._level = 0
         self._random_goals = False
+        self._find_and_patch_reset(self.env, gym.wrappers.PassiveEnvChecker)
+
+    def _find_and_patch_reset(self, env, wrapper):
+        """ Patch `reset()` method in wrapper to ignore the `seed` keyword argument"""
+        def pop_seed_and_call(function, **kwargs):
+            if 'seed' in kwargs:
+                kwargs.pop('seed')
+            return function(**kwargs)
+
+        current_env = env
+        while hasattr(current_env, 'env'):
+            if isinstance(current_env, wrapper):
+                current_env.reset = partial(pop_seed_and_call, function=current_env.env.reset)
+                return
+            current_env = current_env.env
 
     def get_lvl_gen(self, lvl_index=None):
         env = self.env.unwrapped
@@ -62,6 +72,8 @@ class ReseedWrapper(gym.Wrapper):
         env = self.env.unwrapped
         des_file = self.get_lvl_gen(level).get_des()
         env.update(des_file)
+        if 'seed' in kwargs:
+            kwargs.pop('seed')
         obs, info = super(minihack.MiniHackNavigation, env).reset(**kwargs)
         env._goal_pos_set = env._object_positions(env.last_observation, "{")
         env.seed(0, 0, reseed=False)
