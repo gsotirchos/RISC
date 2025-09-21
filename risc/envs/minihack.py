@@ -4,6 +4,7 @@ import copy
 import random
 # from functools import partial
 from dataclasses import dataclass
+from functools import partial
 from inspect import getsource
 
 import numpy as np
