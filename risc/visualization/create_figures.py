@@ -7,7 +7,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-# import seaborn as sns
 import wandb
 
 warnings.filterwarnings("error")
@@ -20,8 +19,12 @@ def load_run_data(
     x_axis,
     project_path,
     fetch_data=True,
-    data_file="data.pkl",
+    data_file=None,
 ):
+    if data_file is None:
+        data_file = "data.pkl"
+    data_file_path = Path(__file__).resolve().parent / "data.pkl"
+
     # wandb.login()
     api = wandb.Api()
 
@@ -36,14 +39,12 @@ def load_run_data(
                 data[env][algo][metric] = None
 
     if not fetch_data:
-        if not os.path.exists(data_file):
-            print(f"Cannot load from ./{data_file}, will fetch online...")
-        else:
-            with open(data_file, "rb") as file:
-                return pickle.load(file)
-            print(f"Data loaded from ./{data_file}.")
+        assert os.path.exists(data_file_path), f"Data file: {data_file_path} does not exist."
+        with open(data_file_path, "rb") as file:
+            return pickle.load(file)
+        print(f"Data loaded from {data_file_path}.")
 
-    for i, run in enumerate(runs):
+    for run_idx, run in enumerate(runs):
         env = get_filter_name(run.config, env_filters)
         if env is None:
             continue
@@ -63,16 +64,16 @@ def load_run_data(
 
                 data[env][algo][metric] = merge_data(data[env][algo][metric], history)
 
-            print(f"({i}) Loaded data for {run.name} ({run.id}) successfully.")
+            print(f"[{run_idx}] Loaded data for {run.name} ({run.id}) successfully.")
 
         except Exception as e:
             print(f"Error loading data for run {run.name}: {e}")
             breakpoint()
             continue
 
-    with open(data_file, "wb") as file:
+    with open(data_file_path, "wb") as file:
         pickle.dump(data, file)
-    print(f"Data saved to ./{data_file}.")
+    print(f"Data saved to {data_file_path}.")
 
     return data
 
@@ -135,8 +136,8 @@ def convert_to_longform(data):
                     ).reset_index()
 
                     # Add columns for the environment, algorithm, and metric
-                    df_long["env"] = env_name
-                    df_long["algo"] = algo_name
+                    df_long["environment"] = env_name
+                    df_long["algorithm"] = algo_name
                     df_long["metric"] = metric_name
                     df_long["x_axis"] = df_long.index
 
@@ -149,7 +150,7 @@ def convert_to_longform(data):
 def smoothen_data(data, running_average_window):
     # Apply rolling average to each run"s metric values before grouping
     smoothed_data = pd.DataFrame()
-    for _, group in data.groupby(["env", "algo", "metric", "seed"]):
+    for _, group in data.groupby(["environment", "algorithm", "metric", "seed"]):
         group["metric_value_smoothed"] = group["metric_value"].rolling(
             window=running_average_window, min_periods=1, center=True
         ).mean()
@@ -160,7 +161,7 @@ def smoothen_data(data, running_average_window):
 def calculate_mean_error_stats(data, x_axis):
     # Group smoothed data to calculate the mean and standard deviation
     grouped_stats = data.groupby(
-        [x_axis, "env", "algo", "metric"]
+        [x_axis, "environment", "algorithm", "metric"]
     )["metric_value_smoothed"].agg(["mean", "std", "count"]).reset_index()
 
     # Calculate the SEM
@@ -173,52 +174,93 @@ def calculate_mean_error_stats(data, x_axis):
     return grouped_stats
 
 
-def plot_data(data, x_axis, output_dir, running_average_window=10):
-    plotting_data = convert_to_longform(data)
-
-    environments = plotting_data["env"].unique()  # TODO: parameterize
-    metrics = plotting_data["metric"].unique()  # TODO: parameterize
-
-    smoothed_data = smoothen_data(plotting_data, running_average_window)  # TODO: parameterize `running_average_window`
-
+def plot_data(
+    data,
+    output_dir,
+    x_axis,
+    environments,
+    algorithms,
+    metrics,
+    metric_names,
+    running_average_window,
+    xmax,
+    ymax=1,
+    legend_loc="center right",
+    colors=None,
+    figsize=(6, 5),
+    experiment_name="experiment",
+):
+    long_data = convert_to_longform(data)
+    smoothed_data = smoothen_data(long_data, running_average_window)
     stats = calculate_mean_error_stats(smoothed_data, x_axis)
 
-    for env in environments:
-        for metric in metrics:
-            # Filter the stats for the current environment and metric
-            plot_stats = stats[(stats["env"] == env) & (stats["metric"] == metric)]
+    xmax = np.roll(xmax, 1).flatten()
+    ymax = np.roll(ymax, 1).flatten()
+    for env_idx, environment in enumerate(environments):
+        ymax = np.roll(ymax, -1)
+        xmax = np.roll(xmax, -1)
+        for metric_idx, metric in enumerate(metrics):
+            plot_stats = stats[
+                (stats["environment"] == environment)
+                & (stats["metric"] == metric)
+                & (stats["algorithm"].isin(algorithms))
+            ]
 
-            if not plot_stats.empty:
-                plt.figure(figsize=(10, 6))  # TODO: parameterize figsize
+            if plot_stats.empty:
+                continue
 
-                # Plot the mean line for each algorithm
-                for algo in plot_stats["algo"].unique():  # TODO: parameterize algos
-                    algo_data = plot_stats[plot_stats["algo"] == algo]
-                    plt.plot(
-                        algo_data[x_axis],
-                        algo_data["mean"],
-                        label=algo
-                    )
+            plt.figure(figsize=figsize)
 
-                    # Use fill_between for the SEM band
-                    plt.fill_between(
-                        algo_data[x_axis],
-                        algo_data["lower_bound"],
-                        algo_data["upper_bound"],
-                        alpha=0.2
-                    )
+            # Get display names, defaulting to the original name if not in the dict
+            metric_display_name = metric_names.get(metric, metric) if metric_names else metric
 
-                plt.title(f"{env} - {metric}")  # TODO: parameterize with custom names from a metric_name dict
-                plt.xlabel(x_axis)
-                plt.ylabel(metric)  # TODO: parameterize with custom names from a metric_name dict
-                plt.xlim([0, 400000])  # TODO: parameterize x axis limits
-                plt.ylim([0, 1])  # TODO: parameterize y axis limits
-                plt.grid(True)
-                plt.legend(title="Algorithm")  # TODO: parameterize
-                plt.show()
+            # Plot the mean line for each algorithm
+            algo_colors = np.roll(colors, 1)
+            for algorithm in algorithms:
+                algo_data = plot_stats[plot_stats["algorithm"] == algorithm]
 
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+                if algo_data.empty:
+                    continue
+
+                algo_colors = np.roll(algo_colors, -1)
+                plt.plot(
+                    algo_data[x_axis],
+                    algo_data["mean"],
+                    color=algo_colors[0],
+                    label=algorithm
+                )
+                plt.fill_between(
+                    algo_data[x_axis],
+                    algo_data["lower_bound"],
+                    algo_data["upper_bound"],
+                    color=algo_colors[0],
+                    alpha=0.2
+                )
+
+            # Set plot titles and labels
+            plt.title(f"{environment}")
+            plt.xlabel("Train step")
+            plt.ylabel(metric_display_name)
+
+            # Set axis limits
+            plt.xlim([0, xmax[0]])
+            plt.ylim([0, ymax[0]])
+
+            plt.grid(True)
+            plt.legend(title="", loc=legend_loc[env_idx][metric_idx])
+
+            output_dir_path = Path(__file__).resolve().parent / output_dir
+            output_dir_path.mkdir(parents=True, exist_ok=True)
+
+            file_name = f"{experiment_name}_{environment}_{metric_display_name}.svg"
+            file_name = file_name.replace(" ", "_").replace("/","_")
+            output_file_path = output_dir_path / file_name
+
+            # Save the figure with high quality settings
+            # plt.savefig(output_file_path, format="svg", bbox_inches="tight")
+            print(f"Plot saved to {output_file_path}")
+            plt.show()
+            plt.close()
 
 
 def create_figures(output_dir, entity, project, fetch_data=True):
@@ -235,10 +277,14 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             ("kwargs", "env_fn", "kwargs", "env_name"): (lambda _: _ == "MiniGrid-Hallway-v1"),
             ("kwargs", "env_fn", "kwargs", "hallway_length"):  (lambda _: _ == 6),
         },
-        # "FourRooms": {
-        #     ("kwargs", "env_fn", "kwargs", "env_name"): (lambda _: _ == "MiniGrid-FourRooms-v1"),
+        "FourRooms": {
+            ("kwargs", "env_fn", "kwargs", "env_name"): (lambda _: _ == "MiniGrid-FourRooms-v1"),
+        },
+        # "BugTrap": {
+        #     ("kwargs", "env_fn", "kwargs", "env_name"): (lambda _: _ == "MiniGrid-BugTrap-v1"),
         # },
     }
+
     algo_filters = {
         "SIERL": {
             ("kwargs", "agent", "kwargs", "goal_generator", "name"):
@@ -250,7 +296,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "random_selection"):
             (lambda _: _ is False),
             ("kwargs", "agent", "kwargs", "replay_buffer", "kwargs", "capacity"):
-            (lambda _: _ == 100000),
+            (lambda _: _ == 100000 or _ == 300000),
         },
         "Q-learning": {
             ("kwargs", "agent", "kwargs", "goal_generator", "name"):
@@ -323,13 +369,17 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             (lambda _: _ is True),
         },
     }
+
     metrics = [
         "test/0_success",
         "test_random_goals/0_success",
         "lateral/success",
     ]
+
     x_axis = "train_step"
+
     project_path = f"{entity}/{project}"
+
     data = load_run_data(
         env_filters=env_filters,
         algo_filters=algo_filters,
@@ -339,10 +389,98 @@ def create_figures(output_dir, entity, project, fetch_data=True):
         fetch_data=fetch_data,
     )
 
-    plot_data(data, x_axis, output_dir)
+    metric_names = {
+        "test/0_success": "Success",
+        "test_random_goals/0_success": "Random-goal Success",
+        "lateral/success": "Lateral Success (training)",
+    }
+
+    colors = [
+        '#e41a1c',
+        '#4daf4a',
+        '#ff7f00',
+        '#984ea3',
+        '#377eb8',
+        '#dede00',
+        '#f781bf',
+        '#a65628',
+        '#999999',
+    ]
+
+    plots_args = [
+        {
+            "experiment_name": "experiments",
+            "x_axis": "train_step",
+            "environments": [
+                "Hallway 2-steps",
+                "Hallway 4-steps",
+                "Hallway 6-steps",
+                "FourRooms",
+            ],
+            "algorithms": [
+                "SIERL",
+                "Q-learning",
+                "Random-goals Q-learning",
+                "HER",
+                "Novelty bonuses",
+            ],
+            "metrics": metrics,
+            "metric_names": metric_names,
+            "running_average_window": 10,
+            "legend_loc": [
+                [
+                    "lower right",
+                    "center right",
+                    "lower right",
+                ],
+                [
+                    "lower right",
+                    "upper right",
+                    "lower right",
+                ],
+                [
+                    "lower right",
+                    "lower right",
+                    "lower right",
+                ],
+                [
+                    "lower right",
+                    "lower right",
+                    "lower right",
+                ],
+            ],
+            "colors": colors,
+            "xmax": [250000, 400000, 650000, 400000],
+            # "ymax": 1,
+            # "figsize": (6, 5),
+        },
+        {
+            "experiment_name": "ablations",
+            "x_axis": "train_step",
+            "environments": ["Hallway 6-steps"],
+            "algorithms": [
+                "SIERL",
+                "No early switching",
+                "No frontier filtering",
+                "No prioritization",
+            ],
+            "metrics": metrics,
+            "metric_names": metric_names,
+            "running_average_window": 10,
+            "legend_loc": [["lower right", "lower right", "lower right"]],
+            "colors": colors,
+            "xmax": [700000],
+            # "ymax": 1,
+            # "figsize": (6, 5),
+        },
+    ]
+
+    for plot_args in plots_args:
+        plot_data(data, output_dir, **plot_args)
 
 
-def main():
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--output-dir",
@@ -380,9 +518,3 @@ def main():
         # fetch_data=(not args.no_fetch_data),
         fetch_data=False,
     )
-
-
-if __name__ == "__main__":
-    main()
-
-main()
