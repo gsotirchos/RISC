@@ -146,21 +146,20 @@ def convert_to_longform(data):
     return plotting_data
 
 
-def plot_data(data, x_axis, output_dir, running_average=10):
-    plotting_data = convert_to_longform(data)
-    environments = plotting_data["env"].unique()
-    metrics = plotting_data["metric"].unique()
-
+def smoothen_data(data, running_average_window):
     # Apply rolling average to each run"s metric values before grouping
     smoothed_data = pd.DataFrame()
-    for _, group in plotting_data.groupby(["env", "algo", "metric", "seed"]):
+    for _, group in data.groupby(["env", "algo", "metric", "seed"]):
         group["metric_value_smoothed"] = group["metric_value"].rolling(
-            window=running_average, min_periods=1, center=True
+            window=running_average_window, min_periods=1, center=True
         ).mean()
         smoothed_data = pd.concat([smoothed_data, group])
+    return smoothed_data
 
-    # Group the smoothed data to calculate the mean and standard deviation
-    grouped_stats = smoothed_data.groupby(
+
+def calculate_mean_error_stats(data, x_axis):
+    # Group smoothed data to calculate the mean and standard deviation
+    grouped_stats = data.groupby(
         [x_axis, "env", "algo", "metric"]
     )["metric_value_smoothed"].agg(["mean", "std", "count"]).reset_index()
 
@@ -171,18 +170,29 @@ def plot_data(data, x_axis, output_dir, running_average=10):
     grouped_stats["upper_bound"] = grouped_stats["mean"] + grouped_stats["sem"]
     grouped_stats["lower_bound"] = grouped_stats["mean"] - grouped_stats["sem"]
 
+    return grouped_stats
+
+
+def plot_data(data, x_axis, output_dir, running_average_window=10):
+    plotting_data = convert_to_longform(data)
+
+    environments = plotting_data["env"].unique()  # TODO: parameterize
+    metrics = plotting_data["metric"].unique()  # TODO: parameterize
+
+    smoothed_data = smoothen_data(plotting_data, running_average_window)  # TODO: parameterize `running_average_window`
+
+    stats = calculate_mean_error_stats(smoothed_data, x_axis)
+
     for env in environments:
         for metric in metrics:
             # Filter the stats for the current environment and metric
-            plot_stats = grouped_stats[
-                (grouped_stats["env"] == env) & (grouped_stats["metric"] == metric)
-            ]
+            plot_stats = stats[(stats["env"] == env) & (stats["metric"] == metric)]
 
             if not plot_stats.empty:
-                plt.figure(figsize=(10, 6))
+                plt.figure(figsize=(10, 6))  # TODO: parameterize figsize
 
                 # Plot the mean line for each algorithm
-                for algo in plot_stats["algo"].unique():
+                for algo in plot_stats["algo"].unique():  # TODO: parameterize algos
                     algo_data = plot_stats[plot_stats["algo"] == algo]
                     plt.plot(
                         algo_data[x_axis],
@@ -198,13 +208,13 @@ def plot_data(data, x_axis, output_dir, running_average=10):
                         alpha=0.2
                     )
 
-                plt.title(f"{env} - {metric}")  # TODO metric name
+                plt.title(f"{env} - {metric}")  # TODO: parameterize with custom names from a metric_name dict
                 plt.xlabel(x_axis)
-                plt.ylabel(metric)  # TODO metric name
-                # plt.xlim()  # TODO
-                # plt.ylim()  # TODO
+                plt.ylabel(metric)  # TODO: parameterize with custom names from a metric_name dict
+                plt.xlim([0, 400000])  # TODO: parameterize x axis limits
+                plt.ylim([0, 1])  # TODO: parameterize y axis limits
                 plt.grid(True)
-                plt.legend(title="Algorithm")
+                plt.legend(title="Algorithm")  # TODO: parameterize
                 plt.show()
 
     if not os.path.exists(output_dir):
