@@ -257,9 +257,9 @@ def plot_data(
             output_file_path = output_dir_path / file_name
 
             # Save the figure with high quality settings
-            # plt.savefig(output_file_path, format="svg", bbox_inches="tight")
+            plt.savefig(output_file_path, format="svg", bbox_inches="tight")
             print(f"Plot saved to {output_file_path}")
-            plt.show()
+            # plt.show()
             plt.close()
 
 
@@ -392,7 +392,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
     metric_names = {
         "test/0_success": "Success",
         "test_random_goals/0_success": "Random-goal Success",
-        "lateral/success": "Lateral Success (training)",
+        "lateral/success": "Sub-goal success (training)",
     }
 
     colors = [
@@ -467,7 +467,13 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             "metrics": metrics,
             "metric_names": metric_names,
             "running_average_window": 10,
-            "legend_loc": [["lower right", "lower right", "lower right"]],
+            "legend_loc": [
+                [
+                "lower right",
+                "lower right",
+                "lower right"
+                ]
+            ],
             "colors": colors,
             "xmax": [700000],
             # "ymax": 1,
