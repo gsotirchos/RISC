@@ -4,12 +4,24 @@ import pickle
 import warnings
 from pathlib import Path
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import wandb
 
 warnings.filterwarnings("error")
+
+mpl.rcParams['lines.linewidth'] = 2
+# mpl.rcParams['axes.titlesize'] = "xx-large"
+# mpl.rcParams['axes.labelsize'] = "xx-large"
+# mpl.rcParams['legend.fontsize'] = "medium"
+mpl.rcParams['axes.titlesize'] = 30
+mpl.rcParams['axes.labelsize'] = 25
+mpl.rcParams['legend.fontsize'] = 12
+mpl.rcParams['legend.framealpha'] = 0.7
+
+# __file__ = "/Users/george/Desktop/RISC/risc/visualization/create_figures.py"  # DEBUG
 
 
 def load_run_data(
@@ -31,6 +43,8 @@ def load_run_data(
     runs = api.runs(path=project_path)
 
     data = {}
+    loaded_runs_ids = []
+
     for env in env_filters:
         data[env] = {}
         for algo in algo_filters:
@@ -38,19 +52,37 @@ def load_run_data(
             for metric in metrics:
                 data[env][algo][metric] = None
 
+    if os.path.exists(data_file_path):
+        with open(data_file_path, "rb") as file:
+            data, loaded_runs_ids = pickle.load(file)
+
+    # Skip checking online if requested
     if not fetch_data:
         assert os.path.exists(data_file_path), f"Data file: {data_file_path} does not exist."
-        with open(data_file_path, "rb") as file:
-            return pickle.load(file)
         print(f"Data loaded from {data_file_path}.")
+        return data
 
     for run_idx, run in enumerate(runs):
+        # Skip run if loaded already
+        if run.id in loaded_runs_ids:
+            print(f"[{run_idx}] Skipped {run.name} ({run.id}) as it is loaded already.")
+            continue
+
         env = get_filter_name(run.config, env_filters)
         if env is None:
+            print(f"[{run_idx}] Skipped {run.name} ({run.id}) as it is has no matching env.")
             continue
+
         algo = get_filter_name(run.config, algo_filters)
         if algo is None:
+            print(f"[{run_idx}] Skipped {run.name} ({run.id}) as it is has no matching algorithm.")
             continue
+
+        # Skip run if tagged with "ignore"
+        if any(tag.lower() == 'ignore' for tag in run.tags):
+            print(f"[{run_idx}] Ignored {run.name} ({run.id}).")
+            continue
+
         seed = run.config["kwargs"]["seed"]
 
         try:
@@ -65,6 +97,7 @@ def load_run_data(
                 data[env][algo][metric] = merge_data(data[env][algo][metric], history)
 
             print(f"[{run_idx}] Loaded data for {run.name} ({run.id}) successfully.")
+            loaded_runs_ids.append(run.id)
 
         except Exception as e:
             print(f"Error loading data for run {run.name}: {e}")
@@ -72,7 +105,7 @@ def load_run_data(
             continue
 
     with open(data_file_path, "wb") as file:
-        pickle.dump(data, file)
+        pickle.dump((data, loaded_runs_ids), file)
     print(f"Data saved to {data_file_path}.")
 
     return data
@@ -280,9 +313,9 @@ def create_figures(output_dir, entity, project, fetch_data=True):
         "FourRooms": {
             ("kwargs", "env_fn", "kwargs", "env_name"): (lambda _: _ == "MiniGrid-FourRooms-v1"),
         },
-        # "BugTrap": {
-        #     ("kwargs", "env_fn", "kwargs", "env_name"): (lambda _: _ == "MiniGrid-BugTrap-v1"),
-        # },
+        "BugTrap": {
+            ("kwargs", "env_fn", "kwargs", "env_name"): (lambda _: _ == "MiniGrid-BugTrap-v1"),
+        },
     }
 
     algo_filters = {
@@ -390,9 +423,9 @@ def create_figures(output_dir, entity, project, fetch_data=True):
     )
 
     metric_names = {
-        "test/0_success": "Success",
+        "test/0_success": "Main-goal Success",
         "test_random_goals/0_success": "Random-goal Success",
-        "lateral/success": "Sub-goal success (training)",
+        "lateral/success": "Sub-goal Success (training)",
     }
 
     colors = [
@@ -416,6 +449,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
                 "Hallway 4-steps",
                 "Hallway 6-steps",
                 "FourRooms",
+                "BugTrap",
             ],
             "algorithms": [
                 "SIERL",
@@ -424,9 +458,9 @@ def create_figures(output_dir, entity, project, fetch_data=True):
                 "HER",
                 "Novelty bonuses",
             ],
-            "metrics": metrics,
+            "metrics": metrics[:2],
             "metric_names": metric_names,
-            "running_average_window": 10,
+            "running_average_window": 15,
             "legend_loc": [
                 [
                     "lower right",
@@ -435,7 +469,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
                 ],
                 [
                     "lower right",
-                    "upper right",
+                    "center right",
                     "lower right",
                 ],
                 [
@@ -445,12 +479,17 @@ def create_figures(output_dir, entity, project, fetch_data=True):
                 ],
                 [
                     "lower right",
+                    "center right",
                     "lower right",
+                ],
+                [
+                    "lower right",
+                    "upper left",
                     "lower right",
                 ],
             ],
             "colors": colors,
-            "xmax": [250000, 400000, 650000, 400000],
+            "xmax": [130000, 110000, 650000, 250000, 330000],
             # "ymax": 1,
             # "figsize": (6, 5),
         },
@@ -464,9 +503,34 @@ def create_figures(output_dir, entity, project, fetch_data=True):
                 "No frontier filtering",
                 "No prioritization",
             ],
-            "metrics": metrics,
+            "metrics": metrics[:2],
             "metric_names": metric_names,
-            "running_average_window": 10,
+            "running_average_window": 15,
+            "legend_loc": [
+                [
+                "lower right",
+                "lower right",
+                "lower right"
+                ]
+            ],
+            "colors": colors,
+            "xmax": [700000],
+            # "ymax": 1,
+            # "figsize": (6, 5),
+        },
+        {
+            "experiment_name": "ablations",
+            "x_axis": "train_step",
+            "environments": ["Hallway 6-steps"],
+            "algorithms": [
+                "SIERL",
+                "No early switching",
+                "No frontier filtering",
+                "No prioritization",
+            ],
+            "metrics": [metrics[2]],
+            "metric_names": metric_names,
+            "running_average_window": 70,
             "legend_loc": [
                 [
                 "lower right",
@@ -521,6 +585,6 @@ if __name__ == "__main__":
         entity="g-sotirchos-tu-delft",
         # project=args.wandb_project,
         project="Experiments",
-        # fetch_data=(not args.no_fetch_data),
-        fetch_data=False,
+        fetch_data=(not args.no_fetch_data),
+        # fetch_data=False,
     )
