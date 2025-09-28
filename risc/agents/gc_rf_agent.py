@@ -371,9 +371,7 @@ class GCResetFree(Agent):
         self._logger.log_metrics(metrics, prefix="")
 
     def should_switch(self, update_info, agent_traj_state):
-        success = self._success_fn(
-            update_info.next_observation, agent_traj_state.current_goal
-        )
+        success = self._success_fn(update_info.next_observation, agent_traj_state.current_goal)
         if self._use_termination_signal:
             terminated = success
         else:
