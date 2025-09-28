@@ -175,7 +175,6 @@ def success_fn(observation, goal=None):
     obs = observation["observation"].squeeze()
     if goal is None:
         goal = observation["desired_goal"]
-    breakpoint()
     if CharValues.AGENT in goal:
         return np.allclose(obs, goal)
     def get_positions_set(state, value):
