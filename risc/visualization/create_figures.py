@@ -489,7 +489,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
                 ],
             ],
             "colors": colors,
-            "xmax": [130000, 110000, 650000, 250000, 330000],
+            "xmax": [130000, 110000, 500000, 250000, 330000],
             # "ymax": 1,
             # "figsize": (6, 5),
         },
@@ -514,7 +514,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
                 ]
             ],
             "colors": colors,
-            "xmax": [700000],
+            "xmax": [515000],
             # "ymax": 1,
             # "figsize": (6, 5),
         },
@@ -539,7 +539,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
                 ]
             ],
             "colors": colors,
-            "xmax": [700000],
+            "xmax": [515000],
             # "ymax": 1,
             # "figsize": (6, 5),
         },
@@ -585,6 +585,6 @@ if __name__ == "__main__":
         entity="g-sotirchos-tu-delft",
         # project=args.wandb_project,
         project="Experiments",
-        fetch_data=(not args.no_fetch_data),
-        # fetch_data=False,
+        # fetch_data=(not args.no_fetch_data),
+        fetch_data=False,
     )
