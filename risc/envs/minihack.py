@@ -5,7 +5,7 @@ import random
 # from functools import partial
 from dataclasses import dataclass
 from functools import partial
-from inspect import getsource
+# from inspect import getsource
 
 import numpy as np
 import gymnasium as gym
@@ -33,7 +33,7 @@ class ReseedWrapper(gym.Wrapper):
         self._find_and_patch_reset(self.env, gym.wrappers.PassiveEnvChecker)
 
     def _find_and_patch_reset(self, env, wrapper):
-        """ Patch `reset()` method in wrapper to ignore the `seed` keyword argument"""
+        """ Patch `reset()` method in requested wrapper to ignore the `seed` keyword argument"""
         def pop_seed_and_call(function, **kwargs):
             if 'seed' in kwargs:
                 kwargs.pop('seed')
@@ -58,8 +58,9 @@ class ReseedWrapper(gym.Wrapper):
         flags.append("noteleport")
         flags.append("premapped")
         lvl_gen = minihack.LevelGenerator(map=map, lit=True, flags=flags, solidfill=" ")
-        for b in info["boulders"]:
-            lvl_gen.add_boulder(b)
+        lvl_gen.add_boulder(info["boulders"][1])
+        # for b in info["boulders"]:
+        #     lvl_gen.add_boulder(b)
         for f in info["fountains"]:
             lvl_gen.add_fountain(f)
         lvl_gen.set_start_pos(info["player"])
