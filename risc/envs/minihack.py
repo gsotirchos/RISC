@@ -20,8 +20,9 @@ class CharValues():
     WALL: int = 35
     FLOOR: int = 46
     AGENT: int = 64
-    BOX: int = 96
-    GOAL: int = 123
+    START: int = 60
+    BOULDER: int = 96
+    FOUNTAIN: int = 123
 
 
 class ReseedWrapper(gym.Wrapper):
@@ -61,8 +62,11 @@ class ReseedWrapper(gym.Wrapper):
         lvl_gen.add_boulder(info["boulders"][1])
         # for b in info["boulders"]:
         #     lvl_gen.add_boulder(b)
-        for f in info["fountains"]:
-            lvl_gen.add_fountain(f)
+        lvl_gen.add_fountain(info["fountains"][0])
+        lvl_gen.add_fountain(info["fountains"][1])
+        lvl_gen.add_fountain(info["fountains"][2])
+        # for f in info["fountains"]:
+        #     lvl_gen.add_fountain(f)
         lvl_gen.set_start_pos(info["player"])
         return lvl_gen
 
@@ -104,8 +108,9 @@ class GCObsWrapper(gym.ObservationWrapper):
         obs = np.expand_dims(obs, axis=0)
         self.goal = copy.deepcopy(obs)
         self.goal[self.goal == CharValues.AGENT] = CharValues.FLOOR
-        self.goal[self.goal == CharValues.BOX] = CharValues.FLOOR
-        self.goal[self.goal == CharValues.GOAL] = CharValues.BOX
+        # self.goal[self.goal == CharValues.START] = CharValues.FLOOR
+        self.goal[self.goal == CharValues.BOULDER] = CharValues.FLOOR
+        self.goal[self.goal == CharValues.FOUNTAIN] = CharValues.BOULDER
         return {"observation": obs, "desired_goal": self.goal}
 
 
@@ -167,16 +172,17 @@ class MiniHackEnv(GymEnv):
 
 
 def success_fn(observation, goal=None):
-    obs = observation["observation"]
+    obs = observation["observation"].squeeze()
     if goal is None:
         goal = observation["desired_goal"]
-    if not np.any(obs == CharValues.GOAL):
-        # success if all boxes are moved to the goal tiles
-        return True
-    if np.allclose(obs, goal):
-        # success if the current goal state is reached
-        return True
-    return False
+    breakpoint()
+    if CharValues.AGENT in goal:
+        return np.allclose(obs, goal)
+    def get_positions_set(state, value):
+        return set(map(tuple, np.argwhere(state == value)))
+    boulders_pos_set = get_positions_set(obs, CharValues.BOULDER)
+    goal_boulders_pos_set = get_positions_set(obs, CharValues.FOUNTAIN)
+    return boulders_pos_set <= goal_boulders_pos_set
 
 
 def reward_fn(observation, goal=None, env_reward=0, **kwargs):
