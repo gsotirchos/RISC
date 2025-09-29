@@ -102,15 +102,25 @@ class GCObsWrapper(gym.ObservationWrapper):
                 "desired_goal": observation_space,
             }
         )
+        self.goal = None
+
+    def _update_goal(self, observation):
+        self.goal = copy.deepcopy(observation["observation"])
+        self.goal[self.goal == CharValues.AGENT] = CharValues.FLOOR
+        self.goal[self.goal == CharValues.BOULDER] = CharValues.FLOOR
+        self.goal[self.goal == CharValues.FOUNTAIN] = CharValues.BOULDER
+        observation["desired_goal"] = self.goal
+        return observation
+
+    def reset(self, *args, **kwargs):
+        obs, info = super().reset(*args, **kwargs)
+        obs = self._update_goal(obs)
+        return obs, info
 
     def observation(self, observation):
         obs = observation["chars"][7:-4, 34:-35]
         obs = np.expand_dims(obs, axis=0)
-        self.goal = copy.deepcopy(obs)
-        self.goal[self.goal == CharValues.AGENT] = CharValues.FLOOR
-        # self.goal[self.goal == CharValues.START] = CharValues.FLOOR
-        self.goal[self.goal == CharValues.BOULDER] = CharValues.FLOOR
-        self.goal[self.goal == CharValues.FOUNTAIN] = CharValues.BOULDER
+        obs[self.goal == CharValues.START] = CharValues.FLOOR
         return {"observation": obs, "desired_goal": self.goal}
 
 
@@ -132,10 +142,23 @@ class MiniHackEnv(GymEnv):
         self._env.set_wrapper_attr("_elapsed_steps", 0)
         self.seed(seed=seed)
 
+    @staticmethod
+    def success_fn(observation, goal=None):
+        obs = observation["observation"]
+        if goal is None:
+            goal = observation["desired_goal"]
+        if CharValues.AGENT in goal:
+            return np.allclose(obs, goal)
+        def get_positions_set(state, value):
+            return set(map(tuple, np.argwhere(state.squeeze() == value)))
+        boulders_pos_set = get_positions_set(obs, CharValues.BOULDER)
+        goal_boulders_pos_set = get_positions_set(goal, CharValues.BOULDER)
+        return boulders_pos_set <= goal_boulders_pos_set
+
     def step(self, action, **kwargs):
         obs, reward, terminated, truncated, self._turn, info = super().step(action, **kwargs)
+        terminated = self.success_fn(obs)
         # truncated = bool(terminated)
-        # terminated = self.is_successful(concat_to_gc_obs(observation))
         if self._env.render_mode == "human":
             os.system('cls' if os.name == 'nt' else 'clear')
             self.render()
@@ -171,22 +194,9 @@ class MiniHackEnv(GymEnv):
         pass
 
 
-def success_fn(observation, goal=None):
-    obs = observation["observation"].squeeze()
-    if goal is None:
-        goal = observation["desired_goal"]
-    if CharValues.AGENT in goal:
-        return np.allclose(obs, goal)
-    def get_positions_set(state, value):
-        return set(map(tuple, np.argwhere(state == value)))
-    boulders_pos_set = get_positions_set(obs, CharValues.BOULDER)
-    goal_boulders_pos_set = get_positions_set(obs, CharValues.FOUNTAIN)
-    return boulders_pos_set <= goal_boulders_pos_set
-
-
 def reward_fn(observation, goal=None, env_reward=0, **kwargs):
-    # bonus = -1 + float(success_fn(observation, goal))
-    bonus = float(success_fn(observation, goal))
+    # bonus = -1 + float(MiniHackEnv.success_fn(observation, goal))
+    bonus = float(MiniHackEnv.success_fn(observation, goal))
     return env_reward + bonus
 
 
@@ -234,7 +244,7 @@ def get_minihack_envs(
     return ResetFreeEnv(
         train_env=lambda: train_env,
         eval_env=lambda: eval_env,
-        success_fn=success_fn,
+        success_fn=MiniHackEnv.success_fn,
         reward_fn=reward_fn,
         replace_goal_fn=replace_goal_fn,
         all_states_fn=None,

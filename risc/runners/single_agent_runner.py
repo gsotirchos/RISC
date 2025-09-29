@@ -173,6 +173,7 @@ class SingleAgentRunner(_SingleAgentRunner):
         agent = self._agents[0]
         stacked_observation = transition_info.get_stacked_state(agent, observation)
         action, agent_traj_state = agent.act(stacked_observation, agent_traj_state)
+        # breakpoint()
         (
             next_observation,
             reward,
