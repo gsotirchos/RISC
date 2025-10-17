@@ -441,62 +441,112 @@ def create_figures(output_dir, entity, project, fetch_data=True):
     ]
 
     plots_args = [
-        {
-            "experiment_name": "experiments",
-            "x_axis": "train_step",
-            "environments": [
-                "Hallway 2-steps",
-                "Hallway 4-steps",
-                "Hallway 6-steps",
-                "FourRooms",
-                "BugTrap",
-            ],
-            "algorithms": [
-                "SIERL",
-                "Q-learning",
-                "Random-goals Q-learning",
-                "HER",
-                "Novelty bonuses",
-            ],
-            "metrics": metrics[:2],
-            "metric_names": metric_names,
-            "running_average_window": 15,
-            "legend_loc": [
-                [
-                    "lower right",
-                    "center right",
-                    "lower right",
-                ],
-                [
-                    "lower right",
-                    "center right",
-                    "lower right",
-                ],
-                [
-                    "lower right",
-                    "lower right",
-                    "lower right",
-                ],
-                [
-                    "lower right",
-                    "center right",
-                    "lower right",
-                ],
-                [
-                    "lower right",
-                    "upper left",
-                    "lower right",
-                ],
-            ],
-            "colors": colors,
-            "xmax": [130000, 110000, 500000, 250000, 330000],
-            # "ymax": 1,
-            # "figsize": (6, 5),
-        },
+        # {
+        #     "experiment_name": "experiments",
+        #     "x_axis": "train_step",
+        #     "environments": [
+        #         "Hallway 2-steps",
+        #         "Hallway 4-steps",
+        #         "Hallway 6-steps",
+        #         "FourRooms",
+        #         "BugTrap",
+        #     ],
+        #     "algorithms": [
+        #         "SIERL",
+        #         "Q-learning",
+        #         "Random-goals Q-learning",
+        #         "HER",
+        #         "Novelty bonuses",
+        #     ],
+        #     "metrics": metrics[:2],
+        #     "metric_names": metric_names,
+        #     "running_average_window": 15,
+        #     "legend_loc": [
+        #         [
+        #             "lower right",
+        #             "center right",
+        #             "lower right",
+        #         ],
+        #         [
+        #             "lower right",
+        #             "center right",
+        #             "lower right",
+        #         ],
+        #         [
+        #             "lower right",
+        #             "lower right",
+        #             "lower right",
+        #         ],
+        #         [
+        #             "lower right",
+        #             "center right",
+        #             "lower right",
+        #         ],
+        #         [
+        #             "lower right",
+        #             "upper left",
+        #             "lower right",
+        #         ],
+        #     ],
+        #     "colors": colors,
+        #     "xmax": [130000, 110000, 500000, 250000, 330000],
+        #     # "ymax": 1,
+        #     # "figsize": (6, 5),
+        # },
+        # {
+        #     "experiment_name": "ablations",
+        #     "x_axis": "train_step",
+        #     "environments": ["Hallway 6-steps"],
+        #     "algorithms": [
+        #         "SIERL",
+        #         "No early switching",
+        #         "No frontier filtering",
+        #         "No prioritization",
+        #     ],
+        #     "metrics": metrics[:2],
+        #     "metric_names": metric_names,
+        #     "running_average_window": 15,
+        #     "legend_loc": [
+        #         [
+        #         "lower right",
+        #         "lower right",
+        #         "lower right"
+        #         ]
+        #     ],
+        #     "colors": colors,
+        #     "xmax": [515000],
+        #     # "ymax": 1,
+        #     # "figsize": (6, 5),
+        # },
+        # {
+        #     "experiment_name": "ablations",
+        #     "x_axis": "train_step",
+        #     "environments": ["Hallway 6-steps"],
+        #     "algorithms": [
+        #         "SIERL",
+        #         "No early switching",
+        #         "No frontier filtering",
+        #         "No prioritization",
+        #     ],
+        #     "metrics": [metrics[2]],
+        #     "metric_names": metric_names,
+        #     "running_average_window": 70,
+        #     "legend_loc": [
+        #         [
+        #         "lower right",
+        #         "lower right",
+        #         "lower right"
+        #         ]
+        #     ],
+        #     "colors": colors,
+        #     "xmax": [515000],
+        #     # "ymax": 1,
+        #     # "figsize": (6, 5),
+        # },
         {
             "experiment_name": "ablations",
             "x_axis": "train_step",
-            "environments": ["Hallway 6-steps"],
+            "environments": ["FourRooms"],
             "algorithms": [
                 "SIERL",
                 "No early switching",
@@ -514,14 +564,14 @@ def create_figures(output_dir, entity, project, fetch_data=True):
                 ]
             ],
             "colors": colors,
-            "xmax": [515000],
+            "xmax": [280000],
             # "ymax": 1,
             # "figsize": (6, 5),
         },
         {
             "experiment_name": "ablations",
             "x_axis": "train_step",
-            "environments": ["Hallway 6-steps"],
+            "environments": ["FourRooms"],
             "algorithms": [
                 "SIERL",
                 "No early switching",
@@ -539,7 +589,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
                 ]
             ],
             "colors": colors,
-            "xmax": [515000],
+            "xmax": [280000],
             # "ymax": 1,
             # "figsize": (6, 5),
         },
