@@ -508,9 +508,9 @@ def create_figures(output_dir, entity, project, fetch_data=True):
         #     "running_average_window": 15,
         #     "legend_loc": [
         #         [
-        #         "lower right",
-        #         "lower right",
-        #         "lower right"
+        #             "lower right",
+        #             "lower right",
+        #             "lower right"
         #         ]
         #     ],
         #     "colors": colors,
@@ -533,9 +533,9 @@ def create_figures(output_dir, entity, project, fetch_data=True):
         #     "running_average_window": 70,
         #     "legend_loc": [
         #         [
-        #         "lower right",
-        #         "lower right",
-        #         "lower right"
+        #             "lower right",
+        #             "lower right",
+        #             "lower right"
         #         ]
         #     ],
         #     "colors": colors,
@@ -558,9 +558,9 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             "running_average_window": 15,
             "legend_loc": [
                 [
-                "lower right",
-                "lower right",
-                "lower right"
+                    "lower right",
+                    "lower right",
+                    "lower right"
                 ]
             ],
             "colors": colors,
@@ -583,9 +583,9 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             "running_average_window": 70,
             "legend_loc": [
                 [
-                "lower right",
-                "lower right",
-                "lower right"
+                    "lower right",
+                    "lower right",
+                    "lower right"
                 ]
             ],
             "colors": colors,

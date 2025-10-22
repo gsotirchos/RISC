@@ -195,8 +195,7 @@ class MiniHackEnv(GymEnv):
 
 
 def reward_fn(observation, goal=None, env_reward=0, **kwargs):
-    # bonus = -1 + float(MiniHackEnv.success_fn(observation, goal))
-    bonus = float(MiniHackEnv.success_fn(observation, goal))
+    bonus = -1 + float(MiniHackEnv.success_fn(observation, goal))
     return env_reward + bonus
 
 
