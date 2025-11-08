@@ -120,7 +120,7 @@ class GCObsWrapper(gym.ObservationWrapper):
         return obs, info
 
     def observation(self, observation):
-        obs = observation["chars"][7:-4, 34:-35]
+        obs = copy.deepcopy(observation["chars"][7:-4, 34:-35])
         obs = np.expand_dims(obs, axis=0)
         obs[self.goal == CharValues.START] = CharValues.FLOOR
         return {"observation": obs, "desired_goal": self.goal}
@@ -157,15 +157,15 @@ class MiniHackEnv(GymEnv):
         goal_boulders_pos_set = get_positions_set(goal, CharValues.BOULDER)
         return boulders_pos_set <= goal_boulders_pos_set
 
-    def step(self, action, **kwargs):
-        obs, reward, terminated, truncated, self._turn, info = super().step(action, **kwargs)
-        terminated = self.success_fn(obs)
+    def step(self, action):
+        observation, reward, terminated, truncated, self._turn, info = super().step(action)
+        terminated = self.success_fn(observation)
         # truncated = bool(terminated)
         if self._env.render_mode == "human":
             os.system('cls' if os.name == 'nt' else 'clear')
             self.render()
             time.sleep(0.25)
-        return obs, reward, terminated, truncated, self._turn, info
+        return observation, reward, terminated, truncated, self._turn, info
 
     def close(self):
         # TODO check if any wrapper should be closed
@@ -198,7 +198,7 @@ class MiniHackEnv(GymEnv):
 
 def reward_fn(observation, goal=None, env_reward=0, **kwargs):
     bonus = -1 + float(MiniHackEnv.success_fn(observation, goal))
-    return env_reward + bonus
+    return bonus # + env_reward
 
 
 def replace_goal_fn(obs, goal):

@@ -23,6 +23,9 @@ from hive.utils.loggers import ScheduledLogger, NullLogger
 from hive.utils.utils import seeder
 from wandb_osh.hooks import TriggerWandbSyncHook
 
+# from envs.utils import array_to_ascii
+# from pprint import pprint
+
 
 class Timer:
     def __init__(self):
@@ -173,7 +176,6 @@ class SingleAgentRunner(_SingleAgentRunner):
         agent = self._agents[0]
         stacked_observation = transition_info.get_stacked_state(agent, observation)
         action, agent_traj_state = agent.act(stacked_observation, agent_traj_state)
-        # breakpoint()
         (
             next_observation,
             reward,
@@ -202,6 +204,15 @@ class SingleAgentRunner(_SingleAgentRunner):
             truncated=truncated,
             info=other_info,
         )
+        # print(f"observation: {array_to_ascii(update_info.observation['observation'])}")
+        # print(f"next_observation: {array_to_ascii(update_info.next_observation['observation'])}")
+        # print(f"desired_goal: {array_to_ascii(update_info.next_observation['desired_goal'])}")
+        # print(f"current_goal: {array_to_ascii(agent_traj_state.current_goal)}")
+        # print(f"reward: {update_info.reward}")
+        # print(f"terminated: {update_info.terminated}")
+        # print(f"truncated: {update_info.truncated}")
+        # print(f"direction: {agent_traj_state.current_direction}")
+        # breakpoint()
         if self._training:
             agent_traj_state = agent.update(copy.deepcopy(update_info), agent_traj_state)
 

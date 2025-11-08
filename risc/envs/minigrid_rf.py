@@ -216,9 +216,7 @@ class MiniGridEnv(GymEnv):
         self._logger = logger
 
     def step(self, action):
-        observation, reward, terminated, truncated, self._turn, info = super().step(
-            action
-        )
+        observation, reward, terminated, truncated, self._turn, info = super().step(action)
         if self._reset_free:
             truncated, terminated = False, False
         reward = reward != 0

@@ -63,3 +63,40 @@ def heatmap(
     )
 
     return ax
+
+
+
+def array_to_ascii(arr):
+    """
+    Maps a 2D NumPy array of integers to a specific set of characters
+    and prints the resulting ASCII art.
+
+    The input is expected to be a 3D array (like from an image),
+    so we will select the first 2D plane (arr[0]).
+    """
+    char_map = {
+        35: '#',
+        46: '.',
+        123: '{',
+        64: '@',
+        60: '<',
+        96: '`',
+        32: ' ',
+    }
+    default_char = '?'
+    if arr.ndim == 3:
+        plane = arr[0]
+    elif arr.ndim == 2:
+        plane = arr
+    else:
+        print(f"Error: Input array has {arr.ndim} dimensions. Expected 2 or 3.")
+        return
+    output_lines = []
+    for row in plane:
+        current_line = []
+        for num in row:
+            char = char_map.get(num, default_char)
+            current_line.append(char)
+        output_lines.append("".join(current_line))
+    output_string = "\n".join(output_lines)
+    return output_string
