@@ -387,7 +387,7 @@ def reward_fn(
         goal_reward = env_reward
     if novelty_bonus != 0:
         counts = replay_buffer.state_counts
-        bonus += novelty_bonus / (1 + np.sqrt(counts[observation['observation']]))
+        bonus += novelty_bonus / (1 + np.sqrt(counts[observation["observation"]]))
     success = float(success_fn(observation, goal))
     reward = step_reward * (1 - success) + goal_reward * success
     return reward + bonus
@@ -482,8 +482,8 @@ def get_minigrid_envs(
         all_states_fn=lambda: all_obs,
         vis_fn=create_vis_fn((env._width, env._height)),
         get_distance_fn=partial(get_distance_calculator, initial_state=initial_obs["observation"]),
-        goal_states=get_unique_states(initial_obs['desired_goal']),
-        initial_states=get_unique_states(initial_obs['observation'][:1]),
+        goal_states=get_unique_states(initial_obs["desired_goal"]),
+        initial_states=get_unique_states(initial_obs["observation"][:1]),
         forward_demos=None,
         backward_demos=None,
         eval_every=eval_every,

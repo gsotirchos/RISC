@@ -36,12 +36,12 @@ class ReseedWrapper(gym.Wrapper):
     def _find_and_patch_reset(self, env, wrapper):
         """ Patch `reset()` method in requested wrapper to ignore the `seed` keyword argument"""
         def pop_seed_and_call(function, **kwargs):
-            if 'seed' in kwargs:
-                kwargs.pop('seed')
+            if "seed" in kwargs:
+                kwargs.pop("seed")
             return function(**kwargs)
 
         current_env = env
-        while hasattr(current_env, 'env'):
+        while hasattr(current_env, "env"):
             if isinstance(current_env, wrapper):
                 current_env.reset = partial(pop_seed_and_call, function=current_env.env.reset)
                 return
@@ -59,7 +59,7 @@ class ReseedWrapper(gym.Wrapper):
         flags.append("noteleport")
         flags.append("premapped")
         lvl_gen = minihack.LevelGenerator(map=map, lit=True, flags=flags, solidfill=" ")
-        lvl_gen.add_boulder(info["boulders"][1])
+        lvl_gen.add_boulder((6, 3))
         # for b in info["boulders"]:
         #     lvl_gen.add_boulder(b)
         lvl_gen.add_fountain((7, 3))
@@ -79,8 +79,8 @@ class ReseedWrapper(gym.Wrapper):
         env = self.env.unwrapped
         des_file = self.get_lvl_gen(level).get_des()
         env.update(des_file)
-        if 'seed' in kwargs:
-            kwargs.pop('seed')
+        if "seed" in kwargs:
+            kwargs.pop("seed")
         obs, info = super(minihack.MiniHackNavigation, env).reset(**kwargs)
         env._goal_pos_set = env._object_positions(env.last_observation, "{")
         env.seed(0, 0, reseed=False)
@@ -162,7 +162,7 @@ class MiniHackEnv(GymEnv):
         terminated = self.success_fn(observation)
         # truncated = bool(terminated)
         if self._env.render_mode == "human":
-            os.system('cls' if os.name == 'nt' else 'clear')
+            os.system("cls" if os.name == "nt" else "clear")
             self.render()
             time.sleep(0.25)
         return observation, reward, terminated, truncated, self._turn, info
@@ -182,11 +182,9 @@ class MiniHackEnv(GymEnv):
         return observation
 
     def place_subgoal(self, pos):
-        # TODO
         pass
 
     def remove_subgoal(self):
-        # TODO
         pass
 
     def register_logger(self, logger):
@@ -238,8 +236,8 @@ def get_minihack_envs(
         **kwargs
     )
     obs, _ =  train_env.reset()
-    initial_states = np.expand_dims(obs['observation'], axis=0)
-    goal_states = np.expand_dims(obs['desired_goal'], axis=0)
+    initial_states = np.expand_dims(obs["observation"], axis=0)
+    goal_states = np.expand_dims(obs["desired_goal"], axis=0)
     forward_demos = None
     backward_demos = None
     return ResetFreeEnv(

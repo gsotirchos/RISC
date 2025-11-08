@@ -458,7 +458,7 @@ class SingleAgentRunner(_SingleAgentRunner):
                 else:
                     environment.remove_subgoal()
                 # Handle teleport requests
-                if hasattr(agent_traj_state, 'current_direction'):
+                if hasattr(agent_traj_state, "current_direction"):
                     if agent_traj_state.current_direction.startswith("teleport"):
                         observation, transition_info, agent_traj_state = self.teleport_to_goal(
                             environment, agent_traj_state
@@ -494,23 +494,23 @@ class SingleAgentRunner(_SingleAgentRunner):
     def memory_dump(self):
         """
         Load with:
-        with open("memory.pickle", 'rb') as dump:
+        with open("memory.pickle", "rb") as dump:
             objs = pickle.load(dump)
         """
-        dump = open("memory.pickle", 'wb')
+        dump = open("memory.pickle", "wb")
         xs = []
         for obj in gc.get_objects():
-            if hasattr(obj, '__class__'):
+            if hasattr(obj, "__class__"):
                 i = id(obj)
                 size = sys.getsizeof(obj, 0)
                 cls = str(obj.__class__)
                 referents = [id(o) for o in gc.get_referents(obj)]
                 # referrers = [id(o) for o in gc.get_referrers(obj)]
                 xs.append({
-                    'size': size,
-                    'class': cls,
-                    'id': i,
-                    'referents': len(referents),
-                    # 'referrers': len(referrers),
+                    "size": size,
+                    "class": cls,
+                    "id": i,
+                    "referents": len(referents),
+                    # "referrers": len(referrers),
                 })
         pickle.dump(xs, dump)
