@@ -345,9 +345,6 @@ class OmniGoalGenerator(GoalGenerator):
                     agent._replay_buffer.familiarities[state_action] <= self._max_familiarity
                 )
             )
-            self._dbg_print(
-              f"frontier state-actions: {self._dbg_format(frontier_states[:, 0], frontier_actions)}"
-            )
             if frontier_states is None:
                 goal_state = main_goal_state if agent_traj_state.forward else initial_state
                 self._dbg_print("No frontier states yet", "   ")
@@ -358,6 +355,9 @@ class OmniGoalGenerator(GoalGenerator):
                 self._dbg_print(f"goal state: {self._dbg_format(frontier_states[:, 0])}", "   ")
                 self._dbg_print(f"goal action: {frontier_actions[0]}", "   ")
                 return frontier_states[:, 0], frontier_actions[0]
+            self._dbg_print(
+              f"frontier state-actions: {self._dbg_format(frontier_states[:, 0], frontier_actions)}"
+            )
             if self._random_selection:
                 priority = None
             else:
