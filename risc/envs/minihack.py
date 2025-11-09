@@ -59,7 +59,7 @@ class ReseedWrapper(gym.Wrapper):
         flags.append("noteleport")
         flags.append("premapped")
         lvl_gen = minihack.LevelGenerator(map=map, lit=True, flags=flags, solidfill=" ")
-        lvl_gen.add_boulder((6, 3))
+        lvl_gen.add_boulder((5, 3))
         # for b in info["boulders"]:
         #     lvl_gen.add_boulder(b)
         lvl_gen.add_fountain((7, 3))
@@ -111,6 +111,7 @@ class GCObsWrapper(gym.ObservationWrapper):
         self.goal[self.goal == CharValues.AGENT] = CharValues.FLOOR
         self.goal[self.goal == CharValues.BOULDER] = CharValues.FLOOR
         self.goal[self.goal == CharValues.FOUNTAIN] = CharValues.BOULDER
+        self.goal[self.goal == CharValues.START] = CharValues.FLOOR
         observation["desired_goal"] = self.goal
         return observation
 
@@ -122,7 +123,7 @@ class GCObsWrapper(gym.ObservationWrapper):
     def observation(self, observation):
         obs = copy.deepcopy(observation["chars"][7:-4, 34:-35])
         obs = np.expand_dims(obs, axis=0)
-        obs[self.goal == CharValues.START] = CharValues.FLOOR
+        obs[obs == CharValues.START] = CharValues.FLOOR
         return {"observation": obs, "desired_goal": self.goal}
 
 
