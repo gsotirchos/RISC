@@ -59,17 +59,17 @@ class ReseedWrapper(gym.Wrapper):
         flags.append("noteleport")
         flags.append("premapped")
         lvl_gen = minihack.LevelGenerator(map=map, lit=True, flags=flags, solidfill=" ")
-        lvl_gen.add_boulder((5, 3))
-        # for b in info["boulders"]:
-        #     lvl_gen.add_boulder(b)
-        lvl_gen.add_fountain((7, 3))
-        lvl_gen.add_fountain(info["fountains"][0])
-        lvl_gen.add_fountain(info["fountains"][1])
-        lvl_gen.add_fountain(info["fountains"][2])
-        # for f in info["fountains"]:
-        #     lvl_gen.add_fountain(f)
+        # lvl_gen.add_boulder(info["boulders"][1])
+        for b in info["boulders"]:
+            lvl_gen.add_boulder(b)
+        # lvl_gen.add_fountain((7, 3))
+        # lvl_gen.add_fountain(info["fountains"][0])
+        # lvl_gen.add_fountain(info["fountains"][1])
+        # lvl_gen.add_fountain(info["fountains"][2])
+        for f in info["fountains"]:
+            lvl_gen.add_fountain(f)
         lvl_gen.set_start_pos(info["player"])
-        lvl_gen.fill_terrain("fillrect", " ", 0, 4, 10, 9)
+        # lvl_gen.fill_terrain("fillrect", " ", 0, 4, 10, 9)
         return lvl_gen
 
     def reset(self, level=None, **kwargs):

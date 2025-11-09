@@ -204,10 +204,10 @@ class SingleAgentRunner(_SingleAgentRunner):
             truncated=truncated,
             info=other_info,
         )
-        # print(f"observation: {array_to_ascii(update_info.observation['observation'])}")
-        # print(f"next_observation: {array_to_ascii(update_info.next_observation['observation'])}")
-        # print(f"desired_goal: {array_to_ascii(update_info.next_observation['desired_goal'])}")
-        # print(f"current_goal: {array_to_ascii(agent_traj_state.current_goal)}")
+        # print(f"observation:\n{array_to_ascii(update_info.observation['observation'])}")
+        # print(f"next_observation:\n{array_to_ascii(update_info.next_observation['observation'])}")
+        # print(f"desired_goal:\n{array_to_ascii(update_info.next_observation['desired_goal'])}")
+        # print(f"current_goal:\n{array_to_ascii(agent_traj_state.current_goal)}")
         # print(f"reward: {update_info.reward}")
         # print(f"terminated: {update_info.terminated}")
         # print(f"truncated: {update_info.truncated}")
