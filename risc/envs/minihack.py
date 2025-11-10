@@ -141,9 +141,8 @@ class ObsWrapper(gym.ObservationWrapper):
         return lut
 
     def _update_goal(self, observation):
-        self.goal = np.zeros_like(observation["observation"][0])
-        self.goal[observation["observation"][1] == CharValues.FOUNTAIN] = CharValues.BOULDER
-        self.goal = np.expand_dims(self.goal, axis=0)
+        self.goal = np.zeros_like(observation["observation"][:1])
+        self.goal[0][observation["observation"][1] == CharValues.FOUNTAIN] = CharValues.BOULDER
         observation["desired_goal"] = self.goal
         return observation
 
@@ -275,7 +274,7 @@ def get_minihack_envs(
         **kwargs
     )
     obs, _ =  train_env.reset()
-    initial_states = np.expand_dims(obs["observation"], axis=0)
+    initial_states = np.expand_dims(obs["observation"][:1], axis=0)
     goal_states = np.expand_dims(obs["desired_goal"], axis=0)
     forward_demos = None
     backward_demos = None
