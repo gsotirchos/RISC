@@ -105,6 +105,12 @@ class ObsWrapper(gym.ObservationWrapper):
         observation_space = Box(
             low=0,
             high=255,
+            shape=(2, 10, 10),
+            dtype=np.uint8,
+        )
+        goal_space = Box(
+            low=0,
+            high=255,
             shape=(1, 10, 10),
             dtype=np.uint8,
         )
@@ -112,7 +118,7 @@ class ObsWrapper(gym.ObservationWrapper):
         self.observation_space = gym.spaces.Dict(
             {
                 "observation": observation_space,
-                "desired_goal": observation_space,
+                "desired_goal": goal_space,
             }
         )
         self.goal = None
@@ -135,7 +141,8 @@ class ObsWrapper(gym.ObservationWrapper):
         return lut
 
     def _update_goal(self, observation):
-        self.goal = copy.deepcopy(observation["observation"])
+        self.goal = copy.deepcopy(observation["observation"][0])
+        self.goal = np.expand_dims(self.goal, axis=0)
         self.goal[self.goal == CharValues.AGENT] = CharValues.FLOOR
         self.goal[self.goal == CharValues.BOULDER] = CharValues.FLOOR
         self.goal[self.goal == CharValues.FOUNTAIN] = CharValues.BOULDER
@@ -149,11 +156,14 @@ class ObsWrapper(gym.ObservationWrapper):
         return obs, info
 
     def observation(self, observation):
-        obs = copy.deepcopy(observation["chars"][7:-4, 34:-35])
-        obs = np.expand_dims(obs, axis=0)
-        obs = self._obs_translator_lut[obs]
-        obs[obs == CharValues.START] = CharValues.FLOOR
-        return {"observation": obs, "desired_goal": self.goal}
+        agent_obs = copy.deepcopy(observation["chars"][7:-4, 34:-35])
+        # obs = np.expand_dims(obs, axis=0)
+        agent_obs = self._obs_translator_lut[agent_obs]
+        walls_obs = copy.deepcopy(agent_obs)
+        agent_obs[agent_obs == CharValues.START] = CharValues.FLOOR
+        agent_obs[agent_obs == CharValues.WALL] = CharValues.FLOOR
+        walls_obs[walls_obs != CharValues.WALL] = CharValues.FLOOR
+        return {"observation": np.array([agent_obs, walls_obs]), "desired_goal": self.goal}
 
 
 class MiniHackEnv(GymEnv):
