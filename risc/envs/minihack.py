@@ -3,7 +3,7 @@ import time
 import copy
 import random
 # from functools import partial
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from functools import partial
 # from inspect import getsource
 
@@ -16,13 +16,23 @@ from gymnasium.spaces import Box
 
 
 @dataclass(frozen=True)
-class CharValues():
+class DefaultCharValues():
     WALL: int = 35
     FLOOR: int = 46
     AGENT: int = 64
     START: int = 60
     BOULDER: int = 96
     FOUNTAIN: int = 123
+
+
+@dataclass(frozen=True)
+class CharValues():
+    WALL: int = 255
+    FLOOR: int = 0
+    AGENT: int = 128
+    START: int = 1
+    BOULDER: int = 192
+    FOUNTAIN: int = 64
 
 
 class ReseedWrapper(gym.Wrapper):
@@ -87,7 +97,7 @@ class ReseedWrapper(gym.Wrapper):
         return obs, info
 
 
-class GCObsWrapper(gym.ObservationWrapper):
+class ObsWrapper(gym.ObservationWrapper):
     """Wrapper for MiniHack environments that adds a desired goal to the observation."""
 
     def __init__(self, env):
@@ -98,6 +108,7 @@ class GCObsWrapper(gym.ObservationWrapper):
             shape=(1, 10, 10),
             dtype=np.uint8,
         )
+        self._obs_translator_lut = ObsWrapper.build_lookup_table(DefaultCharValues(), CharValues())
         self.observation_space = gym.spaces.Dict(
             {
                 "observation": observation_space,
@@ -105,6 +116,23 @@ class GCObsWrapper(gym.ObservationWrapper):
             }
         )
         self.goal = None
+
+    @staticmethod
+    def build_lookup_table(default_vals, custom_vals):
+        lut = np.full(256, custom_vals.FLOOR, dtype=np.uint8)
+
+        # Populate the LUT from the dataclasses
+        for field in fields(default_vals):
+            attr_name = field.name
+            # Check if the custom map also has this object
+            if hasattr(custom_vals, attr_name):
+                old_value = getattr(default_vals, attr_name)
+                new_value = getattr(custom_vals, attr_name)
+
+                # Set the mapping: lut[old_value] = new_value
+                lut[old_value] = new_value
+
+        return lut
 
     def _update_goal(self, observation):
         self.goal = copy.deepcopy(observation["observation"])
@@ -123,6 +151,7 @@ class GCObsWrapper(gym.ObservationWrapper):
     def observation(self, observation):
         obs = copy.deepcopy(observation["chars"][7:-4, 34:-35])
         obs = np.expand_dims(obs, axis=0)
+        obs = self._obs_translator_lut[obs]
         obs[obs == CharValues.START] = CharValues.FLOOR
         return {"observation": obs, "desired_goal": self.goal}
 
@@ -219,7 +248,7 @@ def get_minihack_envs(
         observation_keys=("chars",),  # or "glyphs", "chars", "colors", "pixel"
         env_wrappers=[
             ReseedWrapper,
-            GCObsWrapper,
+            ObsWrapper,
         ],
         seed=seed,
         max_episode_steps=train_max_steps,
@@ -230,7 +259,7 @@ def get_minihack_envs(
         observation_keys=("chars",),  # or "glyphs", "chars", "colors", "pixel"
         env_wrappers=[
             ReseedWrapper,
-            GCObsWrapper,
+            ObsWrapper,
         ],
         seed=seed,
         max_episode_steps=eval_max_steps,
