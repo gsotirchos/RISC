@@ -141,12 +141,9 @@ class ObsWrapper(gym.ObservationWrapper):
         return lut
 
     def _update_goal(self, observation):
-        self.goal = copy.deepcopy(observation["observation"][0])
+        self.goal = np.zeros_like(observation["observation"][0])
+        self.goal[observation["observation"][1] == CharValues.FOUNTAIN] = CharValues.BOULDER
         self.goal = np.expand_dims(self.goal, axis=0)
-        self.goal[self.goal == CharValues.AGENT] = CharValues.FLOOR
-        self.goal[self.goal == CharValues.BOULDER] = CharValues.FLOOR
-        self.goal[self.goal == CharValues.FOUNTAIN] = CharValues.BOULDER
-        self.goal[self.goal == CharValues.START] = CharValues.FLOOR
         observation["desired_goal"] = self.goal
         return observation
 
@@ -159,10 +156,12 @@ class ObsWrapper(gym.ObservationWrapper):
         agent_obs = copy.deepcopy(observation["chars"][7:-4, 34:-35])
         # obs = np.expand_dims(obs, axis=0)
         agent_obs = self._obs_translator_lut[agent_obs]
-        walls_obs = copy.deepcopy(agent_obs)
-        agent_obs[agent_obs == CharValues.START] = CharValues.FLOOR
+        walls_obs = np.zeros_like(agent_obs)
+        walls_obs[agent_obs == CharValues.WALL] = CharValues.WALL
+        walls_obs[agent_obs == CharValues.FOUNTAIN] = CharValues.FOUNTAIN
         agent_obs[agent_obs == CharValues.WALL] = CharValues.FLOOR
-        walls_obs[walls_obs != CharValues.WALL] = CharValues.FLOOR
+        agent_obs[agent_obs == CharValues.FOUNTAIN] = CharValues.FLOOR
+        agent_obs[agent_obs == CharValues.START] = CharValues.FLOOR
         return {"observation": np.array([agent_obs, walls_obs]), "desired_goal": self.goal}
 
 
