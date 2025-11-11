@@ -214,6 +214,7 @@ class OmniGoalGenerator(GoalGenerator):
         if agent_traj_state.forward:
             return self._forward_agent, forward_initial_state, forward_goal_state
         else:
+            # TODO: if forward_initial_state.dim != forward_goal_state: transfer walls sub-array
             return self._backward_agent, forward_goal_state, forward_initial_state
 
     def _array_from_space(self, length, space):

@@ -39,7 +39,7 @@ class ReseedWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
         self.env.unwrapped._goal_pos_set = {}
-        self._level = 0
+        self._default_level = 0
         self._random_goals = False
         self._find_and_patch_reset(self.env, gym.wrappers.PassiveEnvChecker)
 
@@ -69,9 +69,9 @@ class ReseedWrapper(gym.Wrapper):
         flags.append("noteleport")
         flags.append("premapped")
         lvl_gen = minihack.LevelGenerator(map=map, lit=True, flags=flags, solidfill=" ")
-        lvl_gen.add_boulder(info["boulders"][1])
-        # for b in info["boulders"]:
-        #     lvl_gen.add_boulder(b)
+        # lvl_gen.add_boulder(info["boulders"][1])
+        for b in info["boulders"]:
+            lvl_gen.add_boulder(b)
         # lvl_gen.add_fountain((7, 3))
         # lvl_gen.add_fountain(info["fountains"][0])
         # lvl_gen.add_fountain(info["fountains"][1])
@@ -85,7 +85,7 @@ class ReseedWrapper(gym.Wrapper):
     def reset(self, level=None, **kwargs):
         super().reset()
         if level is None and not self._random_goals:
-            level = self._level
+            level = self._default_level
         env = self.env.unwrapped
         des_file = self.get_lvl_gen(level).get_des()
         env.update(des_file)
@@ -153,7 +153,6 @@ class ObsWrapper(gym.ObservationWrapper):
 
     def observation(self, observation):
         agent_obs = copy.deepcopy(observation["chars"][7:-4, 34:-35])
-        # obs = np.expand_dims(obs, axis=0)
         agent_obs = self._obs_translator_lut[agent_obs]
         walls_obs = np.zeros_like(agent_obs)
         walls_obs[agent_obs == CharValues.WALL] = CharValues.WALL
@@ -210,10 +209,10 @@ class MiniHackEnv(GymEnv):
         pass
 
     def randomize_goal(self):
-        self._env._random_goals = True
+        self._env.env._random_goals = True  # TODO
 
     def reset_goal(self):
-        self._env._random_goals = False
+        self._env.env._random_goals = False  # TODO
 
     def teleport(self, _):
         observation, _ = super().reset()
