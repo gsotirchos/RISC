@@ -105,12 +105,6 @@ class ObsWrapper(gym.ObservationWrapper):
         observation_space = Box(
             low=0,
             high=255,
-            shape=(2, 10, 10),
-            dtype=np.uint8,
-        )
-        goal_space = Box(
-            low=0,
-            high=255,
             shape=(1, 10, 10),
             dtype=np.uint8,
         )
@@ -118,7 +112,7 @@ class ObsWrapper(gym.ObservationWrapper):
         self.observation_space = gym.spaces.Dict(
             {
                 "observation": observation_space,
-                "desired_goal": goal_space,
+                "desired_goal": observation_space,
             }
         )
         self.goal = None
@@ -141,8 +135,11 @@ class ObsWrapper(gym.ObservationWrapper):
         return lut
 
     def _update_goal(self, observation):
-        self.goal = np.zeros_like(observation["observation"][:1])
-        self.goal[0][observation["observation"][1] == CharValues.FOUNTAIN] = CharValues.BOULDER
+        self.goal = copy.deepcopy(observation["observation"])
+        self.goal[self.goal == CharValues.AGENT] = CharValues.FLOOR
+        self.goal[self.goal == CharValues.BOULDER] = CharValues.FLOOR
+        self.goal[self.goal == CharValues.FOUNTAIN] = CharValues.BOULDER
+        self.goal[self.goal == CharValues.START] = CharValues.FLOOR
         observation["desired_goal"] = self.goal
         return observation
 
@@ -152,16 +149,11 @@ class ObsWrapper(gym.ObservationWrapper):
         return obs, info
 
     def observation(self, observation):
-        agent_obs = copy.deepcopy(observation["chars"][7:-4, 34:-35])
-        # obs = np.expand_dims(obs, axis=0)
-        agent_obs = self._obs_translator_lut[agent_obs]
-        walls_obs = np.zeros_like(agent_obs)
-        walls_obs[agent_obs == CharValues.WALL] = CharValues.WALL
-        walls_obs[agent_obs == CharValues.FOUNTAIN] = CharValues.FOUNTAIN
-        agent_obs[agent_obs == CharValues.WALL] = CharValues.FLOOR
-        agent_obs[agent_obs == CharValues.FOUNTAIN] = CharValues.FLOOR
-        agent_obs[agent_obs == CharValues.START] = CharValues.FLOOR
-        return {"observation": np.array([agent_obs, walls_obs]), "desired_goal": self.goal}
+        obs = copy.deepcopy(observation["chars"][7:-4, 34:-35])
+        obs = np.expand_dims(obs, axis=0)
+        obs = self._obs_translator_lut[obs]
+        obs[obs == CharValues.START] = CharValues.FLOOR
+        return {"observation": obs, "desired_goal": self.goal}
 
 
 class MiniHackEnv(GymEnv):
@@ -274,7 +266,7 @@ def get_minihack_envs(
         **kwargs
     )
     obs, _ =  train_env.reset()
-    initial_states = np.expand_dims(obs["observation"][:1], axis=0)
+    initial_states = np.expand_dims(obs["observation"], axis=0)
     goal_states = np.expand_dims(obs["desired_goal"], axis=0)
     forward_demos = None
     backward_demos = None
