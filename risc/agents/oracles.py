@@ -74,14 +74,17 @@ class MiniGridOracle(Oracle):
     def _process_observation(self, *args):
         if not args:
             return
-        observation = args[0]
-        if observation is None:
+        if args[0] is None:
             return
-        goal = None
-        if len(args) >= 2:
-            goal = args[1]
-        agent_obs, walls_obs = observation.squeeze()[:2]
-        goal_obs = goal.squeeze() if goal is not None else observation.squeeze()[2]
+        observation = args[0].squeeze()
+        if len(args) > 1:
+            goal_obs = args[1].squeeze()
+        elif len(observation) > 2:
+            goal_obs = observation[2]
+        else:
+            breakpoint()
+            return
+        agent_obs, walls_obs = observation[:2]
         self._agent_cell = tuple(np.flip(np.argwhere(agent_obs != 0)).flatten())
         self._goal_cell = tuple(np.flip(np.argwhere(goal_obs != 0)).flatten())
         if not np.array_equal(self._walls, walls_obs):
@@ -90,6 +93,8 @@ class MiniGridOracle(Oracle):
             self._distances = self._compute_distances()
         self._agent2goal_distances =  \
             np.array(list(self._distances[self._agent_cell, self._goal_cell].values()))
+        if len(self._agent2goal_distances) == 0:
+            self._agent2goal_distances = np.array([np.inf] * len(self._Actions))
 
     #@staticmethod
     def processobservation(method):
@@ -185,7 +190,8 @@ class MiniGridOracle(Oracle):
 
     @broadcast_obs_goals
     def compute_value(self, observations, goals, **kwargs):
-        return np.array([self.value(obs, goal, **kwargs) for obs, goal in zip(observations, goals)])
+        return np.array([self.value(np.concatenate((obs, goal)), **kwargs)
+                         for obs, goal in zip(observations, goals)])
 
     @broadcast_obs_goals
     def compute_success_prob(self, observations, goals):
