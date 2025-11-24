@@ -119,6 +119,7 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
         width: int = None,
         height: int = None,
         max_steps: int = 100,
+        action_probability: float = 0.8,
         symbolic: bool = True,
         **kwargs,
     ):
@@ -131,6 +132,7 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
             max_steps,
             **kwargs,
         )
+        self._action_prob = action_probability
 
         # Action enumeration for this environment
         self.actions = MiniGridEnv.Actions
@@ -206,6 +208,11 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
         terminated = False
         truncated = False
 
+        # probabilistic transition with "slippery action"
+        if self._rand_float(0, 1) > self._action_prob:
+            action = (action + self._rand_elem([-1, 1])) % self.action_space.n
+        breakpoint()
+
         #print(f"     State: {np.flip(np.argwhere(self.gen_obs()['observation'][0] == 255)[..., -2:].squeeze(), axis=-1).tolist()}")
         #print(f"    Action: {action}")
 
@@ -276,6 +283,7 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
 
     def teleport(self, agent_pos=None):
         #print(f"=== teleporting to: {agent_pos}")
+        # self.reset(seed=None)
         self.place_agent(agent_pos)
         return self.gen_obs()
 
