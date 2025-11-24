@@ -211,7 +211,6 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
         # probabilistic transition with "slippery action"
         if self._rand_float(0, 1) > self._action_prob:
             action = (action + self._rand_elem([-1, 1])) % self.action_space.n
-        breakpoint()
 
         #print(f"     State: {np.flip(np.argwhere(self.gen_obs()['observation'][0] == 255)[..., -2:].squeeze(), axis=-1).tolist()}")
         #print(f"    Action: {action}")
