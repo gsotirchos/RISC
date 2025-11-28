@@ -119,7 +119,7 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
         width: int = None,
         height: int = None,
         max_steps: int = 100,
-        action_probability: float = 0.8,
+        action_probability: float = 1.0,
         symbolic: bool = True,
         **kwargs,
     ):

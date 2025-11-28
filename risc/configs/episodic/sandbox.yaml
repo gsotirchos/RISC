@@ -35,6 +35,7 @@ kwargs:
       step_reward: &step_reward -1
       goal_reward: &goal_reward 0
       novelty_bonus: 0.0
+      action_probability: 0.8
       train_max_steps: *train_steps  # episodic
       eval_max_steps: *test_steps
       local_vis_period: 2000
