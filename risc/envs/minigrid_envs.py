@@ -6,14 +6,15 @@ import gymnasium as gym
 import minigrid
 import numpy as np
 from gymnasium.envs.registration import register
+from minigrid.envs import EmptyEnv as _EmptyEnv
+from minigrid.envs import DoorKeyEnv as _DoorKeyEnv
+# from minigrid.envs import FourRoomsEnv as _FourRoomsEnv
 from minigrid.core.constants import DIR_TO_VEC, COLORS
 from minigrid.core.grid import Grid
 from minigrid.core.mission import MissionSpace
-from minigrid.core.world_object import Goal, WorldObj, Floor
-from minigrid.utils.rendering import fill_coords, point_in_rect, point_in_triangle
+from minigrid.core.world_object import Goal, WorldObj, Floor, Door, Key
 from minigrid.core.roomgrid import RoomGrid as _RoomGrid
-from minigrid.envs.empty import EmptyEnv as _EmptyEnv
-# from minigrid.envs.fourrooms import FourRoomsEnv as _FourRoomsEnv
+from minigrid.utils.rendering import fill_coords, point_in_rect, point_in_triangle
 
 
 class Floor(WorldObj):
@@ -169,6 +170,10 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
                 if cell:
                     if cell.type == "wall":
                         self.grid_obs[1, j, i] = 255
+                    elif cell.type == "door":
+                        self.grid_obs[1, j, i] = 170
+                    elif cell.type == "key":
+                        self.grid_obs[1, j, i] = 85
 
     def gen_goal_obs(self):
         self.goal_obs = np.zeros((1, self.height, self.width), dtype=np.uint8)
@@ -282,8 +287,10 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
 
     def teleport(self, agent_pos=None):
         #print(f"=== teleporting to: {agent_pos}")
-        # self.reset(seed=None)
+        self._gen_grid(self.width, self.height)
         self.place_agent(agent_pos)
+        if self.render_mode == "human":
+            self.render()
         return self.gen_obs()
 
     def render(self):
@@ -609,6 +616,52 @@ class LockedDoorEnv(MiniGridEnv, _RoomGrid):
         self.place_goal(self._goal_default_pos)
 
 
+
+class DoorKeyEnv(MiniGridEnv, _DoorKeyEnv):
+    def __init__(self, size=16, agent_pos=None, goal_pos=None, max_steps=2500, **kwargs):
+        self.width = size
+        self.height = size
+        self._agent_default_pos = agent_pos or (1, size - 2)
+        self._goal_default_pos = goal_pos or (size - 2, size - 2)
+        mission_space = MissionSpace(mission_func=self._gen_mission)
+
+        super().__init__(
+            mission_space=mission_space,
+            width=size,
+            height=size,
+            max_steps=max_steps,
+            **kwargs,
+        )
+
+    @staticmethod
+    def _gen_mission():
+        return "use the key to open the door and then get to the goal"
+
+    def _gen_grid(self, width, height):
+        # Create an empty grid
+        self.grid = Grid(width, height)
+
+        # Generate the surrounding walls
+        self.grid.wall_rect(0, 0, width, height)
+
+        # Create a vertical splitting wall
+        splitIdx = 12
+        self.grid.vert_wall(splitIdx, 0)
+
+        # Place a door in the wall
+        self.put_obj(Door("yellow", is_locked=True), splitIdx, int(height / 2))
+
+        # Place a yellow key on the left side
+        self.put_obj(Key("yellow"), 6, 4)
+
+        # Place the agent
+        self.place_agent(self._agent_default_pos)
+
+        # Place the goal
+        self.place_goal(self._goal_default_pos)
+
+        self.mission = "use the key to open the door and then get to the goal"
+
 class EmptyEnv(MiniGridEnv, _EmptyEnv):
     """Empty environment."""
 
@@ -644,6 +697,7 @@ register(id="MiniGrid-TinyRoom-v1", entry_point="envs.minigrid_envs:TinyRoomEnv"
 register(id="MiniGrid-BugTrap-v1", entry_point="envs.minigrid_envs:BugTrapEnv")
 register(id="MiniGrid-Hallway-v1", entry_point="envs.minigrid_envs:HallwayEnv")
 register(id="MiniGrid-LockedDoor-v1", entry_point="envs.minigrid_envs:LockedDoorEnv")
+register(id="MiniGrid-DoorKey-v1", entry_point="envs.minigrid_envs:DoorKeyEnv")
 
 for size in range(4, 20, 2):
     register(
