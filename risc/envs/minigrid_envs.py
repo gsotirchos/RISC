@@ -170,7 +170,7 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
                 if cell:
                     if cell.type == "wall":
                         self.grid_obs[1, j, i] = 255
-                    elif cell.type == "door":
+                    elif cell.type == "door" and not cell.is_open:
                         self.grid_obs[1, j, i] = 170
                     elif cell.type == "key":
                         self.grid_obs[1, j, i] = 85
@@ -245,11 +245,13 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
                 self.carrying = fwd_cell
                 self.carrying.cur_pos = np.array([-1, -1])
                 self.grid.set(fwd_pos[0], fwd_pos[1], None)
+                self.gen_grid_obs()
             self.agent_pos = tuple(fwd_pos)
             self.agent_dir = action
         if fwd_cell is not None and fwd_cell.type == "door":
             if not fwd_cell.is_open:
                 fwd_cell.toggle(self, fwd_pos)
+                self.gen_grid_obs()
             if fwd_cell.is_open:
                 self.agent_pos = tuple(fwd_pos)
                 self.agent_dir = action
