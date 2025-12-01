@@ -647,14 +647,14 @@ class DoorKeyEnv(MiniGridEnv, _DoorKeyEnv):
         self.grid.wall_rect(0, 0, width, height)
 
         # Create a vertical splitting wall
-        splitIdx = 12
+        splitIdx = 9
         self.grid.vert_wall(splitIdx, 0)
 
         # Place a door in the wall
         self.put_obj(Door("yellow", is_locked=True), splitIdx, int(height / 2))
 
         # Place a yellow key on the left side
-        self.put_obj(Key("yellow"), 6, 4)
+        self.put_obj(Key("yellow"), 4, 4)
 
         # Place the agent
         self.place_agent(self._agent_default_pos)
