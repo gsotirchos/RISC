@@ -303,6 +303,113 @@ class MiniGridEnv(minigrid.minigrid_env.MiniGridEnv):
         super().close()
 
 
+class HallwayEnv(MiniGridEnv):
+    """Hallway environment."""
+
+    def __init__(
+        self,
+        room_size=19,
+        goal_pos=(9, 9),
+        agent_pos=(16, 9),
+        hallway_length=5,
+        num_hallways=3,
+        max_steps=100,
+        **kwargs
+    ):
+        self._agent_default_pos = agent_pos
+        self._goal_default_pos = goal_pos
+        self._hallway_length = hallway_length
+        self._num_hallways = num_hallways
+        self._hallway_start_x = goal_pos[0] - hallway_length
+        self._hallway_end_x = goal_pos[0]
+        self._hallway_y = goal_pos[1]
+
+        if isinstance(room_size, tuple):
+            self.width, self.height = room_size
+        else:
+            self.width = self.height = room_size
+        mission_space = MissionSpace(mission_func=self._gen_mission)
+
+        super().__init__(
+            mission_space=mission_space,
+            width=self.width,
+            height=self.height,
+            max_steps=max_steps,
+            **kwargs,
+        )
+
+    @staticmethod
+    def _gen_mission():
+        return "reach the goal"
+
+    def _gen_grid(self, width, height):
+        # Create the grid
+        self.grid = Grid(width, height)
+
+        # Generate the surrounding walls
+        self.grid.horz_wall(0, 0)
+        self.grid.horz_wall(0, height - 1)
+        self.grid.vert_wall(0, 0)
+        self.grid.vert_wall(width - 1, 0)
+
+        # Generate main and decoy hallway walls
+        for i in range(self._num_hallways):
+            offset = int(np.ceil(i / 2) * np.ceil(self.height / 4)) * (- 1 + int(i == 0)) ** i
+            for x in range(self._hallway_start_x, self._hallway_end_x):
+                self.put_obj(Slide(self.actions.up, "purple"), x, self._hallway_y + offset - 1)
+                self.put_obj(Slide(self.actions.down, "red"), x, self._hallway_y + offset + 1)
+            try:
+                self.grid.vert_wall(self._hallway_end_x + 1, self._hallway_y + offset - 1, 3)
+            except Exception:
+                pass
+            self.grid.horz_wall(self._hallway_end_x, self._hallway_y + offset - 1, 1)
+            self.grid.horz_wall(self._hallway_end_x, self._hallway_y + offset + 1, 1)
+
+        self.place_agent(self._agent_default_pos)
+        self.place_goal(self._goal_default_pos)
+
+
+class BugTrapEnv(MiniGridEnv):
+    """Bug trap environment."""
+
+    def __init__(self, agent_pos=(6, 9), goal_pos=(9, 9), max_steps=100, **kwargs):
+        self._agent_default_pos = agent_pos
+        self._goal_default_pos = goal_pos
+
+        self.width = self.height = 19
+        mission_space = MissionSpace(mission_func=self._gen_mission)
+
+        super().__init__(
+            mission_space=mission_space,
+            width=self.width,
+            height=self.height,
+            max_steps=max_steps,
+            **kwargs,
+        )
+
+    @staticmethod
+    def _gen_mission():
+        return "reach the goal"
+
+    def _gen_grid(self, width, height):
+        # Create the grid
+        self.grid = Grid(width, height)
+
+        # Generate the surrounding walls
+        self.grid.horz_wall(0, 0)
+        self.grid.horz_wall(0, height - 1)
+        self.grid.vert_wall(0, 0)
+        self.grid.vert_wall(width - 1, 0)
+
+        # Generate bug trap walls
+        self.grid.vert_wall(int(width * 0.45), int(height * 0.35), length=int(height * 0.35))
+        self.grid.horz_wall(int(width * 0.45), int(height * 0.35), length=int(width * 0.35))
+        self.grid.horz_wall(int(width * 0.45), int(height * 0.65), length=int(width * 0.35))
+
+        self.place_agent(self._agent_default_pos)
+        self.place_goal(self._goal_default_pos)
+
+
 class FourRoomsEnv(MiniGridEnv):  #, _FourRoomsEnv):
     """Four rooms environment."""
 
@@ -356,20 +463,181 @@ class FourRoomsEnv(MiniGridEnv):  #, _FourRoomsEnv):
         self.place_goal(self._goal_default_pos)
 
 
+class NineRoomsEnv(MiniGridEnv):
+    """Nine rooms environment."""
+
+    def __init__(self, agent_pos=(1, 1), goal_pos=(8, 7), max_steps=100, locked=False, **kwargs):
+        self._agent_default_pos = agent_pos
+        self._goal_default_pos = goal_pos
+        self._locked = locked
+
+        self.width = 16
+        self.height = 16
+        mission_space = MissionSpace(mission_func=self._gen_mission)
+
+        super().__init__(
+            mission_space=mission_space,
+            width=self.width,
+            height=self.height,
+            max_steps=max_steps,
+            **kwargs,
+        )
+
+    @staticmethod
+    def _gen_mission():
+        return "reach the goal"
+
+    def _gen_grid(self, width, height):
+        # Create the grid
+        self.grid = Grid(width, height)
+
+        # Generate the surrounding walls
+        self.grid.horz_wall(0, 0)
+        self.grid.horz_wall(0, height - 1)
+        self.grid.vert_wall(0, 0)
+        self.grid.vert_wall(width - 1, 0)
+
+        room_w = width // 3
+        room_h = height // 3
+
+        self.grid.horz_wall(0, room_h)
+        self.grid.horz_wall(0, 2 * room_h)
+        self.grid.vert_wall(room_w, 0)
+        self.grid.vert_wall(2 * room_w, 0)
+
+        passages_pos = (
+                          (room_w, 2),      (2 * room_w, 4),
+                (3, room_h), (1 + room_w, room_h), (3 + 2 * room_w, room_h),
+                 (room_w, 3 + room_h),      (2 * room_w, 2 + room_h),
+            (2, 2 * room_h), (3 + room_w, 2 * room_h), (4 + 2 * room_w, 2 * room_h),
+             (room_w, 2 + 2 * room_h),      (2 * room_w, 1 + 2 * room_h),
+        )
+
+        for passage_pos in passages_pos:
+            self.grid.set(*passage_pos, None)
+
+        if self._locked:
+            doors_idx = (3, 4, 5, 10)
+            keys_pos = (
+                # TOP-LEFT)
+                (3 + room_w, 3),  # TOP-MID
+                (2 + 2 * room_w, 2),  # TOP-RIGHT
+                (1, 1 + room_h),  # MID-LEFT
+                # MID-MID
+                # (2 + 2 * room_w, 2 + room_h),  # MID-RIGHT
+                (3, 4 + 2 * room_h)  # BOT-LEFT
+                # (2 + room_w, 4 + 2 * room_h),  # BOT-MID
+                # BOT-RIGHT
+            )
+            for door_idx, key_pos in zip(doors_idx, keys_pos):
+                self.put_obj(Door("yellow", is_locked=True), *passages_pos[door_idx])
+                self.put_obj(Key("yellow"), *key_pos)
+
+        self.place_agent(self._agent_default_pos)
+        self.place_goal(self._goal_default_pos)
+
+
+class DoorKeyEnv(MiniGridEnv):  # , _DoorKeyEnv):
+    def __init__(self, size=16, agent_pos=None, goal_pos=None, max_steps=2500, **kwargs):
+        self.width = size
+        self.height = size
+        self._agent_default_pos = agent_pos or (1, size - 2)
+        self._goal_default_pos = goal_pos or (size - 2, size - 2)
+        mission_space = MissionSpace(mission_func=self._gen_mission)
+
+        super().__init__(
+            mission_space=mission_space,
+            width=size,
+            height=size,
+            max_steps=max_steps,
+            **kwargs,
+        )
+
+    @staticmethod
+    def _gen_mission():
+        return "use the key to open the door and then get to the goal"
+
+    def _gen_grid(self, width, height):
+        # Create an empty grid
+        self.grid = Grid(width, height)
+
+        # Generate the surrounding walls
+        self.grid.wall_rect(0, 0, width, height)
+
+        # Create a vertical splitting wall
+        splitIdx = 9
+        self.grid.vert_wall(splitIdx, 0)
+
+        # Place a door in the wall
+        self.put_obj(Door("yellow", is_locked=True), splitIdx, int(height / 2))
+
+        # Place a yellow key on the left side
+        self.put_obj(Key("yellow"), 4, 4)
+
+        # Place the agent
+        self.place_agent(self._agent_default_pos)
+
+        # Place the goal
+        self.place_goal(self._goal_default_pos)
+
+        self.mission = "use the key to open the door and then get to the goal"
+
+class SplitRoomEnv(MiniGridEnv):
+    def __init__(self, agent_pos=(16, 9), goal_pos=(9, 4), max_steps=100, **kwargs):
+        self._agent_default_pos = agent_pos
+        self._goal_default_pos = goal_pos
+
+        self.width = self.height = 19
+        mission_space = MissionSpace(mission_func=self._gen_mission)
+
+        super().__init__(
+            mission_space=mission_space,
+            width=self.width,
+            height=self.height,
+            max_steps=max_steps,
+            **kwargs,
+        )
+
+    @staticmethod
+    def _gen_mission():
+        return "reach the goal"
+
+    def _gen_grid(self, width, height):
+        # Create the grid
+        self.grid = Grid(width, height)
+
+        # Generate the surrounding walls
+        self.grid.horz_wall(0, 0)
+        self.grid.horz_wall(0, height - 1)
+        self.grid.vert_wall(0, 0)
+        self.grid.vert_wall(width - 1, 0)
+
+        # Generate middle split wall
+        self.grid.horz_wall(
+            int((width - 1) * 0.25),
+            int(height * 0.5),
+            length=int((width - 1) * 0.66)
+        )
+
+        self.place_agent(self._agent_default_pos)
+        self.place_goal(self._goal_default_pos)
+
+
+
 class TwoRoomsEnv(MiniGridEnv):
     """Two rooms environment."""
 
     def __init__(
         self,
         agent_pos=(1, 1),
-        goal_pos=(17, 8),
+        goal_pos=(17, 2),
         max_steps=100,
         width=19,
         height=10,
         **kwargs,
     ):
-        self.agent_pos = agent_pos
-        self.goal_pos = goal_pos
+        self._agent_default_pos = agent_pos
+        self._goal_default_pos = goal_pos
         self.width = width
         self.height = height
 
@@ -451,219 +719,6 @@ class TinyRoomEnv(MiniGridEnv):
         self.place_goal(self._goal_default_pos)
 
 
-class BugTrapEnv(MiniGridEnv):
-    """Bug trap environment."""
-
-    def __init__(self, agent_pos=(6, 9), goal_pos=(9, 9), max_steps=100, **kwargs):
-        self._agent_default_pos = agent_pos
-        self._goal_default_pos = goal_pos
-
-        self.width = self.height = 19
-        mission_space = MissionSpace(mission_func=self._gen_mission)
-
-        super().__init__(
-            mission_space=mission_space,
-            width=self.width,
-            height=self.height,
-            max_steps=max_steps,
-            **kwargs,
-        )
-
-    @staticmethod
-    def _gen_mission():
-        return "reach the goal"
-
-    def _gen_grid(self, width, height):
-        # Create the grid
-        self.grid = Grid(width, height)
-
-        # Generate the surrounding walls
-        self.grid.horz_wall(0, 0)
-        self.grid.horz_wall(0, height - 1)
-        self.grid.vert_wall(0, 0)
-        self.grid.vert_wall(width - 1, 0)
-
-        # Generate bug trap walls
-        self.grid.vert_wall(int(width * 0.45), int(height * 0.35), length=int(height * 0.35))
-        self.grid.horz_wall(int(width * 0.45), int(height * 0.35), length=int(width * 0.35))
-        self.grid.horz_wall(int(width * 0.45), int(height * 0.65), length=int(width * 0.35))
-
-        ### Old bugtrap
-        # # top and bottom horizontal wall of the bugtrap
-        # self.grid.horz_wall(3, 3, length=width - 6)
-        # self.grid.horz_wall(3, height - 4, length=width - 6)
-        #
-        # # middle entrance of the bugtrap
-        # self.grid.horz_wall(3, height // 2 - 1, length=width // 2 - 3)
-        # self.grid.horz_wall(3, height // 2 + 1, length=width // 2 - 3)
-        #
-        # # left and right vertical walls of the bugtrap
-        # self.grid.vert_wall(3, 3, length=height // 2 - 3)
-        # self.grid.vert_wall(3, height // 2 + 1, length=height // 2 - 4)
-        # self.grid.vert_wall(width - 4, 3, length=height - 6)
-
-        self.place_agent(self._agent_default_pos)
-        self.place_goal(self._goal_default_pos)
-
-
-class HallwayEnv(MiniGridEnv):
-    """Hallway environment."""
-
-    def __init__(
-        self,
-        room_size=19,
-        goal_pos=(9, 9),
-        agent_pos=(16, 9),
-        hallway_length=5,
-        num_hallways=3,
-        max_steps=100,
-        **kwargs
-    ):
-        self._agent_default_pos = agent_pos
-        self._goal_default_pos = goal_pos
-        self._hallway_length = hallway_length
-        self._num_hallways = num_hallways
-        self._hallway_start_x = goal_pos[0] - hallway_length
-        self._hallway_end_x = goal_pos[0]
-        self._hallway_y = goal_pos[1]
-
-        if isinstance(room_size, tuple):
-            self.width, self.height = room_size
-        else:
-            self.width = self.height = room_size
-        mission_space = MissionSpace(mission_func=self._gen_mission)
-
-        super().__init__(
-            mission_space=mission_space,
-            width=self.width,
-            height=self.height,
-            max_steps=max_steps,
-            **kwargs,
-        )
-
-    @staticmethod
-    def _gen_mission():
-        return "reach the goal"
-
-    def _gen_grid(self, width, height):
-        # Create the grid
-        self.grid = Grid(width, height)
-
-        # Generate the surrounding walls
-        self.grid.horz_wall(0, 0)
-        self.grid.horz_wall(0, height - 1)
-        self.grid.vert_wall(0, 0)
-        self.grid.vert_wall(width - 1, 0)
-
-        # Generate main and decoy hallway walls
-        for i in range(self._num_hallways):
-            offset = int(np.ceil(i / 2) * np.ceil(self.height / 4)) * (- 1 + int(i == 0)) ** i
-            for x in range(self._hallway_start_x, self._hallway_end_x):
-                self.put_obj(Slide(self.actions.up, "purple"), x, self._hallway_y + offset - 1)
-                self.put_obj(Slide(self.actions.down, "red"), x, self._hallway_y + offset + 1)
-            try:
-                self.grid.vert_wall(self._hallway_end_x + 1, self._hallway_y + offset - 1, 3)
-            except Exception:
-                pass
-            self.grid.horz_wall(self._hallway_end_x, self._hallway_y + offset - 1, 1)
-            self.grid.horz_wall(self._hallway_end_x, self._hallway_y + offset + 1, 1)
-
-        self.place_agent(self._agent_default_pos)
-        self.place_goal(self._goal_default_pos)
-
-
-class LockedDoorEnv(MiniGridEnv, _RoomGrid):
-    """Single locked door environment."""
-
-    def __init__(self, agent_pos=(7, 1), goal_pos=(14, 4), max_steps=50, **kwargs):
-        self._agent_default_pos = agent_pos
-        self._goal_default_pos = goal_pos
-
-        room_size = 6
-        mission_space = MissionSpace(mission_func=self._gen_mission)
-
-        _RoomGrid.__init__(
-            self,
-            mission_space=mission_space,
-            num_rows=1,
-            num_cols=3,
-            room_size=room_size,
-            max_steps=max_steps,
-        )
-
-        MiniGridEnv.__init__(
-            self,
-            mission_space=mission_space,
-            width=self.width,
-            height=self.height,
-            max_steps=max_steps,
-            **kwargs,
-        )
-
-    @staticmethod
-    def _gen_mission():
-        return "reach the goal"
-
-    def _gen_grid(self, width, height):
-        super()._gen_grid(width, height)
-
-        # Make sure the rooms are directly connected by a locked door
-        door, _ = self.add_door(1, 0, 0, locked=True)
-        _, _ = self.add_door(0, 0, 0, locked=False)
-
-        # Add a key to unlock the door
-        self.add_object(0, 0, "key", door.color)
-
-        self.place_agent(self._agent_default_pos)
-        self.place_goal(self._goal_default_pos)
-
-
-
-class DoorKeyEnv(MiniGridEnv, _DoorKeyEnv):
-    def __init__(self, size=16, agent_pos=None, goal_pos=None, max_steps=2500, **kwargs):
-        self.width = size
-        self.height = size
-        self._agent_default_pos = agent_pos or (1, size - 2)
-        self._goal_default_pos = goal_pos or (size - 2, size - 2)
-        mission_space = MissionSpace(mission_func=self._gen_mission)
-
-        super().__init__(
-            mission_space=mission_space,
-            width=size,
-            height=size,
-            max_steps=max_steps,
-            **kwargs,
-        )
-
-    @staticmethod
-    def _gen_mission():
-        return "use the key to open the door and then get to the goal"
-
-    def _gen_grid(self, width, height):
-        # Create an empty grid
-        self.grid = Grid(width, height)
-
-        # Generate the surrounding walls
-        self.grid.wall_rect(0, 0, width, height)
-
-        # Create a vertical splitting wall
-        splitIdx = 9
-        self.grid.vert_wall(splitIdx, 0)
-
-        # Place a door in the wall
-        self.put_obj(Door("yellow", is_locked=True), splitIdx, int(height / 2))
-
-        # Place a yellow key on the left side
-        self.put_obj(Key("yellow"), 4, 4)
-
-        # Place the agent
-        self.place_agent(self._agent_default_pos)
-
-        # Place the goal
-        self.place_goal(self._goal_default_pos)
-
-        self.mission = "use the key to open the door and then get to the goal"
-
 class EmptyEnv(MiniGridEnv, _EmptyEnv):
     """Empty environment."""
 
@@ -693,14 +748,33 @@ class EmptyEnv(MiniGridEnv, _EmptyEnv):
         )
 
 
-register(id="MiniGrid-TwoRooms-v1", entry_point="envs.minigrid_envs:TwoRoomsEnv")
-register(id="MiniGrid-FourRooms-v1", entry_point="envs.minigrid_envs:FourRoomsEnv")
-register(id="MiniGrid-TinyRoom-v1", entry_point="envs.minigrid_envs:TinyRoomEnv")
-register(id="MiniGrid-BugTrap-v1", entry_point="envs.minigrid_envs:BugTrapEnv")
 register(id="MiniGrid-Hallway-v1", entry_point="envs.minigrid_envs:HallwayEnv")
-register(id="MiniGrid-LockedDoor-v1", entry_point="envs.minigrid_envs:LockedDoorEnv")
+register(id="MiniGrid-BugTrap-v1", entry_point="envs.minigrid_envs:BugTrapEnv")
+register(id="MiniGrid-FourRooms-v1", entry_point="envs.minigrid_envs:FourRoomsEnv")
+register(id="MiniGrid-NineRooms-v1", entry_point="envs.minigrid_envs:NineRoomsEnv")
 register(id="MiniGrid-DoorKey-v1", entry_point="envs.minigrid_envs:DoorKeyEnv")
+register(id="MiniGrid-SplitRoom-v1", entry_point="envs.minigrid_envs:SplitRoomEnv")
+register(id="MiniGrid-TwoRooms-v1", entry_point="envs.minigrid_envs:TwoRoomsEnv")
+register(id="MiniGrid-TinyRoom-v1", entry_point="envs.minigrid_envs:TinyRoomEnv")
 
+for length in [2, 4, 6]:
+    register(
+        id=f"MiniGrid-Hallway-{length}-v1",
+        entry_point="envs.minigrid_envs:HallwayEnv",
+        kwargs={
+            "room_size": (7 + length, 9),
+            "goal_pos": (2 + length, 4),
+            "agent_pos": (5 + length, 4),
+            "hallway_length": length,
+            "num_hallways": 1,
+        },
+    )
+
+register(
+    id=f"MiniGrid-NineRoomsLocked-v1",
+    entry_point="envs.minigrid_envs:NineRoomsEnv",
+    kwargs={"locked": True}
+)
 for size in range(4, 20, 2):
     register(
         id=f"MiniGrid-Empty-{size}x{size}-v1",
