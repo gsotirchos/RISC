@@ -208,6 +208,73 @@ def calculate_mean_error_stats(data, x_axis):
     return grouped_stats
 
 
+def _plot_on_axis(
+    ax,
+    data_frame,
+    x_axis,
+    algorithms,
+    colors,
+    metric_display_name,
+    xmax_val,
+    ymax_val,
+    is_left_col,
+    is_bottom_row
+):
+    """
+    Helper function to plot a single metric/env combination onto a specific axis.
+    Returns handles and labels for the legend.
+    """
+    algo_colors = np.roll(colors, 1)
+
+    handles = []
+    labels = []
+
+    for algorithm in algorithms:
+        algo_data = data_frame[data_frame["algorithm"] == algorithm]
+
+        if algo_data.empty:
+            continue
+
+        algo_colors = np.roll(algo_colors, -1)
+
+        # Plot and capture the line handle
+        line, = ax.plot(
+            algo_data[x_axis],
+            algo_data["mean"],
+            color=algo_colors[0],
+            label=algorithm
+        )
+
+        # Add to local collection for potential legend export
+        handles.append(line)
+        labels.append(algorithm)
+
+        ax.fill_between(
+            algo_data[x_axis],
+            algo_data["lower_bound"],
+            algo_data["upper_bound"],
+            color=algo_colors[0],
+            alpha=0.2
+        )
+
+    # --- Formatting ---
+    ax.grid(True, linestyle='--', alpha=0.7)
+    ax.spines[['right', 'top']].set_visible(False)
+    ax.xaxis.set_major_formatter(lambda x, _: str(int(x / 1000)) + "k")
+    ax.set_xlim([0, xmax_val])
+    ax.set_ylim([0, ymax_val])
+
+    if is_left_col:
+        ax.set_ylabel(metric_display_name, fontsize=10, fontweight='bold')
+
+    if not is_bottom_row:
+        ax.set_xticklabels([])
+
+    # No ax.legend() call here anymore
+
+    return handles, labels
+
+
 def plot_data(
     data,
     output_dir,
@@ -220,9 +287,10 @@ def plot_data(
     ymax=1,
     legend_loc=("center right"),
     colors=None,
-    figsize=(6, 5),
+    figsize=(4, 3),
     experiment_name="experiment",
 ):
+    # --- 1. Preservation of Initial Rolling Logic ---
     for i, algorithm in enumerate(algorithms):
         algorithms[i] = np.roll(algorithm, 1).flatten()
     running_average_window = np.roll(running_average_window, 1).flatten()
@@ -232,7 +300,34 @@ def plot_data(
 
     long_data = convert_to_longform(data)
 
-    for environment in environments:
+    # --- 2. Setup Figure and Grid ---
+    n_rows = len(metrics)
+    n_cols = len(environments)
+
+    fig, axes = plt.subplots(
+        nrows=n_rows,
+        ncols=n_cols,
+        figsize=(figsize[0] * n_cols, figsize[1] * n_rows),
+        sharex=False,
+        sharey=False
+    )
+
+    if n_rows == 1 and n_cols == 1:
+        axes = np.array([[axes]])
+    elif n_rows == 1:
+        axes = axes[np.newaxis, :]
+    elif n_cols == 1:
+        axes = axes[:, np.newaxis]
+
+    # Containers to store legend info from the first valid plot
+    global_legend_handles = []
+    global_legend_labels = []
+    legend_captured = False
+
+    # --- 3. Iterate Environments (Columns) ---
+    for col_idx, environment in enumerate(environments):
+
+        # --- Strict Preservation of Per-Env Rolling Logic ---
         running_average_window = np.roll(running_average_window, -1)
         ymax = np.roll(ymax, -1)
         xmax = np.roll(xmax, -1)
@@ -241,8 +336,15 @@ def plot_data(
         for i, algorithm in enumerate(algorithms):
             algorithms[i] = np.roll(algorithm, -1)
         env_algorithms = [algorithm[0] for algorithm in algorithms]
+        # ----------------------------------------------------
 
-        for metric_idx, (metric, metric_display_name) in enumerate(metrics):  # TODO
+        axes[0, col_idx].set_title(f"{environment}", fontsize=12, pad=10)
+
+        # --- 4. Iterate Metrics (Rows) ---
+        for row_idx, (metric, metric_display_name) in enumerate(metrics):
+
+            ax = axes[row_idx, col_idx]
+
             relevant_data = long_data[
                 (long_data["environment"] == environment)
                 & (long_data["metric"] == metric)
@@ -250,63 +352,61 @@ def plot_data(
             ]
 
             if relevant_data.empty:
+                ax.set_visible(False)
                 continue
 
             smoothed_data = smoothen_data(relevant_data, running_average_window[0])
             plot_stats = calculate_mean_error_stats(smoothed_data, x_axis)
 
-            plt.figure(figsize=figsize)
+            handles, labels = _plot_on_axis(
+                ax=ax,
+                data_frame=plot_stats,
+                x_axis=x_axis,
+                algorithms=env_algorithms,
+                colors=colors,
+                metric_display_name=metric_display_name,
+                xmax_val=xmax[0],
+                ymax_val=ymax[0],
+                is_left_col=(col_idx == 0),
+                is_bottom_row=(row_idx == n_rows - 1)
+            )
 
-            # Plot the mean line for each algorithm
-            algo_colors = np.roll(colors, 1)
-            for algorithm in env_algorithms:
-                algo_data = plot_stats[plot_stats["algorithm"] == algorithm]
+            # Capture handles/labels from the very first plot we draw to use for the global legend
+            if not legend_captured and handles:
+                global_legend_handles = handles
+                global_legend_labels = labels
+                legend_captured = True
 
-                if algo_data.empty:
-                    continue
+    # --- 5. Global Layout, Legend & Saving ---
 
-                algo_colors = np.roll(algo_colors, -1)
-                plt.plot(
-                    algo_data[x_axis],
-                    algo_data["mean"],
-                    color=algo_colors[0],
-                    label=algorithm  # TODO
-                )
-                plt.fill_between(
-                    algo_data[x_axis],
-                    algo_data["lower_bound"],
-                    algo_data["upper_bound"],
-                    color=algo_colors[0],
-                    alpha=0.2
-                )
+    # fig.supxlabel("Train step", fontsize=12, y=0.2) # y up slightly to make room for legend
 
-            # Set plot titles and labels
-            plt.title(f"{environment}")
-            plt.xlabel("Train step")
-            plt.ylabel(metric_display_name)
+    # Add Global Horizontal Legend
+    # Placed at the bottom center, horizontally arranged
+    if global_legend_handles:
+        fig.legend(
+            global_legend_handles,
+            global_legend_labels,
+            loc='lower center',
+            ncol=len(global_legend_labels),
+            bbox_to_anchor=(0.5, 0.0),
+            frameon=False,
+            fontsize=11
+        )
 
-            # Set axis limits
-            plt.xlim([0, xmax[0]])
-            plt.ylim([0, ymax[0]])
-            ax = plt.gca()
-            ax.spines[['right', 'top']].set_visible(False)
-            ax.xaxis.set_major_formatter(lambda x, _: str(int(x / 1000)) + "k")
+    # Adjust layout to make room for titles and the bottom legend
+    # rect=[left, bottom, right, top]
+    plt.tight_layout(rect=[0.02, 0.12, 1, 1])
 
-            plt.grid(True)
-            plt.legend(title="", loc=legend_loc[0][metric_idx])
+    output_dir_path = Path(__file__).resolve().parent / output_dir
+    output_dir_path.mkdir(parents=True, exist_ok=True)
 
-            output_dir_path = Path(__file__).resolve().parent / output_dir
-            output_dir_path.mkdir(parents=True, exist_ok=True)
+    file_name = f"{experiment_name}_results_grid.svg"
+    output_file_path = output_dir_path / file_name
 
-            file_name = f"{experiment_name}_{environment}_{metric_display_name}.svg"
-            file_name = file_name.replace(" ", "_").replace("/","_")
-            output_file_path = output_dir_path / file_name
-
-            # Save the figure with high quality settings
-            plt.savefig(output_file_path, format="svg", bbox_inches="tight")
-            print(f"Plot saved to {output_file_path}")
-            # plt.show()
-            plt.close()
+    plt.savefig(output_file_path, format="svg", bbox_inches="tight")
+    print(f"Grid plot saved to {output_file_path}")
+    plt.close()
 
 
 def create_figures(output_dir, entity, project, fetch_data=True):
@@ -333,7 +433,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             ("kwargs", "env_fn", "kwargs", "env_name"):
             (lambda _, env_name=env_name: _ == f"MiniGrid-{env_name}-v1"),
         }
-        
+
     env_filters["Hallway 4-steps (probabilistic transitions)"] = {
         **env_filters["Hallway 4-steps"],
         ("kwargs", "env_fn", "kwargs", "action_probability"): (lambda _: _ == 0.8),
@@ -525,31 +625,31 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             # "ymax": 1,
             # "figsize": (6, 5),
         },
-        # {
-            # "experiment_name": "ablations",
-            # "x_axis": "train_step",
-            # "environments": ["Hallway 6-steps", "FourRooms"],
-            # "algorithms": [
-            #     "SIERL F=0.8",
-            #     "SIERL F=0.95",
-            #     "No early switching",
-            #     "No frontier filtering",
-            #     "No prioritization",
-            # ],
-            # "metrics": metrics[:2],
-            # "running_average_window": 15,
-            # "legend_loc": [
-            #     [
-            #         "lower right",
-            #         "lower right",
-            #         "lower right"
-            #     ]
-            # ],
-            # "colors": colors,
-            # "xmax": [400000, 215000],
-            # # "ymax": 1,
-            # # "figsize": (6, 5),
-        # },
+        {
+            "experiment_name": "ablations",
+            "x_axis": "train_step",
+            "environments": ["Hallway 6-steps", "FourRooms"],
+            "algorithms": [
+                "SIERL F=0.8",
+                "SIERL F=0.95",
+                "No early switching",
+                "No frontier filtering",
+                "No prioritization",
+            ],
+            "metrics": metrics[:2],
+            "running_average_window": 15,
+            "legend_loc": [
+                [
+                    "lower right",
+                    "lower right",
+                    "lower right"
+                ]
+            ],
+            "colors": colors,
+            "xmax": [400000, 215000],
+            # "ymax": 1,
+            # "figsize": (6, 5),
+        },
         # {
             # "experiment_name": "ablations",
             # "x_axis": "train_step",
