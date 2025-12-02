@@ -265,12 +265,11 @@ def _plot_on_axis(
     ax.set_ylim([0, ymax_val])
 
     if is_left_col:
+        # slightly larger font if it's the main descriptor
         ax.set_ylabel(metric_display_name, fontsize=14, fontweight='bold')
 
     if not is_bottom_row:
         ax.set_xticklabels([])
-
-    # No ax.legend() call here anymore
 
     return handles, labels
 
@@ -288,6 +287,7 @@ def plot_data(
     colors=None,
     figsize=(4, 3),
     experiment_name="experiment",
+    plot_title=None,
 ):
     # --- 1. Preservation of Initial Rolling Logic ---
     for i, algorithm in enumerate(algorithms):
@@ -299,8 +299,17 @@ def plot_data(
     long_data = convert_to_longform(data)
 
     # --- 2. Setup Figure and Grid ---
-    n_rows = len(metrics)
-    n_cols = len(environments)
+
+    single_env_mode = (len(environments) == 1)
+
+    if single_env_mode:
+        # Horizontal layout: 1 Row, N Columns (one per metric)
+        n_rows = 1
+        n_cols = len(metrics)
+    else:
+        # Standard layout: N Rows (metrics), M Columns (environments)
+        n_rows = len(metrics)
+        n_cols = len(environments)
 
     fig, axes = plt.subplots(
         nrows=n_rows,
@@ -317,12 +326,11 @@ def plot_data(
     elif n_cols == 1:
         axes = axes[:, np.newaxis]
 
-    # Containers to store legend info from the first valid plot
     global_legend_handles = []
     global_legend_labels = []
     legend_captured = False
 
-    # --- 3. Iterate Environments (Columns) ---
+    # --- 3. Iterate Environments ---
     for col_idx, environment in enumerate(environments):
 
         # --- Strict Preservation of Per-Env Rolling Logic ---
@@ -335,12 +343,20 @@ def plot_data(
         env_algorithms = [algorithm[0] for algorithm in algorithms]
         # ----------------------------------------------------
 
-        axes[0, col_idx].set_title(f"{environment}", fontsize=24, pad=10)
+        if not single_env_mode:
+            axes[0, col_idx].set_title(f"{environment}", fontsize=24, pad=10)
 
-        # --- 4. Iterate Metrics (Rows) ---
+        # --- 4. Iterate Metrics ---
         for row_idx, (metric, metric_display_name) in enumerate(metrics):
 
-            ax = axes[row_idx, col_idx]
+            if single_env_mode:
+                ax = axes[0, row_idx]
+                is_left_col = True
+                is_bottom_row = True
+            else:
+                ax = axes[row_idx, col_idx]
+                is_left_col = (col_idx == 0)
+                is_bottom_row = (row_idx == n_rows - 1)
 
             relevant_data = long_data[
                 (long_data["environment"] == environment)
@@ -364,11 +380,10 @@ def plot_data(
                 metric_display_name=metric_display_name,
                 xmax_val=xmax[0],
                 ymax_val=ymax[0],
-                is_left_col=(col_idx == 0),
-                is_bottom_row=(row_idx == n_rows - 1)
+                is_left_col=is_left_col,
+                is_bottom_row=is_bottom_row
             )
 
-            # Capture handles/labels from the very first plot we draw to use for the global legend
             if not legend_captured and handles:
                 global_legend_handles = handles
                 global_legend_labels = labels
@@ -376,24 +391,43 @@ def plot_data(
 
     # --- 5. Global Layout, Legend & Saving ---
 
-    # fig.supxlabel("Train step", fontsize=12, y=0.2) # y up slightly to make room for legend
+    if plot_title:
+        fig.suptitle(plot_title, fontsize=28, y=0.98 if not single_env_mode else 1.05)
 
-    # Add Global Horizontal Legend
-    # Placed at the bottom center, horizontally arranged
+    top_adjust = 0.9 if plot_title else 1.0
+
     if global_legend_handles:
-        fig.legend(
-            global_legend_handles,
-            global_legend_labels,
-            loc='lower center',
-            ncol=len(global_legend_labels),
-            bbox_to_anchor=(0.5, 0.0),
-            frameon=False,
-            fontsize=20
-        )
+        if single_env_mode:
+            # === OPTION A: Vertical Legend on the Right (Single Env) ===
+            fig.legend(
+                global_legend_handles,
+                global_legend_labels,
+                loc='center left',      # Anchor left edge of legend...
+                bbox_to_anchor=(1.0, 0.5), # ...to the right edge of the figure
+                ncol=1,                 # Vertical stack
+                frameon=False,
+                fontsize=20
+            )
+            # Adjust layout: Reserve 15% space on the right side for the legend
+            # rect=[left, bottom, right, top]
+            plt.tight_layout(rect=[0.02, 0.05, 0.96, top_adjust])
 
-    # Adjust layout to make room for titles and the bottom legend
-    # rect=[left, bottom, right, top]
-    plt.tight_layout(rect=[0.02, 0.12, 1, 1])
+        else:
+            # === OPTION B: Horizontal Legend on the Bottom (Multi Env) ===
+            fig.legend(
+                global_legend_handles,
+                global_legend_labels,
+                loc='lower center',
+                ncol=len(global_legend_labels), # Horizontal stack
+                bbox_to_anchor=(0.5, 0.0),
+                frameon=False,
+                fontsize=20
+            )
+            # Adjust layout: Reserve space at the bottom for the legend
+            plt.tight_layout(rect=[0.02, 0.12, 1, top_adjust])
+    else:
+        # Fallback if no legend
+        plt.tight_layout(rect=[0.02, 0.05, 1, top_adjust])
 
     output_dir_path = Path(__file__).resolve().parent / output_dir
     output_dir_path.mkdir(parents=True, exist_ok=True)
@@ -532,7 +566,6 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             (lambda _, w=w: _ == w),
         }
 
-
     metrics = [
         ["test/0_success", "Main-goal Success"],
         ["test_random_goals/0_success", "Random-goal Success"],
@@ -613,11 +646,93 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             # "ymax": 1,
             # "figsize": (6, 5),
         },
+        {
+            "experiment_name": "sensitivity_fthr",
+            "x_axis": "train_step",
+            "environments": ["Hallway 4-steps"],
+            "algorithms": [
+                "SIERL F=0.01",
+                "SIERL F=0.5",
+                "SIERL F=0.8",
+                "SIERL F=0.95",
+            ],
+            "metrics": metrics[:2],
+            "running_average_window": 15,
+            "colors": colors,
+            "xmax": [300000],
+            # "ymax": 1,
+            # "figsize": (6, 5),
+        },
+        {
+            "experiment_name": "sensitivity_softmax-temp",
+            "x_axis": "train_step",
+            "environments": ["Hallway 4-steps"],
+            "algorithms": [
+                "SIERL T=0.1",
+                "SIERL F=0.8",
+                "SIERL T=1.5",
+            ],
+            "metrics": metrics[:2],
+            "running_average_window": 15,
+            "colors": colors,
+            "xmax": [250000],
+            # "ymax": 1,
+            # "figsize": (6, 5),
+        },
+        {
+            "experiment_name": "sensitivity_path-weights",
+            "x_axis": "train_step",
+            "environments": ["Hallway 4-steps"],
+            "algorithms": [
+                "SIERL c_g=0",
+                "SIERL c_c=0",
+                "SIERL c_c=c_g",
+            ],
+            "metrics": metrics[:2],
+            "running_average_window": 15,
+            "colors": colors,
+            "xmax": [150000],
+            # "ymax": 1,
+            # "figsize": (6, 5),
+        },
+        {
+            "experiment_name": "sensitivity_novelty-weight",
+            "x_axis": "train_step",
+            "environments": ["Hallway 4-steps"],
+            "algorithms": [
+                "SIERL c_n=0.5",
+                "SIERL F=0.8",
+                "SIERL c_n=3.0",
+            ],
+            "metrics": metrics[:2],
+            "running_average_window": 15,
+            "colors": colors,
+            "xmax": [150000],
+            # "ymax": 1,
+            # "figsize": (6, 5),
+        },
+        {
+            "experiment_name": "probabilistic_transitions",
+            "x_axis": "train_step",
+            "environments": ["Hallway 4-steps (probabilistic transitions)"],
+            "algorithms": [
+                "SIERL F=0.8",
+                "Q-learning",
+                "Random-goals Q-learning",
+                "HER",
+                "Novelty bonuses",
+            ],
+            "metrics": metrics[:2],
+            "running_average_window": 15,
+            "colors": colors,
+            "xmax": [150000],
+            # "ymax": 1,
+            # "figsize": (6, 5),
+        },
     ]
 
     for plot_args in plots_args:
         plot_data(data, output_dir, **plot_args)
-
 
 
 if __name__ == "__main__":
