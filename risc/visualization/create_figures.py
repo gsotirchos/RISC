@@ -664,7 +664,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             # "figsize": (6, 5),
         },
         {
-            "experiment_name": "sensitivity_softmax-temp",
+            "experiment_name": "sensitivity_softmin-temp",
             "x_axis": "train_step",
             "environments": ["Hallway 4-steps"],
             "algorithms": [
