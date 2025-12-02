@@ -45,16 +45,17 @@ def load_run_data(
     data = {}
     loaded_runs_ids = []
 
-    for env in env_filters:
-        data[env] = {}
-        for algo in algo_filters:
-            data[env][algo] = {}
-            for metric, _ in metrics:
-                data[env][algo][metric] = None
-
     if os.path.exists(data_file_path):
         with open(data_file_path, "rb") as file:
             data, loaded_runs_ids = pickle.load(file)
+
+    # Create new entries
+    for env in env_filters:
+        data[env] = data.get(env, {})
+        for algo in algo_filters:
+            data[env][algo] = data[env].get(algo, {})
+            for metric, _ in metrics:
+                data[env][algo][metric] = data[env][algo].get(metric, None)
 
     # Skip checking online if requested
     if not fetch_data:
@@ -222,6 +223,8 @@ def plot_data(
     figsize=(6, 5),
     experiment_name="experiment",
 ):
+    for i, algorithm in enumerate(algorithms):
+        algorithms[i] = np.roll(algorithm, 1).flatten()
     running_average_window = np.roll(running_average_window, 1).flatten()
     xmax = np.roll(xmax, 1).flatten()
     ymax = np.roll(ymax, 1).flatten()
@@ -235,16 +238,15 @@ def plot_data(
         xmax = np.roll(xmax, -1)
         legend_loc = np.roll(legend_loc, -1)
 
+        for i, algorithm in enumerate(algorithms):
+            algorithms[i] = np.roll(algorithm, -1)
+        env_algorithms = [algorithm[0] for algorithm in algorithms]
+
         for metric_idx, (metric, metric_display_name) in enumerate(metrics):  # TODO
-            # plot_stats = stats[
-            #     (stats["environment"] == environment)
-            #     & (stats["metric"] == metric)
-            #     & (stats["algorithm"].isin(algorithms))
-            # ]
             relevant_data = long_data[
                 (long_data["environment"] == environment)
                 & (long_data["metric"] == metric)
-                & (long_data["algorithm"].isin(algorithms))
+                & (long_data["algorithm"].isin(env_algorithms))
             ]
 
             if relevant_data.empty:
@@ -257,7 +259,7 @@ def plot_data(
 
             # Plot the mean line for each algorithm
             algo_colors = np.roll(colors, 1)
-            for algorithm in algorithms:
+            for algorithm in env_algorithms:
                 algo_data = plot_stats[plot_stats["algorithm"] == algorithm]
 
                 if algo_data.empty:
@@ -286,6 +288,9 @@ def plot_data(
             # Set axis limits
             plt.xlim([0, xmax[0]])
             plt.ylim([0, ymax[0]])
+            ax = plt.gca()
+            ax.spines[['right', 'top']].set_visible(False)
+            ax.xaxis.set_major_formatter(lambda x, _: str(int(x / 1000)) + "k")
 
             plt.grid(True)
             plt.legend(title="", loc=legend_loc[0][metric_idx])
@@ -474,9 +479,13 @@ def create_figures(output_dir, entity, project, fetch_data=True):
                 "BugTrap",
             ],
             "algorithms": [
-                "SIERL F=0.7",
-                "SIERL F=0.8",
-                "SIERL F=0.95",
+                [
+                    "SIERL F=0.9",
+                    "SIERL F=0.9",
+                    "SIERL F=0.95",
+                    "SIERL F=0.8",
+                    "SIERL F=0.7",
+                ],
                 "Q-learning",
                 "Random-goals Q-learning",
                 "HER",
@@ -512,35 +521,35 @@ def create_figures(output_dir, entity, project, fetch_data=True):
                 ],
             ],
             "colors": colors,
-            "xmax": [130000, 110000, 500000, 215000, 350000],
+            "xmax": [180000, 110000, 500000, 215000, 350000],
             # "ymax": 1,
             # "figsize": (6, 5),
         },
-        {
-            "experiment_name": "ablations",
-            "x_axis": "train_step",
-            "environments": ["Hallway 6-steps", "FourRooms"],
-            "algorithms": [
-                "SIERL F=0.8",
-                "SIERL F=0.95",
-                "No early switching",
-                "No frontier filtering",
-                "No prioritization",
-            ],
-            "metrics": metrics[:2],
-            "running_average_window": 15,
-            "legend_loc": [
-                [
-                    "lower right",
-                    "lower right",
-                    "lower right"
-                ]
-            ],
-            "colors": colors,
-            "xmax": [400000, 215000],
-            # "ymax": 1,
-            # "figsize": (6, 5),
-        },
+        # {
+            # "experiment_name": "ablations",
+            # "x_axis": "train_step",
+            # "environments": ["Hallway 6-steps", "FourRooms"],
+            # "algorithms": [
+            #     "SIERL F=0.8",
+            #     "SIERL F=0.95",
+            #     "No early switching",
+            #     "No frontier filtering",
+            #     "No prioritization",
+            # ],
+            # "metrics": metrics[:2],
+            # "running_average_window": 15,
+            # "legend_loc": [
+            #     [
+            #         "lower right",
+            #         "lower right",
+            #         "lower right"
+            #     ]
+            # ],
+            # "colors": colors,
+            # "xmax": [400000, 215000],
+            # # "ymax": 1,
+            # # "figsize": (6, 5),
+        # },
         # {
             # "experiment_name": "ablations",
             # "x_axis": "train_step",
