@@ -49,7 +49,7 @@ def load_run_data(
         data[env] = {}
         for algo in algo_filters:
             data[env][algo] = {}
-            for metric in metrics:
+            for metric, _ in metrics:
                 data[env][algo][metric] = None
 
     if os.path.exists(data_file_path):
@@ -86,7 +86,7 @@ def load_run_data(
         seed = run.config["kwargs"]["seed"]
 
         try:
-            for metric in metrics:
+            for metric, _ in metrics:
                 if metric not in run.summary.keys():
                     print(f"      (skipped metric {metric} from {run.id})")
                     continue
@@ -214,38 +214,46 @@ def plot_data(
     environments,
     algorithms,
     metrics,
-    metric_names,
     running_average_window,
     xmax,
     ymax=1,
-    legend_loc="center right",
+    legend_loc=("center right"),
     colors=None,
     figsize=(6, 5),
     experiment_name="experiment",
 ):
-    long_data = convert_to_longform(data)
-    smoothed_data = smoothen_data(long_data, running_average_window)
-    stats = calculate_mean_error_stats(smoothed_data, x_axis)
-
+    running_average_window = np.roll(running_average_window, 1).flatten()
     xmax = np.roll(xmax, 1).flatten()
     ymax = np.roll(ymax, 1).flatten()
-    for env_idx, environment in enumerate(environments):
+    legend_loc = np.roll(legend_loc, 1)
+
+    long_data = convert_to_longform(data)
+
+    for environment in environments:
+        running_average_window = np.roll(running_average_window, -1)
         ymax = np.roll(ymax, -1)
         xmax = np.roll(xmax, -1)
-        for metric_idx, metric in enumerate(metrics):
-            plot_stats = stats[
-                (stats["environment"] == environment)
-                & (stats["metric"] == metric)
-                & (stats["algorithm"].isin(algorithms))
+        legend_loc = np.roll(legend_loc, -1)
+
+        for metric_idx, (metric, metric_display_name) in enumerate(metrics):  # TODO
+            # plot_stats = stats[
+            #     (stats["environment"] == environment)
+            #     & (stats["metric"] == metric)
+            #     & (stats["algorithm"].isin(algorithms))
+            # ]
+            relevant_data = long_data[
+                (long_data["environment"] == environment)
+                & (long_data["metric"] == metric)
+                & (long_data["algorithm"].isin(algorithms))
             ]
 
-            if plot_stats.empty:
+            if relevant_data.empty:
                 continue
 
-            plt.figure(figsize=figsize)
+            smoothed_data = smoothen_data(relevant_data, running_average_window[0])
+            plot_stats = calculate_mean_error_stats(smoothed_data, x_axis)
 
-            # Get display names, defaulting to the original name if not in the dict
-            metric_display_name = metric_names.get(metric, metric) if metric_names else metric
+            plt.figure(figsize=figsize)
 
             # Plot the mean line for each algorithm
             algo_colors = np.roll(colors, 1)
@@ -260,7 +268,7 @@ def plot_data(
                     algo_data[x_axis],
                     algo_data["mean"],
                     color=algo_colors[0],
-                    label=algorithm
+                    label=algorithm  # TODO
                 )
                 plt.fill_between(
                     algo_data[x_axis],
@@ -280,7 +288,7 @@ def plot_data(
             plt.ylim([0, ymax[0]])
 
             plt.grid(True)
-            plt.legend(title="", loc=legend_loc[env_idx][metric_idx])
+            plt.legend(title="", loc=legend_loc[0][metric_idx])
 
             output_dir_path = Path(__file__).resolve().parent / output_dir
             output_dir_path.mkdir(parents=True, exist_ok=True)
@@ -297,116 +305,136 @@ def plot_data(
 
 
 def create_figures(output_dir, entity, project, fetch_data=True):
-    env_filters = {
-        "Hallway 2-steps": {
-            ("kwargs", "env_fn", "kwargs", "env_name"): (lambda _: _ == "MiniGrid-Hallway-v1"),
-            ("kwargs", "env_fn", "kwargs", "hallway_length"):  (lambda _: _ == 2),
-        },
-        "Hallway 4-steps": {
-            ("kwargs", "env_fn", "kwargs", "env_name"): (lambda _: _ == "MiniGrid-Hallway-v1"),
-            ("kwargs", "env_fn", "kwargs", "hallway_length"):  (lambda _: _ == 4),
-        },
-        "Hallway 6-steps": {
-            ("kwargs", "env_fn", "kwargs", "env_name"): (lambda _: _ == "MiniGrid-Hallway-v1"),
-            ("kwargs", "env_fn", "kwargs", "hallway_length"):  (lambda _: _ == 6),
-        },
-        "FourRooms": {
-            ("kwargs", "env_fn", "kwargs", "env_name"): (lambda _: _ == "MiniGrid-FourRooms-v1"),
-        },
-        "BugTrap": {
-            ("kwargs", "env_fn", "kwargs", "env_name"): (lambda _: _ == "MiniGrid-BugTrap-v1"),
-        },
+    base_env_filter = {
+        ("kwargs", "env_fn", "kwargs", "env_name"): (lambda _: _ == ""),
+        ("kwargs", "env_fn", "kwargs", "action_probability"): (lambda _: _ is False or _ == 1.0),
+    }
+    base_hallway_filter = {
+        **base_env_filter,
+        ("kwargs", "env_fn", "kwargs", "env_name"): (lambda _: _ == "MiniGrid-Hallway-v1"),
+        ("kwargs", "env_fn", "kwargs", "num_hallways"): (lambda _: _ == 1),
+        ("kwargs", "env_fn", "kwargs", "hallway_length"): (lambda _: _ > 0),
+    }
+    env_filters = {}
+
+    for n in [2, 4, 6]:
+        env_filters[f"Hallway {n}-steps"] = {
+            **base_hallway_filter,
+            ("kwargs", "env_fn", "kwargs", "hallway_length"): (lambda _, n=n: _ == n),
+        }
+    for env_name in ["FourRooms", "BugTrap", "NineRooms", "NineRoomsLocked"]:
+        env_filters[env_name] = {
+            **base_env_filter,
+            ("kwargs", "env_fn", "kwargs", "env_name"):
+            (lambda _, env_name=env_name: _ == f"MiniGrid-{env_name}-v1"),
+        }
+        
+    env_filters["Hallway 4-steps (probabilistic transitions)"] = {
+        **env_filters["Hallway 4-steps"],
+        ("kwargs", "env_fn", "kwargs", "action_probability"): (lambda _: _ == 0.8),
     }
 
+    base_sierl_filter = {
+        ("kwargs", "agent", "kwargs", "goal_generator", "name"):
+        (lambda _: _ == "OmniGoalGenerator"),
+        ("kwargs", "agent", "kwargs", "goal_switcher", "kwargs", "switching_probability"):
+        (lambda _: _ > 0),
+        ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "max_familiarity"):
+        (lambda _: _ < 1),
+        ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "weights"):
+        (lambda _: _ == [1.5, 0, 1.0, 0.5]),
+        ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "temperature_schedule",
+         "kwargs", "value"): (lambda _: _ == 0.5),
+        ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "random_selection"):
+        (lambda _: _ is False),
+        ("kwargs", "agent", "kwargs", "replay_buffer", "kwargs", "capacity"):
+        (lambda _: _ == 100000 or _ == 300000),
+    }
+    base_qlearning_filter = {
+        ("kwargs", "agent", "kwargs", "goal_generator", "name"):
+        (lambda _: _ == "NoGoalGenerator"),
+        ("kwargs", "env_fn", "kwargs", "novelty_bonus"):
+        (lambda _: _ == 0),
+        ("kwargs", "train_random_goals"):
+        (lambda _: _ is False),
+        ("kwargs", "agent", "kwargs", "replay_buffer", "kwargs", "her_ratio"):
+        (lambda _: _ == 0),
+    }
+    base_ablation_filter = {
+        ("kwargs", "agent", "kwargs", "goal_generator", "name"):
+        (lambda _: _ == "OmniGoalGenerator"),
+        ("kwargs", "agent", "kwargs", "goal_switcher", "kwargs", "switching_probability"):
+        (lambda _: _ > 0),
+        ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "max_familiarity"):
+        (lambda _: _ < 1),
+        ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "random_selection"):
+        (lambda _: _ is False),
+    }
     algo_filters = {
-        "SIERL": {
-            ("kwargs", "agent", "kwargs", "goal_generator", "name"):
-            (lambda _: _ == "OmniGoalGenerator"),
-            ("kwargs", "agent", "kwargs", "goal_switcher", "kwargs", "switching_probability"):
-            (lambda _: _ > 0),
-            ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "max_familiarity"):
-            (lambda _: _ < 1),
-            ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "random_selection"):
-            (lambda _: _ is False),
-            ("kwargs", "agent", "kwargs", "replay_buffer", "kwargs", "capacity"):
-            (lambda _: _ == 100000 or _ == 300000),
-        },
         "Q-learning": {
-            ("kwargs", "agent", "kwargs", "goal_generator", "name"):
-            (lambda _: _ == "NoGoalGenerator"),
-            ("kwargs", "env_fn", "kwargs", "novelty_bonus"):
-            (lambda _: _ == 0),
-            ("kwargs", "train_random_goals"):
-            (lambda _: _ is False),
-            ("kwargs", "agent", "kwargs", "replay_buffer", "kwargs", "her_ratio"):
-            (lambda _: _ == 0),
+            **base_qlearning_filter
         },
         "Random-goals Q-learning": {
-            ("kwargs", "agent", "kwargs", "goal_generator", "name"):
-            (lambda _: _ == "NoGoalGenerator"),
-            ("kwargs", "env_fn", "kwargs", "novelty_bonus"):
-            (lambda _: _ == 0),
-            ("kwargs", "train_random_goals"):
-            (lambda _: _ is True),
-            ("kwargs", "agent", "kwargs", "replay_buffer", "kwargs", "her_ratio"):
-            (lambda _: _ == 0),
+            **base_qlearning_filter,
+            ("kwargs", "train_random_goals"): (lambda _: _ is True),
         },
         "HER": {
-            ("kwargs", "agent", "kwargs", "goal_generator", "name"):
-            (lambda _: _ == "NoGoalGenerator"),
-            ("kwargs", "env_fn", "kwargs", "novelty_bonus"):
-            (lambda _: _ == 0),
-            ("kwargs", "train_random_goals"):
-            (lambda _: _ is False),
+            **base_qlearning_filter,
             ("kwargs", "agent", "kwargs", "replay_buffer", "kwargs", "her_ratio"):
             (lambda _: _ > 0),
         },
         "Novelty bonuses": {
-            ("kwargs", "agent", "kwargs", "goal_generator", "name"):
-            (lambda _: _ == "NoGoalGenerator"),
+            **base_qlearning_filter,
             ("kwargs", "env_fn", "kwargs", "novelty_bonus"):
             (lambda _: _ > 0),
-            ("kwargs", "train_random_goals"):
-            (lambda _: _ is False),
-            ("kwargs", "agent", "kwargs", "replay_buffer", "kwargs", "her_ratio"):
-            (lambda _: _ == 0),
         },
         "No frontier filtering": {
-            ("kwargs", "agent", "kwargs", "goal_generator", "name"):
-            (lambda _: _ == "OmniGoalGenerator"),
-            ("kwargs", "agent", "kwargs", "goal_switcher", "kwargs", "switching_probability"):
-            (lambda _: _ > 0),
+            **base_ablation_filter,
             ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "max_familiarity"):
             (lambda _: _ == 1),
-            ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "random_selection"):
-            (lambda _: _ is False),
         },
         "No early switching": {
-            ("kwargs", "agent", "kwargs", "goal_generator", "name"):
-            (lambda _: _ == "OmniGoalGenerator"),
+            **base_ablation_filter,
             ("kwargs", "agent", "kwargs", "goal_switcher", "kwargs", "switching_probability"):
             (lambda _: _ == 0),
-            ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "max_familiarity"):
-            (lambda _: _ < 1),
-            ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "random_selection"):
-            (lambda _: _ is False),
         },
         "No prioritization": {
-            ("kwargs", "agent", "kwargs", "goal_generator", "name"):
-            (lambda _: _ == "OmniGoalGenerator"),
-            ("kwargs", "agent", "kwargs", "goal_switcher", "kwargs", "switching_probability"):
-            (lambda _: _ > 0),
-            ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "max_familiarity"):
-            (lambda _: _ < 1),
+            **base_ablation_filter,
             ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "random_selection"):
             (lambda _: _ is True),
         },
     }
+    for f in [0.001, 0.01, 0.1, 0.5, 0.7, 0.8, 0.9, 0.95]:
+        algo_filters[f"SIERL F={f}"] = {
+            **base_sierl_filter,
+            ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "max_familiarity"):
+            (lambda _, f=f: _ == f),
+        }
+    for t in [0.1, 1.5]:
+        algo_filters[f"SIERL T={t}"] = {
+            **base_sierl_filter,
+            ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "temperature_schedule",
+             "kwargs", "value"): (lambda _, t=t: _ == t),
+        }
+    weight_variants = {
+        "c_c=0": [1.0, 0.0, 0.0, 1.0],
+        "c_g=0": [1.0, 0.0, 1.0, 0.0],
+        "c_c=c_g": [1.0, 0.0, 1.0, 1.0],
+        "c_n=0.5": [0.5, 0.0, 1.0, 0.5],
+        "c_n=3.0": [3.0, 0.0, 1.0, 0.5],
+    }
+    for name, w in weight_variants.items():
+        algo_filters[f"SIERL {name}"] = {
+            **base_sierl_filter,
+            ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "weights"):
+            (lambda _, w=w: _ == w),
+        }
+
 
     metrics = [
-        "test/0_success",
-        "test_random_goals/0_success",
-        "lateral/success",
+        ["test/0_success", "Main-goal Success"],
+        ["test_random_goals/0_success", "Random-goal Success"],
+        ["lateral/success", "Sub-goal Success (training)"],
     ]
 
     x_axis = "train_step"
@@ -422,12 +450,6 @@ def create_figures(output_dir, entity, project, fetch_data=True):
         fetch_data=fetch_data,
     )
 
-    metric_names = {
-        "test/0_success": "Main-goal Success",
-        "test_random_goals/0_success": "Random-goal Success",
-        "lateral/success": "Sub-goal Success (training)",
-    }
-
     colors = [
         '#e41a1c',
         '#4daf4a',
@@ -441,120 +463,71 @@ def create_figures(output_dir, entity, project, fetch_data=True):
     ]
 
     plots_args = [
-        # {
-        #     "experiment_name": "experiments",
-        #     "x_axis": "train_step",
-        #     "environments": [
-        #         "Hallway 2-steps",
-        #         "Hallway 4-steps",
-        #         "Hallway 6-steps",
-        #         "FourRooms",
-        #         "BugTrap",
-        #     ],
-        #     "algorithms": [
-        #         "SIERL",
-        #         "Q-learning",
-        #         "Random-goals Q-learning",
-        #         "HER",
-        #         "Novelty bonuses",
-        #     ],
-        #     "metrics": metrics[:2],
-        #     "metric_names": metric_names,
-        #     "running_average_window": 15,
-        #     "legend_loc": [
-        #         [
-        #             "lower right",
-        #             "center right",
-        #             "lower right",
-        #         ],
-        #         [
-        #             "lower right",
-        #             "center right",
-        #             "lower right",
-        #         ],
-        #         [
-        #             "lower right",
-        #             "lower right",
-        #             "lower right",
-        #         ],
-        #         [
-        #             "lower right",
-        #             "center right",
-        #             "lower right",
-        #         ],
-        #         [
-        #             "lower right",
-        #             "upper left",
-        #             "lower right",
-        #         ],
-        #     ],
-        #     "colors": colors,
-        #     "xmax": [130000, 110000, 500000, 250000, 330000],
-        #     # "ymax": 1,
-        #     # "figsize": (6, 5),
-        # },
-        # {
-        #     "experiment_name": "ablations",
-        #     "x_axis": "train_step",
-        #     "environments": ["Hallway 6-steps"],
-        #     "algorithms": [
-        #         "SIERL",
-        #         "No early switching",
-        #         "No frontier filtering",
-        #         "No prioritization",
-        #     ],
-        #     "metrics": metrics[:2],
-        #     "metric_names": metric_names,
-        #     "running_average_window": 15,
-        #     "legend_loc": [
-        #         [
-        #             "lower right",
-        #             "lower right",
-        #             "lower right"
-        #         ]
-        #     ],
-        #     "colors": colors,
-        #     "xmax": [515000],
-        #     # "ymax": 1,
-        #     # "figsize": (6, 5),
-        # },
-        # {
-        #     "experiment_name": "ablations",
-        #     "x_axis": "train_step",
-        #     "environments": ["Hallway 6-steps"],
-        #     "algorithms": [
-        #         "SIERL",
-        #         "No early switching",
-        #         "No frontier filtering",
-        #         "No prioritization",
-        #     ],
-        #     "metrics": [metrics[2]],
-        #     "metric_names": metric_names,
-        #     "running_average_window": 70,
-        #     "legend_loc": [
-        #         [
-        #             "lower right",
-        #             "lower right",
-        #             "lower right"
-        #         ]
-        #     ],
-        #     "colors": colors,
-        #     "xmax": [515000],
-        #     # "ymax": 1,
-        #     # "figsize": (6, 5),
-        # },
+        {
+            "experiment_name": "experiments",
+            "x_axis": "train_step",
+            "environments": [
+                "Hallway 2-steps",
+                "Hallway 4-steps",
+                "Hallway 6-steps",
+                "FourRooms",
+                "BugTrap",
+            ],
+            "algorithms": [
+                "SIERL F=0.7",
+                "SIERL F=0.8",
+                "SIERL F=0.95",
+                "Q-learning",
+                "Random-goals Q-learning",
+                "HER",
+                "Novelty bonuses",
+            ],
+            "metrics": metrics[:2],
+            "running_average_window": 15,
+            "legend_loc": [
+                [
+                    "lower right",
+                    "center right",
+                    "lower right",
+                ],
+                [
+                    "lower right",
+                    "center right",
+                    "lower right",
+                ],
+                [
+                    "lower right",
+                    "lower right",
+                    "lower right",
+                ],
+                [
+                    "lower right",
+                    "center right",
+                    "lower right",
+                ],
+                [
+                    "lower right",
+                    "upper left",
+                    "lower right",
+                ],
+            ],
+            "colors": colors,
+            "xmax": [130000, 110000, 500000, 215000, 350000],
+            # "ymax": 1,
+            # "figsize": (6, 5),
+        },
         {
             "experiment_name": "ablations",
             "x_axis": "train_step",
-            "environments": ["FourRooms"],
+            "environments": ["Hallway 6-steps", "FourRooms"],
             "algorithms": [
-                "SIERL",
+                "SIERL F=0.8",
+                "SIERL F=0.95",
                 "No early switching",
                 "No frontier filtering",
                 "No prioritization",
             ],
             "metrics": metrics[:2],
-            "metric_names": metric_names,
             "running_average_window": 15,
             "legend_loc": [
                 [
@@ -564,35 +537,34 @@ def create_figures(output_dir, entity, project, fetch_data=True):
                 ]
             ],
             "colors": colors,
-            "xmax": [280000],
+            "xmax": [400000, 215000],
             # "ymax": 1,
             # "figsize": (6, 5),
         },
-        {
-            "experiment_name": "ablations",
-            "x_axis": "train_step",
-            "environments": ["FourRooms"],
-            "algorithms": [
-                "SIERL",
-                "No early switching",
-                "No frontier filtering",
-                "No prioritization",
-            ],
-            "metrics": [metrics[2]],
-            "metric_names": metric_names,
-            "running_average_window": 70,
-            "legend_loc": [
-                [
-                    "lower right",
-                    "lower right",
-                    "lower right"
-                ]
-            ],
-            "colors": colors,
-            "xmax": [280000],
-            # "ymax": 1,
-            # "figsize": (6, 5),
-        },
+        # {
+            # "experiment_name": "ablations",
+            # "x_axis": "train_step",
+            # "environments": ["Hallway 6-steps", "FourRooms"],
+            # "algorithms": [
+            #     "SIERL",
+            #     "No early switching",
+            #     "No frontier filtering",
+            #     "No prioritization",
+            # ],
+            # "metrics": [metrics[2]],  # sub-goal success
+            # "running_average_window": 70,
+            # "legend_loc": [
+            #     [
+            #         "lower right",
+            #         "lower right",
+            #         "lower right"
+            #     ]
+            # ],
+            # "colors": colors,
+            # "xmax": [515000, 280000],
+            # # "ymax": 1,
+            # # "figsize": (6, 5),
+        # },
     ]
 
     for plot_args in plots_args:
