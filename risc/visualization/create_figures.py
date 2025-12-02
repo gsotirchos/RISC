@@ -13,12 +13,12 @@ import wandb
 warnings.filterwarnings("error")
 
 mpl.rcParams['lines.linewidth'] = 2
-# mpl.rcParams['axes.titlesize'] = "xx-large"
-# mpl.rcParams['axes.labelsize'] = "xx-large"
-# mpl.rcParams['legend.fontsize'] = "medium"
-mpl.rcParams['axes.titlesize'] = 30
-mpl.rcParams['axes.labelsize'] = 25
-mpl.rcParams['legend.fontsize'] = 12
+mpl.rcParams['axes.titlesize'] = "xx-large"
+mpl.rcParams['axes.labelsize'] = "xx-large"
+mpl.rcParams['legend.fontsize'] = "medium"
+# mpl.rcParams['axes.titlesize'] = 30
+# mpl.rcParams['axes.labelsize'] = 25
+# mpl.rcParams['legend.fontsize'] = 12
 mpl.rcParams['legend.framealpha'] = 0.7
 
 # __file__ = "/Users/george/Desktop/RISC/risc/visualization/create_figures.py"  # DEBUG
@@ -265,7 +265,7 @@ def _plot_on_axis(
     ax.set_ylim([0, ymax_val])
 
     if is_left_col:
-        ax.set_ylabel(metric_display_name, fontsize=10, fontweight='bold')
+        ax.set_ylabel(metric_display_name, fontsize=14, fontweight='bold')
 
     if not is_bottom_row:
         ax.set_xticklabels([])
@@ -285,7 +285,6 @@ def plot_data(
     running_average_window,
     xmax,
     ymax=1,
-    legend_loc=("center right"),
     colors=None,
     figsize=(4, 3),
     experiment_name="experiment",
@@ -296,7 +295,6 @@ def plot_data(
     running_average_window = np.roll(running_average_window, 1).flatten()
     xmax = np.roll(xmax, 1).flatten()
     ymax = np.roll(ymax, 1).flatten()
-    legend_loc = np.roll(legend_loc, 1)
 
     long_data = convert_to_longform(data)
 
@@ -331,14 +329,13 @@ def plot_data(
         running_average_window = np.roll(running_average_window, -1)
         ymax = np.roll(ymax, -1)
         xmax = np.roll(xmax, -1)
-        legend_loc = np.roll(legend_loc, -1)
 
         for i, algorithm in enumerate(algorithms):
             algorithms[i] = np.roll(algorithm, -1)
         env_algorithms = [algorithm[0] for algorithm in algorithms]
         # ----------------------------------------------------
 
-        axes[0, col_idx].set_title(f"{environment}", fontsize=12, pad=10)
+        axes[0, col_idx].set_title(f"{environment}", fontsize=24, pad=10)
 
         # --- 4. Iterate Metrics (Rows) ---
         for row_idx, (metric, metric_display_name) in enumerate(metrics):
@@ -391,7 +388,7 @@ def plot_data(
             ncol=len(global_legend_labels),
             bbox_to_anchor=(0.5, 0.0),
             frameon=False,
-            fontsize=11
+            fontsize=20
         )
 
     # Adjust layout to make room for titles and the bottom legend
@@ -593,33 +590,6 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             ],
             "metrics": metrics[:2],
             "running_average_window": 15,
-            "legend_loc": [
-                [
-                    "lower right",
-                    "center right",
-                    "lower right",
-                ],
-                [
-                    "lower right",
-                    "center right",
-                    "lower right",
-                ],
-                [
-                    "lower right",
-                    "lower right",
-                    "lower right",
-                ],
-                [
-                    "lower right",
-                    "center right",
-                    "lower right",
-                ],
-                [
-                    "lower right",
-                    "upper left",
-                    "lower right",
-                ],
-            ],
             "colors": colors,
             "xmax": [180000, 110000, 500000, 215000, 350000],
             # "ymax": 1,
@@ -638,42 +608,11 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             ],
             "metrics": metrics[:2],
             "running_average_window": 15,
-            "legend_loc": [
-                [
-                    "lower right",
-                    "lower right",
-                    "lower right"
-                ]
-            ],
             "colors": colors,
             "xmax": [400000, 215000],
             # "ymax": 1,
             # "figsize": (6, 5),
         },
-        # {
-            # "experiment_name": "ablations",
-            # "x_axis": "train_step",
-            # "environments": ["Hallway 6-steps", "FourRooms"],
-            # "algorithms": [
-            #     "SIERL",
-            #     "No early switching",
-            #     "No frontier filtering",
-            #     "No prioritization",
-            # ],
-            # "metrics": [metrics[2]],  # sub-goal success
-            # "running_average_window": 70,
-            # "legend_loc": [
-            #     [
-            #         "lower right",
-            #         "lower right",
-            #         "lower right"
-            #     ]
-            # ],
-            # "colors": colors,
-            # "xmax": [515000, 280000],
-            # # "ymax": 1,
-            # # "figsize": (6, 5),
-        # },
     ]
 
     for plot_args in plots_args:
