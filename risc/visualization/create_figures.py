@@ -71,7 +71,7 @@ def load_run_data(
 
         env = get_filter_name(run.config, env_filters)
         if env is None:
-            print(f"[{run_idx}] Skipped {run.name} ({run.id}) as it is has no matching env.")
+            print(f"[{run_idx}] Skipped {run.name} ({run.id}) as it is has no matching environment.")
             continue
 
         algo = get_filter_name(run.config, algo_filters)
@@ -406,11 +406,11 @@ def plot_data(
                 bbox_to_anchor=(1.0, 0.5), # ...to the right edge of the figure
                 ncol=1,                 # Vertical stack
                 frameon=False,
-                fontsize=20
+                fontsize=14
             )
             # Adjust layout: Reserve 15% space on the right side for the legend
             # rect=[left, bottom, right, top]
-            plt.tight_layout(rect=[0.02, 0.05, 0.96, top_adjust])
+            plt.tight_layout(rect=[0.02, 0.05, 1.0, top_adjust])
 
         else:
             # === OPTION B: Horizontal Legend on the Bottom (Multi Env) ===
@@ -565,6 +565,13 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "weights"):
             (lambda _, w=w: _ == w),
         }
+    algo_filters["MEGA"] = {
+        **base_sierl_filter,
+        ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "weights"):
+        (lambda _: _ == [-1.0, 0.0, 0.0, 0.0]),
+        ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "max_familiarity"):
+        (lambda _: _ == 1),
+    }
 
     metrics = [
         ["test/0_success", "Main-goal Success"],
@@ -621,6 +628,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
                 "HER",
                 "Novelty bonuses",
             ],
+            # "algo_names_filter": 2,
             "metrics": metrics[:2],
             "running_average_window": 15,
             "colors": colors,
@@ -643,8 +651,6 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             "running_average_window": 15,
             "colors": colors,
             "xmax": [400000, 215000],
-            # "ymax": 1,
-            # "figsize": (6, 5),
         },
         {
             "experiment_name": "sensitivity_fthr",
@@ -659,9 +665,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             "metrics": metrics[:2],
             "running_average_window": 15,
             "colors": colors,
-            "xmax": [300000],
-            # "ymax": 1,
-            # "figsize": (6, 5),
+            "xmax": [110000],
         },
         {
             "experiment_name": "sensitivity_softmin-temp",
@@ -675,9 +679,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             "metrics": metrics[:2],
             "running_average_window": 15,
             "colors": colors,
-            "xmax": [250000],
-            # "ymax": 1,
-            # "figsize": (6, 5),
+            "xmax": [100000],
         },
         {
             "experiment_name": "sensitivity_path-weights",
@@ -691,9 +693,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             "metrics": metrics[:2],
             "running_average_window": 15,
             "colors": colors,
-            "xmax": [150000],
-            # "ymax": 1,
-            # "figsize": (6, 5),
+            "xmax": [100000],
         },
         {
             "experiment_name": "sensitivity_novelty-weight",
@@ -707,9 +707,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             "metrics": metrics[:2],
             "running_average_window": 15,
             "colors": colors,
-            "xmax": [150000],
-            # "ymax": 1,
-            # "figsize": (6, 5),
+            "xmax": [125000],
         },
         {
             "experiment_name": "probabilistic_transitions",
@@ -725,10 +723,50 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             "metrics": metrics[:2],
             "running_average_window": 15,
             "colors": colors,
-            "xmax": [150000],
-            # "ymax": 1,
-            # "figsize": (6, 5),
+            "xmax": [120000],
         },
+        {
+            "experiment_name": "nine_rooms",
+            "x_axis": "train_step",
+            "environments": ["NineRooms", "NineRoomsLocked"],
+            "algorithms": [
+                "SIERL F=0.8",
+                "Novelty bonuses",
+                # "MEGA",
+            ],
+            "metrics": metrics[:2],
+            "running_average_window": 15,
+            "colors": colors,
+            "xmax": [400000, 610000],
+        },
+        {
+            "experiment_name": "mega_hallway4",
+            "x_axis": "train_step",
+            "environments": ["Hallway 4-steps"],
+            "algorithms": [
+                "SIERL F=0.9",
+                "Novelty bonuses",
+                "MEGA",
+            ],
+            "metrics": metrics[:2],
+            "running_average_window": 15,
+            "colors": colors,
+            "xmax": [130000],
+        },
+        # {
+        #     "experiment_name": "mega_hallway4_prob",
+        #     "x_axis": "train_step",
+        #     "environments": ["Hallway 4-steps (probabilistic transitions)"],
+        #     "algorithms": [
+        #         "SIERL F=0.8",
+        #         "Novelty bonuses",
+        #         "MEGA",
+        #     ],
+        #     "metrics": metrics[:2],
+        #     "running_average_window": 15,
+        #     "colors": colors,
+        #     "xmax": [130000],
+        # },
     ]
 
     for plot_args in plots_args:
