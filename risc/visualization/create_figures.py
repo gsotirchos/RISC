@@ -1,6 +1,7 @@
 import argparse
 import os
 import pickle
+import re
 import warnings
 from pathlib import Path
 
@@ -97,7 +98,7 @@ def load_run_data(
 
                 data[env][algo][metric] = merge_data(data[env][algo][metric], history)
 
-            print(f"[{run_idx}] Loaded data for {run.name} ({run.id}) successfully.")
+            print(f"[{run_idx}] Loaded {run.name} ({run.id}) successfully as {algo} in {env}.")
             loaded_runs_ids.append(run.id)
 
         except Exception as e:
@@ -218,7 +219,8 @@ def _plot_on_axis(
     xmax_val,
     ymax_val,
     is_left_col,
-    is_bottom_row
+    is_bottom_row,
+    algo_names_replacements=None,
 ):
     """
     Helper function to plot a single metric/env combination onto a specific axis.
@@ -236,6 +238,10 @@ def _plot_on_axis(
             continue
 
         algo_colors = np.roll(algo_colors, -1)
+
+        if algo_names_replacements is not None:
+            for replacement in algo_names_replacements:
+                algorithm = re.sub(*replacement, algorithm)
 
         # Plot and capture the line handle
         line, = ax.plot(
@@ -287,6 +293,7 @@ def plot_data(
     colors=None,
     figsize=(4, 3),
     experiment_name="experiment",
+    algo_names_replacements=None,
     plot_title=None,
 ):
     # --- 1. Preservation of Initial Rolling Logic ---
@@ -328,7 +335,7 @@ def plot_data(
 
     global_legend_handles = []
     global_legend_labels = []
-    legend_captured = False
+    handles_captured = False
 
     # --- 3. Iterate Environments ---
     for col_idx, environment in enumerate(environments):
@@ -376,6 +383,7 @@ def plot_data(
                 data_frame=plot_stats,
                 x_axis=x_axis,
                 algorithms=env_algorithms,
+                algo_names_replacements=algo_names_replacements,
                 colors=colors,
                 metric_display_name=metric_display_name,
                 xmax_val=xmax[0],
@@ -384,10 +392,10 @@ def plot_data(
                 is_bottom_row=is_bottom_row
             )
 
-            if not legend_captured and handles:
-                global_legend_handles = handles
-                global_legend_labels = labels
-                legend_captured = True
+            for handle, label in zip(handles, labels):
+                if label not in global_legend_labels:
+                    global_legend_handles.append(handle)
+                    global_legend_labels.append(label)
 
     # --- 5. Global Layout, Legend & Saving ---
 
@@ -499,6 +507,8 @@ def create_figures(output_dir, entity, project, fetch_data=True):
     base_ablation_filter = {
         ("kwargs", "agent", "kwargs", "goal_generator", "name"):
         (lambda _: _ == "OmniGoalGenerator"),
+        ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "weights"):
+        (lambda _: _ == [1.5, 0, 1.0, 0.5]),
         ("kwargs", "agent", "kwargs", "goal_switcher", "kwargs", "switching_probability"):
         (lambda _: _ > 0),
         ("kwargs", "agent", "kwargs", "goal_generator", "kwargs", "max_familiarity"):
@@ -628,7 +638,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
                 "HER",
                 "Novelty bonuses",
             ],
-            # "algo_names_filter": 2,
+            "algo_names_replacements": [[r" F=.*", ""]],
             "metrics": metrics[:2],
             "running_average_window": 15,
             "colors": colors,
@@ -647,6 +657,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
                 "No frontier filtering",
                 "No prioritization",
             ],
+            "algo_names_replacements": [[r" F=.*", ""]],
             "metrics": metrics[:2],
             "running_average_window": 15,
             "colors": colors,
@@ -676,6 +687,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
                 "SIERL F=0.8",
                 "SIERL T=1.5",
             ],
+            "algo_names_replacements": [[r" F=.*", " T=0.5"]],
             "metrics": metrics[:2],
             "running_average_window": 15,
             "colors": colors,
@@ -704,6 +716,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
                 "SIERL F=0.8",
                 "SIERL c_n=3.0",
             ],
+            "algo_names_replacements": [[r" F=.*", " c_n=1.5"]],
             "metrics": metrics[:2],
             "running_average_window": 15,
             "colors": colors,
@@ -720,6 +733,7 @@ def create_figures(output_dir, entity, project, fetch_data=True):
                 "HER",
                 "Novelty bonuses",
             ],
+            "algo_names_replacements": [[r" F=.*", ""]],
             "metrics": metrics[:2],
             "running_average_window": 15,
             "colors": colors,
@@ -732,41 +746,14 @@ def create_figures(output_dir, entity, project, fetch_data=True):
             "algorithms": [
                 "SIERL F=0.8",
                 "Novelty bonuses",
-                # "MEGA",
+                "MEGA",
             ],
+            "algo_names_replacements": [[r" F=.*", ""]],
             "metrics": metrics[:2],
             "running_average_window": 15,
             "colors": colors,
             "xmax": [400000, 610000],
         },
-        {
-            "experiment_name": "mega_hallway4",
-            "x_axis": "train_step",
-            "environments": ["Hallway 4-steps"],
-            "algorithms": [
-                "SIERL F=0.9",
-                "Novelty bonuses",
-                "MEGA",
-            ],
-            "metrics": metrics[:2],
-            "running_average_window": 15,
-            "colors": colors,
-            "xmax": [130000],
-        },
-        # {
-        #     "experiment_name": "mega_hallway4_prob",
-        #     "x_axis": "train_step",
-        #     "environments": ["Hallway 4-steps (probabilistic transitions)"],
-        #     "algorithms": [
-        #         "SIERL F=0.8",
-        #         "Novelty bonuses",
-        #         "MEGA",
-        #     ],
-        #     "metrics": metrics[:2],
-        #     "running_average_window": 15,
-        #     "colors": colors,
-        #     "xmax": [130000],
-        # },
     ]
 
     for plot_args in plots_args:
